@@ -23,3 +23,7 @@ This file is updated by Ralph iterations and human developers with reusable patt
 - Connected account row: `users.is_account_owner = true`; expenses keyed by `account_user_id` + unique `splitwise_id`
 - Sync: `src/lib/sync/expenses.ts`, `src/lib/sync/metadata.ts`; trigger via `POST /api/sync` with `{ scope: "all" | "expenses" | "metadata" }`
 - Expense list: `src/lib/expenses/queries.ts`, UI at `/explore`, API `GET /api/expenses?page&sort&order`
+- Expense summary: `GET /api/expenses/summary` (same filter params as list)
+- Insights: `src/lib/expenses/insights.ts`, UI at `/insights`, API `GET /api/insights`
+- Home dashboard: `src/lib/expenses/dashboard.ts`, `GET /api/dashboard`, UI `src/app/home-dashboard.tsx`
+- Layout shell: use `AppShell` from `src/components/app-shell.tsx` (nav + sync banner) on all main pages

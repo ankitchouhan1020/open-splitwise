@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   and,
   asc,
@@ -16,44 +18,16 @@ import {
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import type { ExpenseFilters, ExpenseListSort } from "@/lib/expenses/filters";
+import type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/types";
+import { categoryIconFromRaw } from "@/lib/splitwise/category-icon";
 
+export type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/types";
 export type { ExpenseListSort, ExpenseListOrder } from "@/lib/expenses/filters";
-
-export type ExpenseListItem = {
-  id: number;
-  splitwiseId: number;
-  date: string;
-  description: string;
-  details: string | null;
-  groupName: string;
-  categoryName: string | null;
-  cost: string;
-  currencyCode: string;
-  myShare: string | null;
-  myPaidShare: string | null;
-  paidBy: string;
-  payment: boolean;
-};
-
-export type ExpenseDetail = ExpenseListItem & {
-  groupId: number | null;
-  categoryId: number | null;
-  friendshipId: number | null;
-  comments: string | null;
-  shares: Array<{
-    splitwiseUserId: number;
-    name: string;
-    paidShare: string;
-    owedShare: string;
-    netBalance: string | null;
-  }>;
-  raw: unknown;
-};
 
 function sortColumn(sort: ExpenseListSort) {
   switch (sort) {
     case "cost":
-      return schema.expenses.cost;
+      return sql`coalesce(${schema.expenseShares.owedShare}::numeric, 0)`;
     case "description":
       return schema.expenses.description;
     default:
@@ -63,6 +37,33 @@ function sortColumn(sort: ExpenseListSort) {
 
 function paidByFromRaw(raw: unknown): string {
   if (!raw || typeof raw !== "object") return "—";
+  const users = (
+    raw as {
+      users?: Array<{
+        user_id: number;
+        paid_share: string;
+        user?: { id?: number; first_name?: string; last_name?: string };
+      }>;
+    }
+  ).users;
+
+  if (Array.isArray(users) && users.length > 0) {
+    let bestPaid = 0;
+    let payerName: string | null = null;
+    for (const u of users) {
+      const paid = Number(u.paid_share);
+      if (paid > bestPaid + 0.005) {
+        bestPaid = paid;
+        payerName = formatParticipantName(
+          u.user?.first_name,
+          u.user?.last_name,
+          u.user_id ?? u.user?.id,
+        );
+      }
+    }
+    if (payerName) return payerName;
+  }
+
   const createdBy = (
     raw as { created_by?: { first_name?: string; last_name?: string } }
   ).created_by;
@@ -271,9 +272,11 @@ function mapListRow(r: {
   raw: unknown;
   groupName: string | null;
   categoryName: string | null;
+  categoryRaw: unknown;
   myShare: string | null;
   myPaidShare: string | null;
 }): ExpenseListItem {
+  const iconStyle = categoryIconFromRaw(r.categoryRaw);
   return {
     id: r.id,
     splitwiseId: r.splitwiseId,
@@ -284,8 +287,11 @@ function mapListRow(r: {
       r.groupId === 0 || r.groupId == null
         ? "No group"
         : (r.groupName ?? `Group #${r.groupId}`),
+    categoryId: r.categoryId,
     categoryName:
       r.categoryName ?? (r.categoryId ? `Category #${r.categoryId}` : null),
+    categoryIconUrl: iconStyle?.iconUrl ?? null,
+    categoryIconBg: iconStyle?.backgroundColor ?? null,
     cost: r.cost,
     currencyCode: r.currencyCode,
     myShare: r.myShare,
@@ -309,6 +315,7 @@ const listSelect = {
   raw: schema.expenses.raw,
   groupName: schema.groups.name,
   categoryName: schema.categories.name,
+  categoryRaw: schema.categories.raw,
   myShare: schema.expenseShares.owedShare,
   myPaidShare: schema.expenseShares.paidShare,
 };
@@ -548,7 +555,10 @@ export async function getFilterOptions(): Promise<{
   );
 
   return {
-    groups: [{ id: 0, name: "No group" }, ...groupRows],
+    groups: [
+      { id: 0, name: "No group" },
+      ...groupRows.filter((g) => g.id !== 0),
+    ],
     friends: friendRows.map((f) => ({
       id: f.id,
       name:

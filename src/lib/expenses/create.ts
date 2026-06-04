@@ -25,6 +25,16 @@ export async function createGroupExpense(
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
+  return createGroupExpenseForOwner(owner.id, input);
+}
+
+async function createGroupExpenseForOwner(
+  ownerId: number,
+  input: CreateExpenseInput,
+): Promise<
+  | { ok: true; expenseId: number; splitwiseId: number }
+  | { error: string; details?: Record<string, string[]> }
+> {
   const token = await requireAccessToken();
   const client = createSplitwiseClient(token);
 
@@ -53,14 +63,14 @@ export async function createGroupExpense(
     return { error: "no_expense_returned" };
   }
 
-  await upsertExpense(owner.id, expense);
+  await upsertExpense(ownerId, expense);
   const db = getDb();
   const [row] = await db
     .select({ id: schema.expenses.id })
     .from(schema.expenses)
     .where(
       and(
-        eq(schema.expenses.accountUserId, owner.id),
+        eq(schema.expenses.accountUserId, ownerId),
         eq(schema.expenses.splitwiseId, expense.id),
       ),
     )
@@ -71,4 +81,95 @@ export async function createGroupExpense(
     expenseId: row?.id ?? 0,
     splitwiseId: expense.id,
   };
+}
+
+export type BulkCreateExpenseItem = {
+  description: string;
+  cost: string;
+};
+
+export type BulkCreateExpenseResult = {
+  ok: true;
+  created: number;
+  failed: number;
+  results: Array<
+    | {
+        index: number;
+        description: string;
+        cost: string;
+        ok: true;
+        splitwiseId: number;
+        expenseId: number;
+      }
+    | {
+        index: number;
+        description: string;
+        cost: string;
+        ok: false;
+        error: string;
+        details?: Record<string, string[]>;
+      }
+  >;
+};
+
+const BULK_MAX = 50;
+
+export async function createGroupExpensesBulk(
+  groupId: number,
+  currencyCode: string,
+  items: BulkCreateExpenseItem[],
+  options?: { categoryId?: number; date?: string },
+): Promise<
+  | BulkCreateExpenseResult
+  | { error: string; details?: Record<string, string[]> }
+> {
+  const owner = await getAuthenticatedAccountOwner();
+  if (!owner) return { error: "not_connected" };
+
+  if (items.length === 0) {
+    return { error: "empty_batch" };
+  }
+  if (items.length > BULK_MAX) {
+    return { error: "batch_too_large", details: { limit: [String(BULK_MAX)] } };
+  }
+
+  const results: BulkCreateExpenseResult["results"] = [];
+  let created = 0;
+  let failed = 0;
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const result = await createGroupExpenseForOwner(owner.id, {
+      groupId,
+      description: item.description,
+      cost: item.cost,
+      currencyCode,
+      categoryId: options?.categoryId,
+      date: options?.date,
+    });
+
+    if ("ok" in result && result.ok) {
+      created++;
+      results.push({
+        index,
+        description: item.description,
+        cost: item.cost,
+        ok: true,
+        splitwiseId: result.splitwiseId,
+        expenseId: result.expenseId,
+      });
+    } else {
+      failed++;
+      results.push({
+        index,
+        description: item.description,
+        cost: item.cost,
+        ok: false,
+        error: "error" in result ? result.error : "create_failed",
+        details: "details" in result ? result.details : undefined,
+      });
+    }
+  }
+
+  return { ok: true, created, failed, results };
 }

@@ -88,9 +88,22 @@ export type SplitwiseFriendsResponse = {
   friends: SplitwiseFriend[];
 };
 
+export type SplitwiseCategoryIconTypes = {
+  slim?: { small?: string; large?: string };
+  square?: { large?: string; xlarge?: string };
+  filled_color_light?: { large?: string; xlarge?: string };
+};
+
 export type SplitwiseCategory = {
   id: number;
   name: string;
+  icon?: string;
+  icon_types?: SplitwiseCategoryIconTypes;
+  colors?: {
+    background?: { light?: string; dark?: string };
+    light?: string;
+    dark?: string;
+  };
   subcategories?: SplitwiseCategory[];
 };
 

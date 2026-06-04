@@ -1,126 +1,177 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  SettingsAlert,
+  SettingsSection,
+  SettingsStat,
+  StatusBadge,
+} from "@/app/settings/settings-ui";
+import {
+  useSyncStatus,
+  type SyncStatus,
+} from "@/components/sync-status-provider";
+import { formatRelativeSync } from "@/lib/format";
+import Link from "next/link";
+import { useState } from "react";
 
-type SyncStatus = {
-  configured: boolean;
-  connected?: boolean;
-  inProgress?: boolean;
-  expenses?: {
-    status: string;
-    lastSyncAt: string | null;
-    expenseCount: number;
-    error: string | null;
-  };
+type Props = {
+  dbConfigured: boolean;
 };
 
-export function SyncPanel({ dbConfigured }: { dbConfigured: boolean }) {
-  const [status, setStatus] = useState<SyncStatus | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+function metadataSummary(meta: SyncStatus["metadata"]): string {
+  if (!meta) return "—";
+  const times = [
+    meta.groupsLastSyncAt,
+    meta.friendsLastSyncAt,
+    meta.categoriesLastSyncAt,
+  ].filter(Boolean) as string[];
+  if (times.length === 0) return "Never synced";
+  const latest = times.reduce((a, b) => (a > b ? a : b));
+  return formatRelativeSync(latest);
+}
 
-  const refresh = useCallback(async () => {
-    const res = await fetch("/api/sync/status");
-    if (res.ok) setStatus((await res.json()) as SyncStatus);
-  }, []);
+function statusTone(
+  status: string,
+  inProgress: boolean,
+): "ok" | "warn" | "error" | "neutral" {
+  if (inProgress || status === "syncing") return "warn";
+  if (status === "error") return "error";
+  if (status === "idle") return "ok";
+  return "neutral";
+}
 
-  useEffect(() => {
-    if (!dbConfigured) return;
-    void refresh();
-    const id = setInterval(() => void refresh(), 3000);
-    return () => clearInterval(id);
-  }, [dbConfigured, refresh]);
+export function SyncPanel({ dbConfigured }: Props) {
+  const { status, busy, runSync } = useSyncStatus();
+  const [scopeMessage, setScopeMessage] = useState<string | null>(null);
 
-  async function runSync() {
-    if (syncing) return;
-    setSyncing(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: "all" }),
-      });
-      const data = (await res.json()) as {
-        error?: string;
-        expenses?: { synced: number; total: number };
-      };
-      if (!res.ok) {
-        setMessage(data.error ?? "Sync failed");
-      } else if (data.expenses) {
-        setMessage(
-          `Synced ${data.expenses.synced} expenses (${data.expenses.total} total in database).`,
-        );
-      } else {
-        setMessage("Sync complete.");
-      }
-      await refresh();
-    } catch {
-      setMessage("Sync request failed");
-    } finally {
-      setSyncing(false);
+  async function runScopedSync(scope: "all" | "expenses" | "metadata") {
+    setScopeMessage(null);
+    const result = await runSync(scope);
+    if (!result.ok) {
+      setScopeMessage(result.error);
+      return;
+    }
+    if (scope === "metadata" && result.metadata) {
+      const m = result.metadata;
+      setScopeMessage(
+        `Updated ${m.groups} groups, ${m.friends} friends, ${m.categories} categories.`,
+      );
+    } else if (result.expenses) {
+      setScopeMessage(
+        `Synced ${result.expenses.synced} expenses (${result.expenses.total} total stored).`,
+      );
+    } else {
+      setScopeMessage("Sync complete.");
     }
   }
 
   if (!dbConfigured) {
     return (
-      <div className="border-border bg-card mt-8 rounded-xl border p-6">
-        <h2 className="text-lg font-medium">Data sync</h2>
-        <p className="text-muted mt-2 text-sm">
-          Set <code>DATABASE_URL</code> in <code>.env.local</code> and run{" "}
-          <code>pnpm db:migrate</code>.
-        </p>
-      </div>
+      <SettingsSection
+        title="Data sync"
+        description="Local Postgres cache for search and analytics."
+        action={<StatusBadge tone="error">No database</StatusBadge>}
+      >
+        <SettingsAlert tone="info">
+          Set <code>DATABASE_URL</code> in <code>.env.local</code>, then run{" "}
+          <code>pnpm db:migrate</code>. Restart the dev server after changing
+          env vars.
+        </SettingsAlert>
+      </SettingsSection>
     );
   }
 
   const exp = status?.expenses;
+  const expenseStatus = busy ? "syncing" : (exp?.status ?? "idle");
 
   return (
-    <div className="border-border bg-card mt-8 space-y-4 rounded-xl border p-6">
-      <h2 className="text-lg font-medium">Data sync</h2>
-      <p className="text-muted text-sm">
-        Download expenses from Splitwise into your local database for search and
-        analytics.
-      </p>
+    <SettingsSection
+      title="Data sync"
+      description="Expenses and metadata cached locally. Use Sync in the header for a full refresh."
+      action={
+        exp ? (
+          <StatusBadge tone={statusTone(expenseStatus, busy)}>
+            {busy ? "Syncing" : exp.status}
+          </StatusBadge>
+        ) : null
+      }
+    >
+      <div className="space-y-4">
+        {exp && (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <SettingsStat
+              label="Expenses stored"
+              value={exp.expenseCount.toLocaleString()}
+              sub={
+                exp.expenseCount > 0 ? (
+                  <Link href="/explore" className="text-accent hover:underline">
+                    Browse in Explore →
+                  </Link>
+                ) : (
+                  "Run sync to import"
+                )
+              }
+            />
+            <SettingsStat
+              label="Last expense sync"
+              value={formatRelativeSync(exp.lastSyncAt)}
+              sub={
+                exp.lastSyncAt
+                  ? new Date(exp.lastSyncAt).toLocaleString()
+                  : undefined
+              }
+            />
+            <SettingsStat
+              label="Groups & friends"
+              value={metadataSummary(status?.metadata)}
+              sub="Categories included"
+            />
+          </div>
+        )}
 
-      {exp && (
-        <dl className="text-muted grid grid-cols-2 gap-2 text-sm">
-          <dt>Status</dt>
-          <dd className="text-foreground font-medium">
-            {status?.inProgress ? "syncing" : exp.status}
-          </dd>
-          <dt>Expenses stored</dt>
-          <dd className="text-foreground font-medium">{exp.expenseCount}</dd>
-          <dt>Last sync</dt>
-          <dd className="text-foreground font-medium">
-            {exp.lastSyncAt
-              ? new Date(exp.lastSyncAt).toLocaleString()
-              : "Never"}
-          </dd>
-        </dl>
-      )}
+        {exp?.error && <SettingsAlert tone="error">{exp.error}</SettingsAlert>}
 
-      {exp?.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-          {exp.error}
+        {scopeMessage && (
+          <SettingsAlert tone="success">{scopeMessage}</SettingsAlert>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted text-xs font-medium">Sync scope:</span>
+          <button
+            type="button"
+            onClick={() => void runScopedSync("all")}
+            disabled={busy}
+            className={btnSecondary}
+          >
+            {busy ? "Syncing…" : "All"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runScopedSync("expenses")}
+            disabled={busy}
+            className={btnSecondary}
+          >
+            Expenses only
+          </button>
+          <button
+            type="button"
+            onClick={() => void runScopedSync("metadata")}
+            disabled={busy}
+            className={btnSecondary}
+          >
+            Metadata only
+          </button>
+        </div>
+
+        <p className="text-muted text-xs leading-relaxed">
+          Incremental sync fetches only expenses changed since the last run.
+          Metadata sync refreshes groups, friends, and categories. Status
+          refreshes automatically while a sync is running.
         </p>
-      )}
-
-      {message && (
-        <p className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">
-          {message}
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={() => void runSync()}
-        disabled={syncing || status?.inProgress}
-        className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        {syncing || status?.inProgress ? "Syncing…" : "Sync now"}
-      </button>
-    </div>
+      </div>
+    </SettingsSection>
   );
 }
+
+const btnSecondary =
+  "border-border text-foreground rounded-lg border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50 disabled:opacity-50";

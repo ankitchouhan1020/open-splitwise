@@ -1,13 +1,13 @@
 import { AppShell } from "@/components/app-shell";
 import { AppFooter } from "@/components/app-footer";
-import { AddExpenseForm } from "@/app/explore/add-expense-form";
 import { ExpenseExplorer } from "@/app/explore/expense-explorer";
 import { getConnectedUser } from "@/lib/auth";
-import Link from "next/link";
 import { Suspense } from "react";
 
+import { ExpenseTableSkeleton } from "@/components/expense-table-skeleton";
+
 function ExplorerFallback() {
-  return <p className="text-muted mt-6 text-sm">Loading explorer…</p>;
+  return <ExpenseTableSkeleton rows={14} />;
 }
 
 export default async function ExplorePage() {
@@ -15,27 +15,21 @@ export default async function ExplorePage() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-semibold">Explore expenses</h1>
-        <p className="text-muted mt-1 text-sm">
-          Search, filter, and browse synced expenses. Press{" "}
-          <kbd className="rounded border px-1">/</kbd> to focus search.
-        </p>
+      <main className="mx-auto flex max-w-6xl flex-col px-4 py-4 sm:px-6">
+        <header className="mb-3 shrink-0">
+          <h1 className="text-foreground text-xl font-semibold tracking-tight">
+            Explore
+          </h1>
+        </header>
 
-        {!user ? (
-          <p className="text-muted mt-8 rounded-xl border border-dashed p-8 text-center text-sm">
-            <Link href="/settings" className="text-accent underline">
-              Connect Splitwise
-            </Link>{" "}
-            to view expenses.
-          </p>
+        {user ? (
+          <Suspense fallback={<ExplorerFallback />}>
+            <ExpenseExplorer />
+          </Suspense>
         ) : (
-          <div className="mt-6 space-y-8">
-            <Suspense fallback={<ExplorerFallback />}>
-              <ExpenseExplorer />
-            </Suspense>
-            <AddExpenseForm />
-          </div>
+          <p className="text-muted rounded-lg border border-dashed p-6 text-center text-sm">
+            Connect Splitwise using the button in the header to browse expenses.
+          </p>
         )}
       </main>
       <AppFooter />

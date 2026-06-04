@@ -5,7 +5,7 @@ import {
   getIronSessionOptions,
   sessionHasAccessToken,
   type AppSession,
-} from "@/lib/session";
+} from "@/lib/session-config";
 
 const PUBLIC_API_PATHS = new Set([
   "/api/health",

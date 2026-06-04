@@ -1,17 +1,37 @@
 "use client";
 
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
-import { HighlightText } from "@/components/highlight-text";
-import type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/queries";
+import { ExpenseTableSkeleton } from "@/components/expense-table-skeleton";
+import {
+  ExpenseListItemRow,
+  ExpenseListMonthHeader,
+} from "@/components/expense-list-item";
+import { formatMoney } from "@/lib/format";
+import type { ExpenseListItem } from "@/lib/expenses/types";
 import { filtersToSearchParams } from "@/lib/expenses/filters";
+import {
+  buildExpenseListSections,
+  sectionHeight,
+} from "@/lib/expenses/list-sections";
 import { ExpenseFiltersPanel } from "@/app/explore/expense-filters-panel";
-import { SavedViewsPanel } from "@/app/explore/saved-views-panel";
+import { ExploreGroupPills } from "@/app/explore/explore-group-pills";
+import { ExploreSavedViews } from "@/app/explore/explore-saved-views";
+import {
+  ExploreToolbar,
+  detectDatePreset,
+} from "@/app/explore/explore-toolbar";
 import { useExpenseFilters } from "@/app/explore/use-expense-filters";
+import {
+  useExploreContext,
+  useExpenseDetail,
+  useFilterOptions,
+} from "@/lib/query/hooks";
+import { queryKeys } from "@/lib/query/keys";
+import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PAGE_SIZE = 100;
-const ROW_HEIGHT = 44;
 
 type ListResponse = {
   items: ExpenseListItem[];
@@ -32,18 +52,14 @@ type FilterOptions = {
   currencies: string[];
 };
 
-function formatMoney(currency: string, amount: string | null) {
-  if (amount == null) return "—";
-  const n = Number(amount);
-  return `${currency} ${Number.isFinite(n) ? n.toFixed(2) : amount}`;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function shareSummary(
+  totals: SummaryResponse["byCurrency"],
+  formatMoney: (amount: number, currency: string) => string,
+): string {
+  if (totals.length === 0) return "—";
+  return totals
+    .map((t) => formatMoney(Number(t.myShareTotal), t.currency))
+    .join(" · ");
 }
 
 export function ExpenseExplorer() {
@@ -60,21 +76,21 @@ export function ExpenseExplorer() {
   const parentRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<ExpenseListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState<SummaryResponse | null>(null);
-  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [options, setOptions] = useState<FilterOptions>({
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(filters.q ?? "");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const { data: filterOptions } = useFilterOptions();
+  const options: FilterOptions = filterOptions ?? {
     groups: [],
     friends: [],
     categories: [],
     currencies: [],
-  });
-  const [searchInput, setSearchInput] = useState(filters.q ?? "");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [detail, setDetail] = useState<ExpenseDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  };
+  const { data: groupStats = [] } = useExploreContext();
+  const { data: detail, isLoading: detailLoading } =
+    useExpenseDetail(selectedId);
 
   const sort = filters.sort ?? "date";
   const order = filters.order ?? "desc";
@@ -84,21 +100,12 @@ export function ExpenseExplorer() {
   }, [filters.q]);
 
   useEffect(() => {
-    fetch("/api/filters/options")
-      .then((r) => r.json())
-      .then((data: FilterOptions) => setOptions(data))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
         e.preventDefault();
         searchRef.current?.focus();
       }
-      if (e.key === "Escape") {
-        setSelectedId(null);
-      }
+      if (e.key === "Escape") setSelectedId(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -147,26 +154,36 @@ export function ExpenseExplorer() {
     return (await res.json()) as SummaryResponse;
   }, [filters]);
 
-  const loadInitial = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [data, summaryData] = await Promise.all([
-        fetchPage(1),
-        fetchSummary(),
-      ]);
-      setRows(data.items);
-      setTotal(data.total);
-      setSummary(summaryData);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-      setRows([]);
-      setTotal(0);
-      setSummary(null);
-    } finally {
-      setLoading(false);
+  const listQueryKey = listParams(1).toString();
+  const summaryQueryKey = filtersToSearchParams(filters).toString();
+
+  const {
+    data: page1,
+    isLoading: loading,
+    error: listError,
+  } = useQuery({
+    queryKey: queryKeys.expenses.list(listQueryKey),
+    queryFn: () => fetchPage(1),
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.expenses.summary(summaryQueryKey),
+    queryFn: fetchSummary,
+  });
+
+  const error =
+    listError instanceof Error
+      ? listError.message
+      : listError
+        ? "Load failed"
+        : null;
+
+  useEffect(() => {
+    if (page1) {
+      setRows(page1.items);
+      setTotal(page1.total);
     }
-  }, [fetchPage, fetchSummary]);
+  }, [page1]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -181,15 +198,16 @@ export function ExpenseExplorer() {
     }
   }, [fetchPage, hasMore, loadedPages, loadingMore]);
 
-  useEffect(() => {
-    void loadInitial();
-  }, [loadInitial]);
+  const listSections = useMemo(
+    () => buildExpenseListSections(rows, sort === "date"),
+    [rows, sort],
+  );
 
   const rowVirtualizer = useVirtualizer({
-    count: total,
+    count: listSections.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 12,
+    estimateSize: (index) => sectionHeight(listSections[index]!),
+    overscan: 15,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -197,198 +215,176 @@ export function ExpenseExplorer() {
   useEffect(() => {
     const last = virtualItems[virtualItems.length - 1];
     if (!last) return;
-    if (last.index >= rows.length - 20 && hasMore && !loadingMore) {
+    let expenseCount = 0;
+    for (let i = 0; i <= last.index && i < listSections.length; i++) {
+      if (listSections[i]?.kind === "expense") expenseCount++;
+    }
+    if (expenseCount >= rows.length - 20 && hasMore && !loadingMore) {
       void loadMore();
     }
-  }, [virtualItems, rows.length, hasMore, loadingMore, loadMore]);
+  }, [virtualItems, listSections, rows.length, hasMore, loadingMore, loadMore]);
 
-  useEffect(() => {
-    if (selectedId == null) {
-      setDetail(null);
-      return;
+  const labelMaps = useMemo(
+    () => ({
+      groups: new Map(options.groups.map((g) => [g.id, g.name])),
+      friends: new Map(options.friends.map((f) => [f.id, f.name])),
+      categories: new Map(options.categories.map((c) => [c.id, c.name])),
+    }),
+    [options],
+  );
+
+  const chips = activeFilterChips(filters, labelMaps).filter((chip) => {
+    if (chip.key === "q") return false;
+    if (chip.key === "group") {
+      return !groupStats.some((g) => g.groupId === filters.groupId);
     }
-    setDetailLoading(true);
-    fetch(`/api/expenses/${selectedId}`)
-      .then((res) => res.json())
-      .then((data) => setDetail(data as ExpenseDetail))
-      .catch(() => setDetail(null))
-      .finally(() => setDetailLoading(false));
-  }, [selectedId]);
-
-  function toggleSort(key: "date" | "cost" | "description") {
-    if (sort === key) {
-      setFilters({ order: order === "desc" ? "asc" : "desc" });
-    } else {
-      setFilters({
-        sort: key,
-        order: key === "date" ? "desc" : "asc",
-      });
+    if (chip.key === "date" && detectDatePreset(filters) !== "all") {
+      return false;
     }
-  }
-
-  const sortIndicator = (key: "date" | "cost" | "description") => {
-    if (sort !== key) return "";
-    return order === "desc" ? " ↓" : " ↑";
-  };
-
-  const labelMaps = {
-    groups: new Map(options.groups.map((g) => [g.id, g.name])),
-    friends: new Map(options.friends.map((f) => [f.id, f.name])),
-    categories: new Map(options.categories.map((c) => [c.id, c.name])),
-  };
-  const chips = activeFilterChips(filters, labelMaps);
-
-  function formatShareTotals(totals: SummaryResponse["byCurrency"]) {
-    if (totals.length === 0) return "—";
-    return totals
-      .map((t) => formatMoney(t.currency, t.myShareTotal))
-      .join(" · ");
-  }
+    return true;
+  });
 
   function exportCsv() {
-    const params = filtersToSearchParams({ ...filters, sort, order });
-    window.location.href = `/api/expenses/export?${params}`;
+    window.location.href = `/api/expenses/export?${filtersToSearchParams({ ...filters, sort, order })}`;
   }
 
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row">
-      <SavedViewsPanel currentFilters={filters} onApply={applySavedView} />
+  const count = summary?.count ?? total;
 
-      <div className="min-w-0 flex-1 space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={searchRef}
-            type="search"
-            placeholder="Search descriptions, notes, comments… (/)"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="border-border min-w-[200px] flex-1 rounded-lg border px-3 py-2 text-sm"
+  return (
+    <div className="flex min-h-0 flex-col gap-2">
+      <div className="shrink-0 space-y-2">
+        <div className="border-border bg-card overflow-hidden rounded-lg border">
+          <ExploreSavedViews
+            currentFilters={filters}
+            onApply={applySavedView}
+            onClear={clearAll}
           />
-          <button
-            type="button"
-            onClick={() => setShowFilters((v) => !v)}
-            className="border-border rounded-lg border px-3 py-2 text-sm"
-          >
-            {showFilters ? "Hide filters" : "Filters"}
-          </button>
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="border-border rounded-lg border px-3 py-2 text-sm"
-          >
-            Export CSV
-          </button>
+
+          <ExploreToolbar
+            filters={filters}
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            searchRef={searchRef}
+            onChange={(patch) => setFilters(patch)}
+            filtersOpen={filtersOpen}
+            onToggleFilters={() => setFiltersOpen((v) => !v)}
+            onExport={exportCsv}
+            visibleGroupIds={groupStats.map((g) => g.groupId)}
+          />
+
+          {groupStats.length > 0 && (
+            <div className="border-border border-t px-3 pb-3">
+              <p className="text-muted mb-1.5 text-[11px] font-medium tracking-wide uppercase">
+                Groups
+              </p>
+              <ExploreGroupPills
+                groups={groupStats}
+                activeGroupId={filters.groupId}
+                onSelectGroup={(id) => setFilters({ groupId: id, page: 1 })}
+              />
+            </div>
+          )}
+
+          {filtersOpen && (
+            <div className="border-border border-t px-3 py-3">
+              <ExpenseFiltersPanel
+                filters={filters}
+                options={options}
+                onChange={(patch) => setFilters(patch)}
+              />
+            </div>
+          )}
         </div>
 
-        {showFilters && (
-          <ExpenseFiltersPanel
-            filters={filters}
-            options={options}
-            onChange={(patch) => setFilters(patch)}
-          />
-        )}
-
-        {chips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
+        {(chips.length > 0 || !loading) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            {!loading && (
+              <span className="text-foreground font-medium tabular-nums">
+                {count.toLocaleString()} expenses
+                <span className="text-muted font-normal">
+                  {" "}
+                  · my share{" "}
+                  {shareSummary(summary?.byCurrency ?? [], formatMoney)}
+                </span>
+                <span className="text-muted font-normal">
+                  {" "}
+                  ·{" "}
+                  <span className="inline-flex items-center gap-1">
+                    Sort{" "}
+                    <select
+                      value={`${sort}:${order}`}
+                      onChange={(e) => {
+                        const [s, o] = e.target.value.split(":");
+                        setFilters({
+                          sort: s as "date" | "cost" | "description",
+                          order: o as "asc" | "desc",
+                        });
+                      }}
+                      className="border-border rounded border bg-white px-1 py-0.5 text-xs"
+                    >
+                      <option value="date:desc">Newest</option>
+                      <option value="date:asc">Oldest</option>
+                      <option value="cost:desc">Highest share</option>
+                      <option value="cost:asc">Lowest share</option>
+                      <option value="description:asc">A → Z</option>
+                      <option value="description:desc">Z → A</option>
+                    </select>
+                  </span>
+                </span>
+              </span>
+            )}
             {chips.map((chip) => (
               <button
                 key={chip.key}
                 type="button"
                 onClick={() => clearFilter(chip.key)}
-                className="border-border rounded-full border bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100"
+                className="border-border rounded bg-stone-100 px-1.5 py-0.5 hover:bg-stone-200"
               >
                 {chip.label} ×
               </button>
             ))}
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-accent text-xs underline"
-            >
-              Clear all
-            </button>
+            {chips.length > 0 && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-accent hover:underline"
+              >
+                Clear
+              </button>
+            )}
+            {loadingMore && <span className="text-muted">Loading more…</span>}
           </div>
         )}
 
-        <div className="border-border bg-card flex flex-wrap items-baseline justify-between gap-2 rounded-lg border px-4 py-3">
-          <p className="text-foreground text-sm font-medium">
-            {loading
-              ? "Loading…"
-              : `${(summary?.count ?? total).toLocaleString()} expenses`}
-          </p>
-          <p className="text-muted text-sm">
-            {loading ? (
-              "…"
-            ) : (
-              <>
-                My share:{" "}
-                <span className="text-foreground font-medium">
-                  {formatShareTotals(summary?.byCurrency ?? [])}
-                </span>
-              </>
-            )}
-            {!loading && loadingMore && " · loading more…"}
-          </p>
-        </div>
-
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-md bg-red-50 px-2 py-1 text-xs text-red-800">
             {error}
           </p>
         )}
+      </div>
 
-        {!loading && total === 0 && !error && (
-          <p className="text-muted rounded-xl border border-dashed p-8 text-center text-sm">
-            {filters.q
-              ? "No expenses match your search."
-              : "No expenses yet. Go to Settings and run Sync now."}
-          </p>
-        )}
-
-        {total > 0 && (
-          <div className="border-border bg-card overflow-hidden rounded-xl border">
-            <div className="border-border grid grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b bg-stone-50 px-3 py-2 text-xs font-medium tracking-wide uppercase">
-              <button
-                type="button"
-                onClick={() => toggleSort("date")}
-                className="text-left"
-              >
-                Date{sortIndicator("date")}
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleSort("description")}
-                className="text-left"
-              >
-                Description{sortIndicator("description")}
-              </button>
-              <span>Group</span>
-              <span>Category</span>
-              <button
-                type="button"
-                onClick={() => toggleSort("cost")}
-                className="text-left"
-              >
-                Total{sortIndicator("cost")}
-              </button>
-              <span>My share</span>
-              <span>Paid by</span>
-              <span>Cur.</span>
-            </div>
-
+      {loading ? (
+        <ExpenseTableSkeleton rows={12} />
+      ) : !loading && total === 0 && !error ? (
+        <p className="text-muted rounded-lg border border-dashed p-6 text-center text-sm">
+          {filters.q ? "No matches." : "No expenses in this view."}
+        </p>
+      ) : (
+        total > 0 && (
+          <div className="border-border bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
             <div
               ref={parentRef}
-              className="h-[calc(100vh-320px)] overflow-auto"
+              className="min-h-0 flex-1 overflow-auto"
+              style={{ maxHeight: "calc(100vh - 220px)" }}
             >
               <div
                 style={{
                   height: `${rowVirtualizer.getTotalSize()}px`,
-                  width: "100%",
                   position: "relative",
                 }}
               >
                 {virtualItems.map((virtualRow) => {
-                  const expense = rows[virtualRow.index];
+                  const section = listSections[virtualRow.index];
                   return (
                     <div
                       key={virtualRow.key}
@@ -402,64 +398,29 @@ export function ExpenseExplorer() {
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
                     >
-                      {expense ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(expense.id)}
-                          className="border-border grid w-full grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-teal-50/50"
-                          style={{ minHeight: ROW_HEIGHT }}
-                        >
-                          <span className="text-muted">
-                            {formatDate(expense.date)}
-                          </span>
-                          <span className="truncate font-medium">
-                            <HighlightText
-                              text={expense.description}
-                              query={filters.q ?? ""}
-                            />
-                            {expense.payment && (
-                              <span className="text-muted ml-1 text-xs">
-                                (payment)
-                              </span>
-                            )}
-                          </span>
-                          <span className="truncate">{expense.groupName}</span>
-                          <span className="truncate">
-                            {expense.categoryName ?? "—"}
-                          </span>
-                          <span>
-                            {formatMoney(expense.currencyCode, expense.cost)}
-                          </span>
-                          <span>
-                            {formatMoney(expense.currencyCode, expense.myShare)}
-                          </span>
-                          <span className="truncate">{expense.paidBy}</span>
-                          <span className="text-muted">
-                            {expense.currencyCode}
-                          </span>
-                        </button>
-                      ) : (
-                        <div
-                          className="text-muted flex items-center px-3 text-sm"
-                          style={{ height: ROW_HEIGHT }}
-                        >
-                          Loading row…
-                        </div>
-                      )}
+                      {section?.kind === "month" ? (
+                        <ExpenseListMonthHeader label={section.label} />
+                      ) : section?.kind === "expense" ? (
+                        <ExpenseListItemRow
+                          expense={section.expense}
+                          searchQuery={filters.q ?? ""}
+                          onSelect={() => setSelectedId(section.expense.id)}
+                        />
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
             </div>
           </div>
-        )}
+        )
+      )}
 
-        <ExpenseDetailDrawer
-          expense={detail}
-          loading={detailLoading}
-          onClose={() => setSelectedId(null)}
-        />
-      </div>
+      <ExpenseDetailDrawer
+        expense={detail ?? null}
+        loading={detailLoading}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
 }

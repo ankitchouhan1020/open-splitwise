@@ -1,37 +1,18 @@
-import { getIronSession, type SessionOptions } from "iron-session";
+import "server-only";
+
+import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
+import { getIronSessionOptions, type AppSession } from "@/lib/session-config";
 
-export type AppSession = {
-  accessToken?: string;
-  splitwiseUserId?: number;
-  oauthState?: string;
-};
-
-export const SESSION_COOKIE = "open_splitwise_session";
-
-export function getIronSessionOptions(): SessionOptions {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("SESSION_SECRET must be set (min 32 characters)");
-  }
-  return {
-    password: secret,
-    cookieName: SESSION_COOKIE,
-    cookieOptions: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    },
-  };
-}
+export type { AppSession } from "@/lib/session-config";
+export {
+  SESSION_COOKIE,
+  getIronSessionOptions,
+  sessionHasAccessToken,
+} from "@/lib/session-config";
 
 export async function getAppSession() {
   return getIronSession<AppSession>(await cookies(), getIronSessionOptions());
-}
-
-export function sessionHasAccessToken(session: AppSession): boolean {
-  return Boolean(session.accessToken);
 }
 
 export async function clearAppSession() {

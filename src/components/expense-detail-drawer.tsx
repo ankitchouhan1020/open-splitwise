@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
-import type { ExpenseDetail } from "@/lib/expenses/queries";
+import { ExpenseDetailSkeleton } from "@/components/expense-detail-skeleton";
+import { expenseBalanceTag } from "@/components/expense-row-meta";
+import type { ExpenseDetail } from "@/lib/expenses/types";
+import { isUserInvolvedInExpense } from "@/lib/expenses/involvement";
+import { balanceClasses, balanceLabel } from "@/lib/balance-style";
+import { formatMoney } from "@/lib/format";
 import { splitwiseExpenseUrl, splitwiseGroupUrl } from "@/lib/splitwise/urls";
+import { useEffect } from "react";
 
 type Props = {
   expense: ExpenseDetail | null;
@@ -24,6 +29,9 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
 
   if (!open) return null;
 
+  const balance = expense ? expenseBalanceTag(expense) : null;
+  const balanceStyle = balance ? balanceClasses(balance.tag) : null;
+
   return (
     <>
       <button
@@ -33,7 +41,7 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
         onClick={onClose}
       />
       <aside className="border-border bg-card fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l shadow-xl">
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+        <div className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="font-semibold">Expense details</h2>
             {expense?.payment && (
@@ -51,8 +59,8 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          {loading && <p className="text-muted text-sm">Loading…</p>}
-          {expense && (
+          {loading && <ExpenseDetailSkeleton />}
+          {!loading && expense && (
             <dl className="space-y-3 text-sm">
               <div>
                 <dt className="text-muted">Description</dt>
@@ -98,17 +106,44 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
               <div>
                 <dt className="text-muted">Total</dt>
                 <dd>
-                  {expense.currencyCode} {expense.cost}
+                  {formatMoney(Number(expense.cost), expense.currencyCode)}
                 </dd>
               </div>
               <div>
                 <dt className="text-muted">My share</dt>
                 <dd>
-                  {expense.myShare
-                    ? `${expense.currencyCode} ${expense.myShare}`
-                    : "—"}
+                  {isUserInvolvedInExpense(expense) ? (
+                    <span
+                      className={
+                        balanceStyle
+                          ? `${balanceStyle.amount} font-semibold tabular-nums`
+                          : ""
+                      }
+                    >
+                      {formatMoney(
+                        Number(expense.myShare ?? 0),
+                        expense.currencyCode,
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted">Not on this split</span>
+                  )}
                 </dd>
               </div>
+              {balance && balanceStyle && isUserInvolvedInExpense(expense) && (
+                <div
+                  className={`rounded-lg border px-3 py-2 ${balanceStyle.card}`}
+                >
+                  <p className={`text-xs font-medium ${balanceStyle.label}`}>
+                    {balanceLabel(balance.tag)}
+                  </p>
+                  <p
+                    className={`mt-0.5 text-lg font-semibold tabular-nums ${balanceStyle.amount}`}
+                  >
+                    {formatMoney(balance.amount, expense.currencyCode)}
+                  </p>
+                </div>
+              )}
               <div>
                 <dt className="text-muted">Paid by</dt>
                 <dd>{expense.paidBy}</dd>
@@ -123,7 +158,16 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
                           key={s.splitwiseUserId}
                           className="rounded bg-stone-50 px-2 py-1"
                         >
-                          {s.name}: paid {s.paidShare}, owed {s.owedShare}
+                          {s.name}: paid{" "}
+                          {formatMoney(
+                            Number(s.paidShare),
+                            expense.currencyCode,
+                          )}
+                          , owed{" "}
+                          {formatMoney(
+                            Number(s.owedShare),
+                            expense.currencyCode,
+                          )}
                         </li>
                       ))}
                     </ul>

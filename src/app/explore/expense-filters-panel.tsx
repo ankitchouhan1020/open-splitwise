@@ -17,7 +17,7 @@ type Props = {
 
 export function ExpenseFiltersPanel({ filters, options, onChange }: Props) {
   return (
-    <div className="border-border bg-card grid gap-3 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-muted font-medium">From</span>
         <input

@@ -1,5 +1,6 @@
 "use client";
 
+import { AppNavActions } from "@/components/app-nav-actions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,16 +16,24 @@ function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppNav() {
+type Props = {
+  connected: boolean;
+  dbConfigured: boolean;
+};
+
+export function AppNav({ connected, dbConfigured }: Props) {
   const pathname = usePathname();
 
   return (
     <nav className="border-border bg-card border-b">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link href="/" className="text-foreground font-semibold">
+      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5 sm:gap-6 sm:px-6">
+        <Link
+          href="/"
+          className="text-foreground shrink-0 text-[15px] font-semibold tracking-tight"
+        >
           Open Splitwise
         </Link>
-        <div className="flex gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto sm:gap-1">
           {links.map((link) => {
             const active = isNavActive(pathname, link.href);
             return (
@@ -33,8 +42,8 @@ export function AppNav() {
                 href={link.href}
                 className={
                   active
-                    ? "text-foreground text-sm font-semibold"
-                    : "text-muted hover:text-foreground text-sm font-medium"
+                    ? "text-foreground shrink-0 rounded-md px-2 py-1 text-sm font-semibold"
+                    : "text-muted hover:text-foreground shrink-0 rounded-md px-2 py-1 text-sm font-medium"
                 }
                 aria-current={active ? "page" : undefined}
               >
@@ -43,6 +52,7 @@ export function AppNav() {
             );
           })}
         </div>
+        <AppNavActions connected={connected} dbConfigured={dbConfigured} />
       </div>
     </nav>
   );

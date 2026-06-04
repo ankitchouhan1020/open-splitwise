@@ -1,6 +1,10 @@
+import "server-only";
+
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/lib/db/schema";
+
+export { isDatabaseConfigured } from "@/lib/db/config";
 
 export type Database = PostgresJsDatabase<typeof schema>;
 
@@ -13,10 +17,6 @@ export function getDatabaseUrl(): string {
     throw new Error("DATABASE_URL is not set");
   }
   return url;
-}
-
-export function isDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL);
 }
 
 export function getDb(): Database {
