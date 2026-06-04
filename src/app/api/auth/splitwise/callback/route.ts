@@ -1,5 +1,7 @@
-import { exchangeCodeForToken } from "@/lib/splitwise/oauth";
+import { isDatabaseConfigured } from "@/lib/db";
+import { upsertAccountOwner } from "@/lib/db/account";
 import { getCurrentUser } from "@/lib/splitwise/api";
+import { exchangeCodeForToken } from "@/lib/splitwise/oauth";
 import { getAppSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -37,6 +39,16 @@ export async function GET(request: NextRequest) {
     session.splitwiseUserId = user.id;
     session.oauthState = undefined;
     await session.save();
+
+    if (isDatabaseConfigured()) {
+      await upsertAccountOwner({
+        splitwiseId: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        defaultCurrency: user.default_currency,
+      });
+    }
 
     settingsUrl.searchParams.set("connected", "1");
     return NextResponse.redirect(settingsUrl);

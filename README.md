@@ -16,7 +16,10 @@ Built with [Ralph](https://github.com/snarktank/ralph) for autonomous, story-by-
 cp .env.example .env.local
 openssl rand -base64 32      # paste into SESSION_SECRET= in .env.local
 # Fill SPLITWISE_CLIENT_ID and SPLITWISE_CLIENT_SECRET from secure.splitwise.com/apps
+docker compose up postgres -d   # or use your own Postgres
 pnpm install
+pnpm db:generate               # after schema changes (requires DATABASE_URL)
+pnpm db:migrate                # apply migrations
 pnpm dev                     # http://localhost:3000
 ```
 

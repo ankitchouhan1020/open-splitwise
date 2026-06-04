@@ -7,7 +7,10 @@ if [ -n "$DATABASE_URL" ]; then
     sleep 2
   done
   echo "Postgres is ready."
-  # US-005: run database migrations here (e.g. pnpm db:migrate)
+  if [ -f /app/drizzle/meta/_journal.json ]; then
+    echo "Running database migrations…"
+    node /app/scripts/migrate.mjs
+  fi
 fi
 
 exec "$@"

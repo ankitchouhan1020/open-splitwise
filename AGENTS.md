@@ -19,3 +19,5 @@ This file is updated by Ralph iterations and human developers with reusable patt
 - `getEnv()` requires OAuth + SESSION_SECRET; use `getEnvOptional()` on settings when explaining missing config
 - Use `createSplitwiseClient(token)` from `src/lib/splitwise/client.ts` for all v3.0 API calls (retries, error types)
 - API errors: `SplitwiseAuthError` (401), `SplitwiseForbiddenError`, `SplitwiseNotFoundError`, `SplitwiseRateLimitError` (429 + Retry-After)
+- Database: Drizzle ORM + Postgres — schema in `src/lib/db/schema.ts`, migrations in `drizzle/`, `pnpm db:migrate`
+- Connected account row: `users.is_account_owner = true`; expenses keyed by `account_user_id` + unique `splitwise_id`
