@@ -77,6 +77,21 @@ export type SplitwiseGroup = {
   updated_at: string | null;
 };
 
+export type SplitwiseGroupMember = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+};
+
+export type SplitwiseGroupDetail = SplitwiseGroup & {
+  members: SplitwiseGroupMember[];
+};
+
+export type SplitwiseGroupDetailResponse = {
+  group: SplitwiseGroupDetail;
+};
+
 export type SplitwiseGroupsResponse = {
   groups: SplitwiseGroup[];
 };

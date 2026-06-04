@@ -28,4 +28,8 @@ export const queryKeys = {
   categories: {
     icons: () => [...queryKeys.all, "categories", "icons"] as const,
   },
+  groups: {
+    members: (groupId: number) =>
+      [...queryKeys.all, "groups", groupId, "members"] as const,
+  },
 };

@@ -23,8 +23,14 @@ export type ExpenseFormSuggestions = {
   categories: Array<{ id: number; name: string; count: number }>;
 };
 
+export type GroupMembersResponse = {
+  members: Array<{ id: number; name: string }>;
+  currentUserId: number;
+};
+
 const FILTER_OPTIONS_STALE = 5 * 60_000;
 const SUGGESTIONS_STALE = 2 * 60_000;
+const GROUP_MEMBERS_STALE = 5 * 60_000;
 
 export function useFilterOptions() {
   return useQuery({
@@ -47,6 +53,16 @@ export function useExpenseSuggestions() {
       return data as ExpenseFormSuggestions;
     },
     staleTime: SUGGESTIONS_STALE,
+  });
+}
+
+export function useGroupMembers(groupId: number | null) {
+  return useQuery({
+    queryKey: queryKeys.groups.members(groupId ?? 0),
+    queryFn: () =>
+      fetchJson<GroupMembersResponse>(`/api/groups/${groupId}/members`),
+    enabled: groupId != null && groupId > 0,
+    staleTime: GROUP_MEMBERS_STALE,
   });
 }
 

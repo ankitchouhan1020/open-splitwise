@@ -2,6 +2,11 @@ import { and, eq } from "drizzle-orm";
 import { requireAccessToken } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
+import {
+  buildEqualSplitUsersBody,
+  canUseSplitEqually,
+} from "@/lib/expenses/splits";
+import { fetchGroupMembers } from "@/lib/groups/members";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type { SplitwiseCreateExpenseResponse } from "@/lib/splitwise/types";
 import { upsertExpense } from "@/lib/sync/expenses";
@@ -14,6 +19,8 @@ export type CreateExpenseInput = {
   categoryId?: number;
   date?: string;
   details?: string;
+  participantIds?: number[];
+  paidByUserId?: number;
 };
 
 export async function createGroupExpense(
@@ -25,11 +32,11 @@ export async function createGroupExpense(
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
-  return createGroupExpenseForOwner(owner.id, input);
+  return createGroupExpenseForOwner(owner, input);
 }
 
 async function createGroupExpenseForOwner(
-  ownerId: number,
+  owner: { id: number; splitwiseId: number },
   input: CreateExpenseInput,
 ): Promise<
   | { ok: true; expenseId: number; splitwiseId: number }
@@ -43,11 +50,49 @@ async function createGroupExpenseForOwner(
     description: input.description.trim(),
     cost: input.cost,
     currency_code: input.currencyCode,
-    split_equally: true,
   };
   if (input.categoryId) body.category_id = input.categoryId;
   if (input.date) body.date = input.date;
   if (input.details?.trim()) body.details = input.details.trim();
+
+  const hasCustomSplit =
+    (input.participantIds?.length ?? 0) > 0 || input.paidByUserId != null;
+
+  if (hasCustomSplit) {
+    const membersResult = await fetchGroupMembers(input.groupId);
+    if ("error" in membersResult) {
+      return { error: membersResult.error };
+    }
+    const allMemberIds = membersResult.map((m) => m.id);
+    const participantIds =
+      input.participantIds && input.participantIds.length > 0
+        ? input.participantIds
+        : allMemberIds;
+    const paidByUserId = input.paidByUserId ?? owner.splitwiseId;
+
+    if (
+      canUseSplitEqually(
+        allMemberIds,
+        participantIds,
+        paidByUserId,
+        owner.splitwiseId,
+      )
+    ) {
+      body.split_equally = true;
+    } else {
+      try {
+        Object.assign(
+          body,
+          buildEqualSplitUsersBody(paidByUserId, participantIds, input.cost),
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "invalid_split";
+        return { error: message };
+      }
+    }
+  } else {
+    body.split_equally = true;
+  }
 
   const result = await client.post<SplitwiseCreateExpenseResponse>(
     "create_expense",
@@ -63,14 +108,14 @@ async function createGroupExpenseForOwner(
     return { error: "no_expense_returned" };
   }
 
-  await upsertExpense(ownerId, expense);
+  await upsertExpense(owner.id, expense);
   const db = getDb();
   const [row] = await db
     .select({ id: schema.expenses.id })
     .from(schema.expenses)
     .where(
       and(
-        eq(schema.expenses.accountUserId, ownerId),
+        eq(schema.expenses.accountUserId, owner.id),
         eq(schema.expenses.splitwiseId, expense.id),
       ),
     )
@@ -139,7 +184,7 @@ export async function createGroupExpensesBulk(
 
   for (let index = 0; index < items.length; index++) {
     const item = items[index];
-    const result = await createGroupExpenseForOwner(owner.id, {
+    const result = await createGroupExpenseForOwner(owner, {
       groupId,
       description: item.description,
       cost: item.cost,

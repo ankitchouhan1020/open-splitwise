@@ -4,6 +4,7 @@ import {
   ExpenseCurrencySelect,
   ExpenseGroupPicker,
 } from "@/components/expense-group-picker";
+import { ExpenseParticipantPicker } from "@/components/expense-participant-picker";
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useExpenseFormOptions } from "@/components/use-expense-form-options";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
@@ -45,6 +46,8 @@ export function AddExpenseForm({
 
   const [groupId, setGroupId] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [paidByUserId, setPaidByUserId] = useState<number | null>(null);
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
   const [currencyCode, setCurrencyCode] = useState("USD");
@@ -139,6 +142,9 @@ export function AddExpenseForm({
           categoryId: categoryId ? Number(categoryId) : undefined,
           date: date ? new Date(date).toISOString() : undefined,
           details: details || undefined,
+          ...(participantIds.length > 0
+            ? { participantIds, paidByUserId: paidByUserId ?? undefined }
+            : {}),
         }),
       });
       const data = (await res.json()) as {
@@ -161,7 +167,10 @@ export function AddExpenseForm({
       if (data.splitwiseId) {
         await invalidateExpenseCaches(queryClient);
         setSuccess({
-          text: `Added to ${groupName || "group"} — split equally.`,
+          text:
+            participantIds.length > 0
+              ? `Added to ${groupName || "group"} — split among ${participantIds.length} ${participantIds.length === 1 ? "person" : "people"}.`
+              : `Added to ${groupName || "group"} — split equally.`,
           splitwiseId: data.splitwiseId,
         });
       }
@@ -231,7 +240,7 @@ export function AddExpenseForm({
             Log a group expense
           </h3>
           <p className="text-muted mt-1 text-sm leading-relaxed">
-            Split equally with everyone in the group.
+            Choose who shares the cost and who paid.
           </p>
         </div>
       )}
@@ -243,9 +252,21 @@ export function AddExpenseForm({
         onGroupChange={(id, name) => {
           setGroupId(id);
           if (id) setGroupName(name);
+          setParticipantIds([]);
+          setPaidByUserId(null);
           setError(null);
         }}
       />
+
+      {groupId && (
+        <ExpenseParticipantPicker
+          groupId={groupId}
+          selectedIds={participantIds}
+          onSelectedChange={setParticipantIds}
+          paidByUserId={paidByUserId}
+          onPaidByChange={setPaidByUserId}
+        />
+      )}
 
       <div className="grid grid-cols-[1fr_5.5rem] gap-2">
         <div className="flex flex-col gap-1.5">
@@ -397,7 +418,7 @@ export function AddExpenseForm({
         >
           {submitting ? "Adding…" : "Add expense"}
         </button>
-        <span className="text-muted text-xs">Split equally · ⌘↵ to save</span>
+        <span className="text-muted text-xs">Equal split · ⌘↵ to save</span>
       </div>
     </form>
   );
