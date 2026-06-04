@@ -1,4 +1,5 @@
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app-shell";
+import Link from "next/link";
 import { getConnectedUser } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getEnvOptional } from "@/lib/env";
@@ -21,13 +22,18 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     "http://localhost:3000/api/auth/splitwise/callback";
 
   return (
-    <>
-      <AppNav />
+    <AppShell>
       <main className="mx-auto max-w-2xl px-6 py-8">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-muted mt-2">
           Connect your Splitwise account using your own OAuth application.
           Tokens are stored in an encrypted session cookie on this server.
+        </p>
+        <p className="text-muted mt-2 text-sm">
+          <Link href="/privacy" className="text-accent underline">
+            Privacy policy
+          </Link>{" "}
+          — what we store and how to delete it on disconnect.
         </p>
 
         <ConnectionPanel
@@ -41,6 +47,6 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
         {user && <SyncPanel dbConfigured={isDatabaseConfigured()} />}
       </main>
-    </>
+    </AppShell>
   );
 }
