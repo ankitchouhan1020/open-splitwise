@@ -13,16 +13,21 @@ Built with [Ralph](https://github.com/snarktank/ralph) for autonomous, story-by-
 **Requirements:** Node 20+, pnpm 9+
 
 ```bash
-cp .env.example .env.local   # fill SESSION_SECRET and OAuth when ready
+cp .env.example .env.local
+openssl rand -base64 32      # paste into SESSION_SECRET= in .env.local
+# Fill SPLITWISE_CLIENT_ID and SPLITWISE_CLIENT_SECRET from secure.splitwise.com/apps
 pnpm install
 pnpm dev                     # http://localhost:3000
 ```
+
+`.env.local` does not run shell commands — use a literal secret string, not `$(openssl rand ...)`.
 
 **Quality checks:**
 
 ```bash
 pnpm typecheck
 pnpm lint
+pnpm test
 ```
 
 **Health check:** `GET http://localhost:3000/api/health` → `{ "ok": true }`
