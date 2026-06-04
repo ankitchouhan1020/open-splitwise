@@ -25,6 +25,23 @@ pnpm dev                     # http://localhost:3000
 
 `.env.local` does not run shell commands — use a literal secret string, not `$(openssl rand ...)`.
 
+`pnpm db:migrate` and `pnpm db:generate` load `.env.local` automatically.
+
+### Postgres without Docker
+
+If Docker Desktop is not running, use Homebrew Postgres instead:
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createuser -s open_splitwise 2>/dev/null || true
+psql postgres -c "ALTER USER open_splitwise WITH PASSWORD 'open_splitwise';"
+psql postgres -c "CREATE DATABASE open_splitwise OWNER open_splitwise;" 2>/dev/null || true
+pnpm db:migrate
+```
+
+Or start **Docker Desktop**, then `docker compose up postgres -d` and `pnpm db:migrate`.
+
 **Quality checks:**
 
 ```bash
