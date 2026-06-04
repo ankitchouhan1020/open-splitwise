@@ -1,128 +1,143 @@
-# open-splitwise
+# Open Splitwise
 
-**Analytics & search companion for Splitwise** — connect via the [Splitwise API](https://dev.splitwise.com/), sync expenses locally, and get Pro-style search, filters, and spending insights without leaving the Splitwise platform for splitting and settlements.
+Self-hosted companion for [Splitwise](https://splitwise.com): sync your data locally, then search, filter, and chart expenses. Settling up and splitting still happen in Splitwise.
 
-Product spec: [`tasks/prd-open-splitwise.md`](tasks/prd-open-splitwise.md) (locked: **1A, 2A, 3C, 4A, 5B**)
+## Setup
 
-Ralph tasks: [`scripts/ralph/prd.json`](scripts/ralph/prd.json) — 17 stories on branch `ralph/open-splitwise-mvp`
+**Requirements:** Node 20+, pnpm 9+, Postgres 16
 
-Built with [Ralph](https://github.com/snarktank/ralph) for autonomous, story-by-story implementation.
-
-## Local development
-
-**Requirements:** Node 20+, pnpm 9+
+### 1. Environment
 
 ```bash
 cp .env.example .env.local
-openssl rand -base64 32      # paste into SESSION_SECRET= in .env.local
-# Fill SPLITWISE_CLIENT_ID and SPLITWISE_CLIENT_SECRET from secure.splitwise.com/apps
-docker compose up postgres -d   # or use your own Postgres
+```
+
+| Variable | Purpose |
+| --- | --- |
+| `SESSION_SECRET` | Random string (`openssl rand -base64 32`) — no `$(...)` in the file |
+| `DATABASE_URL` | Postgres connection string |
+| `SPLITWISE_CLIENT_ID` / `SECRET` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps) |
+| `SPLITWISE_REDIRECT_URI` | Must match OAuth app exactly, e.g. `http://localhost:3000/api/auth/splitwise/callback` |
+| `NEXT_PUBLIC_APP_URL` | Public app URL (same host as redirect, without path) |
+
+### 2. Database
+
+```bash
+docker compose up postgres -d   # or any Postgres 16+
 pnpm install
-pnpm db:generate               # after schema changes (requires DATABASE_URL)
-pnpm db:migrate                # apply migrations
-pnpm dev                     # http://localhost:3000
+pnpm db:migrate                 # loads .env.local automatically
 ```
 
-`.env.local` does not run shell commands — use a literal secret string, not `$(openssl rand ...)`.
-
-`pnpm db:migrate` and `pnpm db:generate` load `.env.local` automatically.
-
-### Postgres without Docker
-
-If Docker Desktop is not running, use Homebrew Postgres instead:
+### 3. Run
 
 ```bash
-brew install postgresql@16
-brew services start postgresql@16
-createuser -s open_splitwise 2>/dev/null || true
-psql postgres -c "ALTER USER open_splitwise WITH PASSWORD 'open_splitwise';"
-psql postgres -c "CREATE DATABASE open_splitwise OWNER open_splitwise;" 2>/dev/null || true
-pnpm db:migrate
+pnpm dev          # http://localhost:3000
 ```
 
-Or start **Docker Desktop**, then `docker compose up postgres -d` and `pnpm db:migrate`.
-
-**Quality checks:**
+Connect in **Settings** → **Sync now** to pull expenses.
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm test
+pnpm typecheck && pnpm lint && pnpm test
 ```
 
-**Health check:** `GET http://localhost:3000/api/health` → `{ "ok": true }`
+**Health:** `GET /api/health` → `{ "ok": true }`
 
-## Self-hosted (Docker)
+### Deploy elsewhere
 
-1. Register a Splitwise OAuth app at [secure.splitwise.com/apps](https://secure.splitwise.com/apps).
-2. Set redirect URI to `http://localhost:3000/api/auth/splitwise/callback` (must match `SPLITWISE_REDIRECT_URI` exactly).
-3. Configure environment:
+| Target | How |
+| --- | --- |
+| **Docker** | `docker compose up --build` — app + Postgres, migrations on start |
+| **Railway** | Connect repo, add Postgres plugin, set env vars — see [`railway.toml`](railway.toml) |
 
-```bash
-cp .env.example .env
-# Set SESSION_SECRET (openssl rand -base64 32)
-# Set SPLITWISE_CLIENT_ID and SPLITWISE_CLIENT_SECRET
+On Railway, set `NEXT_PUBLIC_APP_URL` and `SPLITWISE_REDIRECT_URI` to your `*.up.railway.app` URL.
+
+---
+
+## Architecture
+
+```text
+Browser ──► Next.js (App Router)
+              ├── Pages: /, /explore, /insights, /settings
+              └── API routes: /api/*
+                        │
+         ┌──────────────┼──────────────┐
+         ▼              ▼              ▼
+   iron-session   Drizzle ORM   SplitwiseClient
+   (OAuth token)      │          (API v3.0 + retries)
+                      ▼
+                 PostgreSQL
+                 (users, expenses, groups, friends,
+                  categories, sync_state, saved_filter_views)
 ```
 
-4. Start stack:
+| Layer | Location |
+| --- | --- |
+| UI | `src/app/`, `src/components/` |
+| HTTP API | `src/app/api/` |
+| Business logic | `src/lib/` |
+| Schema & migrations | `src/lib/db/schema.ts`, `drizzle/` |
 
-```bash
-docker compose up --build
+---
+
+## Code flow
+
+### Connect & sync
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant A as Next.js API
+  participant S as Splitwise API
+  participant D as Postgres
+
+  U->>A: GET /api/auth/splitwise
+  A->>S: OAuth authorize
+  S->>A: callback + access token
+  A->>D: upsert user + sync_state
+
+  U->>A: POST /api/sync
+  A->>S: get_expenses (paginated)
+  A->>S: get_groups / friends / categories
+  A->>D: upsert rows + FTS search_text
 ```
 
-App waits for Postgres (`pg_isready`) before starting. Database migrations are added in US-005.
+1. **OAuth** — `src/lib/splitwise/oauth.ts` → token stored in encrypted cookie (`src/lib/session.ts`).
+2. **Sync** — `POST /api/sync` runs `src/lib/sync/expenses.ts` and `metadata.ts`; progress in `sync_state`.
+3. **Incremental sync** — `updated_after` from last run; rate limits handled in `src/lib/splitwise/client.ts`.
 
-## Ralph setup (installed)
+### Explore (search & filters)
 
-| Path                             | Purpose                                |
-| -------------------------------- | -------------------------------------- |
-| `scripts/ralph/ralph.sh`         | Agent loop (Amp or Claude Code)        |
-| `scripts/ralph/prompt.md`        | Prompt for Amp                         |
-| `scripts/ralph/CLAUDE.md`        | Prompt for Claude Code                 |
-| `scripts/ralph/prd.json.example` | Example task format                    |
-| `skills/prd/`                    | Generate PRDs → `tasks/prd-*.md`       |
-| `skills/ralph/`                  | Convert PRD → `scripts/ralph/prd.json` |
-
-### Prerequisites
-
-- **Git** — initialized in this repo (required by Ralph)
-- **`jq`** — `brew install jq` (already typical on macOS with Homebrew)
-- **One AI CLI** (pick one):
-  - [Amp CLI](https://ampcode.com/) — default for `ralph.sh`
-  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — `npm install -g @anthropic-ai/claude-code`
-
-Optional: install Ralph skills globally for Claude Code:
-
-```bash
-mkdir -p ~/.claude/skills
-cp -r skills/prd skills/ralph ~/.claude/skills/
+```mermaid
+flowchart LR
+  UI["/explore\nExpenseExplorer"] --> API["GET /api/expenses"]
+  API --> Q["queries.ts + filters.ts"]
+  Q --> DB[(Postgres FTS + joins)]
 ```
 
-In Cursor, you can use the same skills from `skills/` in chat (e.g. “create a prd for …”, “convert this prd to ralph format”).
+- URL query params hold filter state (`src/lib/expenses/filters.ts`).
+- Search uses Postgres `tsvector` on description, details, and synced comments.
+- Saved views: `GET/POST /api/saved-views` → `saved_filter_views` table.
 
-### Workflow
+### Insights
 
-1. **Create a PRD** — ask the agent to use the `prd` skill; output goes to `tasks/prd-<feature>.md`.
-2. **Convert to Ralph JSON** — use the `ralph` skill on that file → `scripts/ralph/prd.json`.
-3. **Run the loop** from the repo root:
+- **Page:** `/insights` → `GET /api/insights`
+- **Aggregations:** `src/lib/expenses/insights.ts` (my `owed_share`, payments excluded by default)
 
-```bash
-# Amp (default), 10 iterations
-./scripts/ralph/ralph.sh
+### Create expense
 
-# Claude Code
-./scripts/ralph/ralph.sh --tool claude 10
-```
+- **Form** on `/explore` → `POST /api/expenses` → Splitwise `create_expense` (equal split) → local upsert.
 
-Ralph picks one story per iteration, commits when checks pass, updates `prd.json` and `progress.txt`, and stops when all stories have `passes: true` (`<promise>COMPLETE</promise>`).
+### Key paths
 
-### Debug state
+| Flow | Entry |
+| --- | --- |
+| List / filter expenses | `src/lib/expenses/queries.ts` |
+| Expense detail | `GET /api/expenses/[id]` |
+| CSV export | `GET /api/expenses/export` |
+| Splitwise deep links | `src/lib/splitwise/urls.ts` |
+| DB account scope | `src/lib/db/account.ts` (`is_account_owner`) |
 
-```bash
-cat scripts/ralph/prd.json | jq '.userStories[] | {id, title, passes}'
-cat scripts/ralph/progress.txt
-git log --oneline -10
-```
+---
 
 ## License
 

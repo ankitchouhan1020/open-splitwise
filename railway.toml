@@ -1,0 +1,11 @@
+# Railway config-as-code — https://docs.railway.com/config-as-code
+# Deploy: connect repo, add a Postgres plugin, set env vars (see README).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
