@@ -1,0 +1,18 @@
+# Ralph working files (generated during runs)
+scripts/ralph/prd.json
+scripts/ralph/progress.txt
+scripts/ralph/.last-branch
+
+# OS
+.DS_Store
+
+# Next.js
+.next/
+out/
+
+# Dependencies / env
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example

@@ -1,0 +1,16 @@
+# Agent notes (open-splitwise)
+
+This file is updated by Ralph iterations and human developers with reusable patterns.
+
+## Ralph
+
+- Autonomous loop: `scripts/ralph/ralph.sh`
+- Task list: `scripts/ralph/prd.json` (create via PRD → convert workflow below)
+- Progress log: `scripts/ralph/progress.txt`
+
+## Codebase patterns
+
+- Next.js 15 App Router under `src/app/`; path alias `@/*` → `src/*`
+- `output: "standalone"` in `next.config.ts` for Docker (US-002)
+- Run `pnpm typecheck` and `pnpm lint` before commits
+- API routes live in `src/app/api/`
