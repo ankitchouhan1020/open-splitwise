@@ -45,7 +45,7 @@ export function SyncStatusBanner({ connected, dbConfigured }: Props) {
           : "border-b border-amber-200 bg-amber-50"
       }
     >
-      <div className="mx-auto max-w-6xl px-4 py-2 text-sm sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 py-2 text-xs sm:px-6 sm:text-sm">
         <p
           className={
             hasError ? "font-medium text-red-900" : "font-medium text-amber-950"
@@ -58,11 +58,17 @@ export function SyncStatusBanner({ connected, dbConfigured }: Props) {
         <p
           className={`mt-0.5 opacity-90 ${hasError ? "text-red-900" : "text-amber-950"}`}
         >
-          Last sync: {lastSyncLabel} · {exp.expenseCount} expenses stored
-          {exp.error ? ` · ${exp.error}` : null}
-          {" · "}
-          Use <span className="font-medium">Sync</span> in the header to
-          refresh.
+          <span className="hidden sm:inline">
+            Last sync: {lastSyncLabel} · {exp.expenseCount} expenses stored
+            {exp.error ? ` · ${exp.error}` : null}
+            {" · "}
+            Use <span className="font-medium">Sync</span> in the header to
+            refresh.
+          </span>
+          <span className="sm:hidden">
+            Tap sync in the header to refresh · {exp.expenseCount} stored
+            {exp.error ? ` · ${exp.error}` : null}
+          </span>
         </p>
       </div>
     </div>

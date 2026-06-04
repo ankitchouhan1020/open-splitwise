@@ -3,6 +3,7 @@
 import { filtersToSearchParams } from "@/lib/expenses/filters";
 import { buildDashboardQuickViews } from "@/lib/expenses/quick-views";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
+import { AddExpenseButton } from "@/components/add-expense-dialog";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
 import { ExpenseListItemRow } from "@/components/expense-list-item";
 import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
@@ -44,7 +45,7 @@ function BalancePanel({
 }) {
   if (!balances) {
     return (
-      <div className="border-border bg-card flex h-full flex-col rounded-2xl border p-5 shadow-sm">
+      <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4 shadow-sm md:rounded-2xl md:p-5">
         <p className="text-muted text-xs font-medium tracking-wide uppercase">
           Balances
         </p>
@@ -66,20 +67,20 @@ function BalancePanel({
   const both = hasOwe && hasOwed;
 
   return (
-    <div className="border-border bg-card flex h-full flex-col rounded-2xl border p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4 shadow-sm md:rounded-2xl md:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-muted text-xs font-medium tracking-wide uppercase">
             With friends · {currency}
           </p>
           {settled ? (
-            <p className="text-foreground mt-1 text-xl font-semibold tracking-tight">
+            <p className="text-foreground mt-1 text-lg font-semibold tracking-tight md:text-xl">
               All settled up
             </p>
           ) : (
             <>
               <p
-                className={`mt-1 text-2xl font-semibold tracking-tight tabular-nums ${
+                className={`mt-1 text-xl font-semibold tracking-tight tabular-nums md:text-2xl ${
                   netTone ? balanceClasses(netTone).amount : ""
                 }`}
               >
@@ -96,7 +97,7 @@ function BalancePanel({
           )}
         </div>
         {!settled && both && (
-          <dl className="text-muted shrink-0 space-y-0.5 text-right text-xs tabular-nums">
+          <dl className="text-muted flex gap-4 text-xs tabular-nums sm:block sm:space-y-0.5 sm:text-right">
             <div>
               <dt className="inline text-teal-700">In </dt>
               <dd className="inline font-medium text-teal-800">
@@ -237,23 +238,23 @@ export function HomeDashboard({ userName }: { userName: string }) {
   });
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-3">
+    <div className="space-y-5 md:space-y-8">
+      <header className="space-y-2.5 md:space-y-3">
         <div>
-          <p className="text-muted text-sm">{timeGreeting()}</p>
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl">
+          <p className="text-muted text-xs md:text-sm">{timeGreeting()}</p>
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
             {firstName}
           </h1>
         </div>
         <div className="space-y-2">
-          <p className="text-muted text-sm">{monthLabel}</p>
+          <p className="text-muted text-xs md:text-sm">{monthLabel}</p>
           {!loading && quickViews.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
               {quickViews.map((view) => (
                 <Link
                   key={view.id}
                   href={view.href}
-                  className="border-border hover:bg-stone-50/80 rounded-md border bg-white px-2.5 py-1 text-xs font-medium"
+                  className="border-border hover:bg-stone-50/80 shrink-0 rounded-md border bg-white px-2.5 py-1.5 text-xs font-medium md:py-1"
                 >
                   {view.label}
                 </Link>
@@ -275,20 +276,20 @@ export function HomeDashboard({ userName }: { userName: string }) {
 
       {!loading && data && (
         <>
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-3 md:gap-4 lg:grid-cols-2">
             <div className="h-full min-h-0">
               <BalancePanel balances={data.balances} currency={currency} />
             </div>
-            <div className="border-border bg-card flex h-full min-h-0 flex-col rounded-2xl border p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+            <div className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl border p-4 shadow-sm md:rounded-2xl md:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+                <div className="min-w-0">
                   <p className="text-muted text-xs font-medium tracking-wide uppercase">
                     Your share · this month
                   </p>
-                  <p className="text-foreground mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+                  <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight tabular-nums md:mt-2 md:text-3xl">
                     {formatMoney(thisTotal, currency)}
                   </p>
-                  <p className="text-muted mt-2 text-sm">
+                  <p className="text-muted mt-1.5 text-xs md:mt-2 md:text-sm">
                     {data.thisMonth.expenseCount} expense
                     {data.thisMonth.expenseCount === 1 ? "" : "s"}
                     {lastTotal > 0 ? (
@@ -297,41 +298,51 @@ export function HomeDashboard({ userName }: { userName: string }) {
                   </p>
                 </div>
                 {data.topCategories[0] && (
-                  <div className="text-right">
-                    <p className="text-muted text-xs font-medium tracking-wide uppercase">
+                  <div className="border-border flex items-center justify-between gap-3 border-t pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
+                    <p className="text-muted text-xs font-medium tracking-wide uppercase sm:mb-0">
                       Top category
                     </p>
-                    <p className="text-foreground mt-2 text-sm font-semibold">
-                      {data.topCategories[0].categoryName}
-                    </p>
-                    <p className="text-muted mt-0.5 text-xs tabular-nums">
-                      {formatMoney(
-                        Number(data.topCategories[0].total),
-                        currency,
-                      )}
-                    </p>
+                    <div className="text-right">
+                      <p className="text-foreground text-sm font-semibold">
+                        {data.topCategories[0].categoryName}
+                      </p>
+                      <p className="text-muted text-xs tabular-nums">
+                        {formatMoney(
+                          Number(data.topCategories[0].total),
+                          currency,
+                        )}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
               {data.insights.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:flex-wrap">
                   {data.insights.slice(0, 2).map((insight) =>
                     insight.href ? (
                       <Link
                         key={insight.id}
                         href={insight.href}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]} hover:opacity-90`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]} hover:opacity-90 sm:flex-1 sm:min-w-[12rem]`}
                       >
                         <span className="font-medium">{insight.headline}</span>
-                        <span className="opacity-80"> — {insight.detail}</span>
+                        <span className="opacity-80">
+                          <span className="hidden sm:inline">
+                            {" "}
+                            — {insight.detail}
+                          </span>
+                        </span>
                       </Link>
                     ) : (
                       <div
                         key={insight.id}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]}`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug sm:flex-1 sm:min-w-[12rem] ${INSIGHT_STYLES[insight.tone]}`}
                       >
                         <span className="font-medium">{insight.headline}</span>
-                        <span className="opacity-80"> — {insight.detail}</span>
+                        <span className="hidden opacity-80 sm:inline">
+                          {" "}
+                          — {insight.detail}
+                        </span>
                       </div>
                     ),
                   )}
@@ -340,21 +351,22 @@ export function HomeDashboard({ userName }: { userName: string }) {
             </div>
           </section>
 
-          <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
-            <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-4">
-              <div>
-                <h2 className="text-foreground text-lg font-semibold tracking-tight">
+          <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm md:rounded-2xl">
+            <div className="border-border flex items-center justify-between gap-2 border-b px-4 py-3 md:gap-3 md:px-5 md:py-4">
+              <div className="min-w-0">
+                <h2 className="text-foreground text-base font-semibold tracking-tight md:text-lg">
                   Recent activity
                 </h2>
-                <p className="text-muted mt-0.5 text-sm">
-                  Latest expenses this month
+                <p className="text-muted mt-0.5 text-xs md:text-sm">
+                  Latest this month
                 </p>
               </div>
               <Link
                 href={exploreHref}
                 className="text-accent shrink-0 text-sm font-medium hover:underline"
               >
-                View all →
+                <span className="md:hidden">All</span>
+                <span className="hidden md:inline">View all →</span>
               </Link>
             </div>
             {data.recentExpenses.length > 0 ? (
@@ -374,33 +386,39 @@ export function HomeDashboard({ userName }: { userName: string }) {
                 <p className="text-muted text-sm">
                   No expenses this month yet.
                 </p>
-                <p className="text-muted mt-1 text-xs">
-                  Sync from Splitwise or use{" "}
-                  <span className="text-foreground font-medium">
-                    + Add expense
-                  </span>{" "}
-                  in the header.
+                <p className="text-muted mt-3 text-xs">
+                  Sync from Splitwise or add one below.
                 </p>
+                <AddExpenseButton className="bg-accent mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+                  Add expense
+                </AddExpenseButton>
               </div>
             )}
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-3">
-            <div className="border-border bg-card rounded-2xl border p-5 shadow-sm lg:col-span-2">
-              <h2 className="text-foreground text-lg font-semibold tracking-tight">
+          <section className="grid gap-3 md:gap-4 lg:grid-cols-3">
+            <div className="border-border bg-card rounded-xl border p-4 shadow-sm md:rounded-2xl md:p-5 lg:col-span-2">
+              <h2 className="text-foreground text-base font-semibold tracking-tight md:text-lg">
                 Spending trend
               </h2>
-              <p className="text-muted mt-1 text-sm">
+              <p className="text-muted mt-0.5 text-xs md:mt-1 md:text-sm">
                 Your share, last 6 months
               </p>
-              <div className="mt-4 h-40">
+              <div className="mt-3 h-28 md:mt-4 md:h-40">
                 {sparkData.some((d) => d.total > 0) ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sparkData}>
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis
+                    <BarChart
+                      data={sparkData}
+                      margin={{ top: 4, right: 4, left: -12, bottom: 0 }}
+                    >
+                      <XAxis
+                        dataKey="label"
                         tick={{ fontSize: 10 }}
-                        width={52}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 9 }}
+                        width={36}
                         tickFormatter={(v) =>
                           formatAmount(Number(v), {
                             compact: true,
@@ -429,13 +447,15 @@ export function HomeDashboard({ userName }: { userName: string }) {
               </div>
             </div>
 
-            <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
-              <h2 className="text-foreground text-lg font-semibold tracking-tight">
+            <div className="border-border bg-card rounded-xl border p-4 shadow-sm md:rounded-2xl md:p-5">
+              <h2 className="text-foreground text-base font-semibold tracking-tight md:text-lg">
                 By group
               </h2>
-              <p className="text-muted mt-1 text-sm">This month</p>
+              <p className="text-muted mt-0.5 text-xs md:mt-1 md:text-sm">
+                This month
+              </p>
               {data.topGroups.length > 0 ? (
-                <ul className="mt-4 space-y-3">
+                <ul className="mt-3 space-y-3 md:mt-4">
                   {data.topGroups.slice(0, 5).map((g) => (
                     <li key={g.groupId}>
                       <Link
@@ -482,13 +502,13 @@ export function HomeDashboard({ userName }: { userName: string }) {
             </div>
           </section>
 
-          <footer className="border-border text-muted flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-xs">
-            <span>
+          <footer className="border-border text-muted flex flex-col gap-2 border-t pt-4 text-xs md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 md:pt-5">
+            <span className="leading-relaxed">
               {formatRelativeSync(data.sync.lastSyncAt)} ·{" "}
               {data.sync.expenseCount.toLocaleString()} expenses indexed
               {data.sync.inProgress ? " · sync in progress" : ""}
             </span>
-            <div className="flex flex-wrap gap-4">
+            <div className="hidden flex-wrap gap-4 md:flex">
               <Link
                 href={exploreHref}
                 className="hover:text-foreground font-medium"

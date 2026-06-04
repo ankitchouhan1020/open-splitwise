@@ -3,8 +3,8 @@ import { Shimmer, ShimmerCard } from "@/components/shimmer";
 
 export function HomeDashboardSkeleton() {
   return (
-    <div className="space-y-8" aria-busy="true" aria-label="Loading dashboard">
-      <section className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-5 md:space-y-8" aria-busy="true" aria-label="Loading dashboard">
+      <section className="grid gap-3 md:gap-4 lg:grid-cols-2">
         <ShimmerCard className="flex h-full min-h-[9rem] flex-col">
           <Shimmer className="h-3 w-32 rounded-md" />
           <Shimmer className="mt-3 h-8 w-28 rounded-md" />
@@ -45,7 +45,7 @@ export function HomeDashboardSkeleton() {
         }}
       />
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-3 md:gap-4 lg:grid-cols-3">
         <ShimmerCard className="lg:col-span-2">
           <Shimmer className="h-5 w-36 rounded-md" />
           <Shimmer className="mt-2 h-3.5 w-48 rounded-md" />

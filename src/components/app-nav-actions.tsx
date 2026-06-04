@@ -1,6 +1,7 @@
 "use client";
 
 import { AddExpenseButton } from "@/components/add-expense-dialog";
+import { NavIconAdd, NavIconSync } from "@/components/nav-icons";
 import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { useSyncStatus } from "@/components/sync-status-provider";
 import Link from "next/link";
@@ -10,10 +11,12 @@ type Props = {
   dbConfigured: boolean;
 };
 
+const iconBtn =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg disabled:opacity-50";
 const btnPrimary =
-  "bg-accent shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50";
+  "bg-accent inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-white hover:opacity-90 disabled:opacity-50";
 const btnSecondary =
-  "border-border text-foreground shrink-0 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium hover:bg-stone-50 disabled:opacity-50";
+  "border-border text-foreground inline-flex shrink-0 items-center justify-center rounded-lg border bg-white font-medium hover:bg-stone-50 disabled:opacity-50";
 
 export function AppNavActions({ connected, dbConfigured }: Props) {
   const syncEnabled = connected && dbConfigured;
@@ -21,42 +24,58 @@ export function AppNavActions({ connected, dbConfigured }: Props) {
 
   if (!connected) {
     return (
-      <Link href="/api/auth/splitwise" className={btnPrimary}>
+      <Link href="/api/auth/splitwise" className={`${btnPrimary} px-3 py-1.5 text-sm`}>
         Connect
       </Link>
     );
   }
 
   const syncFailed = status?.expenses?.status === "error";
+  const syncTitle =
+    busy
+      ? undefined
+      : status?.expenses?.lastSyncAt
+        ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
+        : "Sync from Splitwise";
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 items-center gap-1.5">
       {syncEnabled && (
         <button
           type="button"
           onClick={() => void runSync("all")}
           disabled={busy}
+          aria-label={busy ? "Sync in progress" : "Sync from Splitwise"}
+          title={syncTitle}
           className={
             syncFailed
-              ? `${btnSecondary} border-red-300 text-red-800 hover:bg-red-50`
-              : btnSecondary
-          }
-          title={
-            busy
-              ? undefined
-              : status?.expenses?.lastSyncAt
-                ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
-                : "Sync expenses from Splitwise"
+              ? `${btnSecondary} ${iconBtn} border-red-300 text-red-800 hover:bg-red-50 md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
+              : `${btnSecondary} ${iconBtn} md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
           }
         >
           {busy ? (
-            <SyncProgressIndicator progress={status?.progress} compact />
+            <>
+              <span className="hidden md:inline">
+                <SyncProgressIndicator progress={status?.progress} compact />
+              </span>
+              <NavIconSync className="h-[17px] w-[17px] animate-spin md:hidden" />
+            </>
           ) : (
-            "Sync"
+            <>
+              <NavIconSync className="h-[17px] w-[17px] md:hidden" />
+              <span className="hidden md:inline">Sync</span>
+            </>
           )}
         </button>
       )}
-      <AddExpenseButton className={btnPrimary}>+ Add expense</AddExpenseButton>
+
+      {/* Desktop only — mobile uses bottom nav Add */}
+      <AddExpenseButton
+        className={`${btnPrimary} hidden gap-1.5 px-3 py-1.5 text-sm md:inline-flex`}
+      >
+        <NavIconAdd className="h-4 w-4" />
+        Add expense
+      </AddExpenseButton>
     </div>
   );
 }

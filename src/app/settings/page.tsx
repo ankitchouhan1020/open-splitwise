@@ -6,6 +6,8 @@ import { SyncPanel } from "@/app/settings/sync-panel";
 import { SystemPanel } from "@/app/settings/system-panel";
 import { getConnectedUser } from "@/lib/auth";
 import { getSetupStatus } from "@/lib/setup/status";
+import { requestOriginFromHeaders } from "@/lib/request-origin";
+import { connection } from "next/server";
 import { headers } from "next/headers";
 
 type PageProps = {
@@ -15,16 +17,10 @@ type PageProps = {
   }>;
 };
 
-function requestOriginFromHeaders(headerList: Headers): string {
-  const host =
-    headerList.get("x-forwarded-host") ??
-    headerList.get("host") ??
-    "localhost:3000";
-  const proto = headerList.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
-}
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage({ searchParams }: PageProps) {
+  await connection();
   const params = await searchParams;
   const user = await getConnectedUser();
   const headerList = await headers();
@@ -32,8 +28,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <header className="mb-4">
+      <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 md:py-6">
+        <header className="mb-4 hidden md:block">
           <h1 className="text-foreground text-xl font-semibold tracking-tight">
             Settings
           </h1>
@@ -66,7 +62,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
           <PrivacySection />
         </div>
-      </main>
+      </div>
     </AppShell>
   );
 }

@@ -28,6 +28,29 @@ body {
     "kern" 1,
     "liga" 1;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-main {
+  padding-bottom: 0;
+}
+
+.app-shell--connected .app-main {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .app-shell--connected .app-main {
+    padding-bottom: 0;
+  }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 @layer base {

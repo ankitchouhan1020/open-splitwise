@@ -11,6 +11,7 @@ const PUBLIC_API_PATHS = new Set([
   "/api/health",
   "/api/auth/splitwise",
   "/api/auth/splitwise/callback",
+  "/api/auth/splitwise/config",
 ]);
 
 const PROTECTED_PAGE_PREFIXES = ["/explore", "/insights"];

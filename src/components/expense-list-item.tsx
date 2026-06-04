@@ -15,9 +15,14 @@ type Props = {
   compact?: boolean;
 };
 
-/** Grid columns: date · icon · description · amounts */
+/** Grid: mobile drops date column; desktop keeps Splitwise-style date block. */
 export const EXPENSE_ROW_GRID =
-  "grid w-full grid-cols-[2.75rem_2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5";
+  "grid w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-2.5 px-3 py-3 md:grid-cols-[2.75rem_2.5rem_minmax(0,1fr)_auto] md:gap-x-3 md:py-2.5";
+
+function formatShortDate(date: string): string {
+  const d = new Date(date);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 function ExpenseDateBlock({ date }: { date: string }) {
   const d = new Date(date);
@@ -27,7 +32,7 @@ function ExpenseDateBlock({ date }: { date: string }) {
   const day = d.getDate();
 
   return (
-    <div className="flex h-10 w-11 flex-col items-center justify-center text-center">
+    <div className="hidden h-10 w-11 flex-col items-center justify-center text-center md:flex">
       <div className="text-muted text-[10px] leading-none font-semibold tracking-wide">
         {month}
       </div>
@@ -146,14 +151,19 @@ export function ExpenseListItemRow({
       <button
         type="button"
         onClick={onSelect}
-        className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 ${rowTint}`}
-        style={{ minHeight: compact ? 64 : 76 }}
+        className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 active:bg-stone-100/80 ${rowTint}`}
+        style={{ minHeight: compact ? 60 : 72 }}
       >
         <ExpenseDateBlock date={expense.date} />
         <ExpenseCategoryIcon categoryName={null} payment />
-        <span className="text-foreground min-w-0 truncate text-sm leading-snug font-medium">
-          <HighlightText text={expense.description} query={searchQuery} />
-        </span>
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-sm leading-snug font-medium">
+            <HighlightText text={expense.description} query={searchQuery} />
+          </p>
+          <p className="text-muted mt-0.5 text-[11px] md:hidden">
+            {formatShortDate(expense.date)}
+          </p>
+        </div>
         <span className="text-foreground text-right text-sm leading-snug font-semibold tabular-nums">
           {formatMoney(Number(expense.cost), expense.currencyCode)}
         </span>
@@ -165,8 +175,8 @@ export function ExpenseListItemRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 ${rowTint}`}
-      style={{ minHeight: compact ? 64 : 76 }}
+      className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 active:bg-stone-100/80 ${rowTint}`}
+      style={{ minHeight: compact ? 60 : 72 }}
     >
       <ExpenseDateBlock date={expense.date} />
       <ExpenseCategoryIcon
@@ -180,11 +190,16 @@ export function ExpenseListItemRow({
         <p className="text-foreground truncate text-sm leading-snug font-medium">
           <HighlightText text={expense.description} query={searchQuery} />
         </p>
-        {expense.groupName && (
-          <span className="text-muted mt-1 inline-block max-w-full truncate rounded bg-stone-100 px-1.5 py-0.5 text-[11px] leading-none">
-            {expense.groupName}
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 md:mt-1">
+          <span className="text-muted shrink-0 text-[11px] md:hidden">
+            {formatShortDate(expense.date)}
           </span>
-        )}
+          {expense.groupName && (
+            <span className="text-muted inline-block max-w-full truncate rounded bg-stone-100 px-1.5 py-0.5 text-[11px] leading-none">
+              {expense.groupName}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex shrink-0 flex-col gap-0.5 text-right leading-snug">
         <PaidLine expense={expense} />

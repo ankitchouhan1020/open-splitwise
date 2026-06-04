@@ -108,7 +108,7 @@ export function ExploreToolbar({
   const extraFilterCount = countExtraFilters(filters, visibleGroupIds);
 
   return (
-    <div className="space-y-3 p-3">
+    <div className="space-y-3 p-3 md:space-y-3">
       <div className="relative">
         <svg
           aria-hidden
@@ -130,13 +130,13 @@ export function ExploreToolbar({
           placeholder="Search descriptions and notes"
           value={searchInput}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm outline-none focus:ring-2"
+          className="border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border py-2.5 pr-3 pl-9 text-base outline-none focus:ring-2 md:text-sm"
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div
-          className="flex flex-wrap items-center gap-1"
+          className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
           role="group"
           aria-label="Date range"
         >
@@ -152,8 +152,8 @@ export function ExploreToolbar({
                 onClick={() => onChange(datePresetRange(p.id))}
                 className={
                   isActive
-                    ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                    : "border-border rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                    ? "shrink-0 rounded-md bg-stone-800 px-2.5 py-1.5 text-xs font-medium text-white md:py-1"
+                    : "border-border shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50 md:py-1"
                 }
               >
                 {p.label}
@@ -162,18 +162,18 @@ export function ExploreToolbar({
           })}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 md:ml-auto">
           <button
             type="button"
             onClick={onToggleFilters}
             aria-expanded={filtersOpen}
             className={
               filtersOpen || extraFilterCount > 0
-                ? "border-accent text-accent rounded-md border px-2.5 py-1 text-xs font-medium"
-                : "border-border rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                ? "border-accent text-accent flex-1 rounded-md border px-2.5 py-1.5 text-xs font-medium md:flex-none md:py-1"
+                : "border-border flex-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50 md:flex-none md:py-1"
             }
           >
-            {filtersOpen ? "Hide filters" : "More filters"}
+            {filtersOpen ? "Hide filters" : "Filters"}
             {!filtersOpen && extraFilterCount > 0 && (
               <span className="bg-accent ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white">
                 {extraFilterCount}
@@ -183,7 +183,7 @@ export function ExploreToolbar({
           <button
             type="button"
             onClick={onExport}
-            className="text-muted hover:text-foreground text-xs font-medium"
+            className="text-muted hover:text-foreground hidden shrink-0 px-1 py-1.5 text-xs font-medium sm:inline"
           >
             Export CSV
           </button>

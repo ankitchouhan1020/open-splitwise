@@ -1,4 +1,11 @@
+import { getSuggestedRedirectUri, resolveAppUrl } from "@/lib/app-url";
 import { isDatabaseConfigured } from "@/lib/db/config";
+import {
+  readConfiguredRedirectUri,
+  resolveSplitwiseRedirectUri,
+} from "@/lib/splitwise/redirect-uri";
+
+export { getSuggestedRedirectUri, resolveAppUrl } from "@/lib/app-url";
 
 export type EnvVarKey =
   | "SESSION_SECRET"
@@ -71,6 +78,40 @@ const ENV_VAR_META: Array<{
   },
 ];
 
+/** Never embed live credentials in the copyable setup snippet. */
+const SNIPPET_MASK_WHEN_CONFIGURED = new Set<EnvVarKey>([
+  "SESSION_SECRET",
+  "SPLITWISE_CLIENT_ID",
+  "SPLITWISE_CLIENT_SECRET",
+  "DATABASE_URL",
+]);
+
+function envSnippetLine(
+  key: EnvVarKey,
+  example: string,
+  configured: boolean,
+  redirectUri: string,
+  suggestedRedirectUri: string,
+): string {
+  if (key === "SPLITWISE_REDIRECT_URI") {
+    return `${example}${configured ? redirectUri : suggestedRedirectUri}`;
+  }
+  if (configured && SNIPPET_MASK_WHEN_CONFIGURED.has(key)) {
+    const prefix = `${key}=`;
+    if (key === "SESSION_SECRET") {
+      return `${prefix}<set — generate with: openssl rand -base64 32>`;
+    }
+    return `${prefix}<set>`;
+  }
+  if (key === "SESSION_SECRET") {
+    return `${example}<openssl rand -base64 32>`;
+  }
+  if (key === "DATABASE_URL") {
+    return example;
+  }
+  return example;
+}
+
 function isEnvVarConfigured(key: EnvVarKey): boolean {
   const raw = process.env[key];
   if (!raw?.trim()) return false;
@@ -86,28 +127,11 @@ function isEnvVarConfigured(key: EnvVarKey): boolean {
   return true;
 }
 
-export function getSuggestedRedirectUri(appUrl: string): string {
-  const base = appUrl.replace(/\/$/, "");
-  return `${base}/api/auth/splitwise/callback`;
-}
-
-export function resolveAppUrl(requestOrigin: string): string {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (fromEnv) {
-    try {
-      return new URL(fromEnv).origin;
-    } catch {
-      /* fall through */
-    }
-  }
-  return requestOrigin.replace(/\/$/, "");
-}
-
 export function getSetupStatus(requestOrigin: string): SetupStatus {
   const appUrl = resolveAppUrl(requestOrigin);
   const suggestedRedirectUri = getSuggestedRedirectUri(appUrl);
-  const configuredRedirect = process.env.SPLITWISE_REDIRECT_URI?.trim();
-  const redirectUri = configuredRedirect || suggestedRedirectUri;
+  const configuredRedirect = readConfiguredRedirectUri();
+  const redirectUri = resolveSplitwiseRedirectUri(requestOrigin);
 
   const envVars: EnvVarStatus[] = ENV_VAR_META.map(({ key, label, hint }) => ({
     key,
@@ -132,32 +156,17 @@ export function getSetupStatus(requestOrigin: string): SetupStatus {
 
   const envSnippet = [
     "# Paste into .env.local (adjust values as needed)",
+    `APP_URL=${appUrl}`,
     `NEXT_PUBLIC_APP_URL=${appUrl}`,
-    ...ENV_VAR_META.map(({ key, example }) => {
-      const configured = isEnvVarConfigured(key);
-      if (configured && key !== "SPLITWISE_CLIENT_SECRET") {
-        if (key === "SPLITWISE_REDIRECT_URI") {
-          return `${example}${redirectUri}`;
-        }
-        if (key === "DATABASE_URL") {
-          return `${example}${process.env.DATABASE_URL ?? ""}`;
-        }
-        if (key === "SPLITWISE_CLIENT_ID") {
-          return `${example}${process.env.SPLITWISE_CLIENT_ID ?? ""}`;
-        }
-        return `${example}<set>`;
-      }
-      if (key === "SPLITWISE_REDIRECT_URI") {
-        return `${example}${suggestedRedirectUri}`;
-      }
-      if (key === "DATABASE_URL") {
-        return example;
-      }
-      if (key === "SESSION_SECRET") {
-        return `${example}<openssl rand -base64 32>`;
-      }
-      return example;
-    }),
+    ...ENV_VAR_META.map(({ key, example }) =>
+      envSnippetLine(
+        key,
+        example,
+        isEnvVarConfigured(key),
+        redirectUri,
+        suggestedRedirectUri,
+      ),
+    ),
   ].join("\n");
 
   const steps: SetupStep[] = [

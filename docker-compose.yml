@@ -28,6 +28,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://open_splitwise:open_splitwise@postgres:5432/open_splitwise
       SESSION_SECRET: ${SESSION_SECRET:-local-dev-only-change-me-32chars-min}
+      APP_URL: ${APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       SPLITWISE_CLIENT_ID: ${SPLITWISE_CLIENT_ID:-}
       SPLITWISE_CLIENT_SECRET: ${SPLITWISE_CLIENT_SECRET:-}

@@ -2,7 +2,8 @@
 
 import { AddExpenseForm } from "@/components/add-expense-form";
 import { BulkAddExpenseForm } from "@/components/bulk-add-expense-form";
-import { useEffect, useState } from "react";
+import { useAddExpenseDialog } from "@/components/add-expense-provider";
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 type Mode = "single" | "bulk";
 
@@ -113,17 +114,20 @@ export function AddExpenseDialog({ open, onClose }: Props) {
 export function AddExpenseButton({
   className,
   children,
-}: {
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const { openDialog } = useAddExpenseDialog();
   return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className={className}>
-        {children ?? "Add expense"}
-      </button>
-      <AddExpenseDialog open={open} onClose={() => setOpen(false)} />
-    </>
+    <button
+      type="button"
+      onClick={openDialog}
+      className={className}
+      {...props}
+    >
+      {children ?? "Add expense"}
+    </button>
   );
 }

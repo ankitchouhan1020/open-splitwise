@@ -297,62 +297,63 @@ export function ExpenseExplorer() {
         </div>
 
         {(chips.length > 0 || !loading) && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1">
             {!loading && (
-              <span className="text-foreground font-medium tabular-nums">
-                {count.toLocaleString()} expenses
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-foreground font-medium tabular-nums">
+                  {count.toLocaleString()} expenses
+                </span>
                 <span className="text-muted font-normal">
-                  {" "}
                   · my share{" "}
                   {shareSummary(summary?.byCurrency ?? [], formatMoney)}
                 </span>
-                <span className="text-muted font-normal">
-                  {" "}
-                  ·{" "}
-                  <span className="inline-flex items-center gap-1">
-                    Sort{" "}
-                    <select
-                      value={`${sort}:${order}`}
-                      onChange={(e) => {
-                        const [s, o] = e.target.value.split(":");
-                        setFilters({
-                          sort: s as "date" | "cost" | "description",
-                          order: o as "asc" | "desc",
-                        });
-                      }}
-                      className="border-border rounded border bg-white px-1 py-0.5 text-xs"
-                    >
-                      <option value="date:desc">Newest</option>
-                      <option value="date:asc">Oldest</option>
-                      <option value="cost:desc">Highest share</option>
-                      <option value="cost:asc">Lowest share</option>
-                      <option value="description:asc">A → Z</option>
-                      <option value="description:desc">Z → A</option>
-                    </select>
-                  </span>
-                </span>
-              </span>
+              </div>
             )}
-            {chips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => clearFilter(chip.key)}
-                className="border-border rounded bg-stone-100 px-1.5 py-0.5 hover:bg-stone-200"
-              >
-                {chip.label} ×
-              </button>
-            ))}
-            {chips.length > 0 && (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-accent hover:underline"
-              >
-                Clear
-              </button>
+            {!loading && (
+              <label className="text-muted flex items-center gap-1.5 font-normal sm:ml-auto">
+                Sort
+                <select
+                  value={`${sort}:${order}`}
+                  onChange={(e) => {
+                    const [s, o] = e.target.value.split(":");
+                    setFilters({
+                      sort: s as "date" | "cost" | "description",
+                      order: o as "asc" | "desc",
+                    });
+                  }}
+                  className="border-border text-foreground rounded border bg-white px-2 py-1 text-xs"
+                >
+                  <option value="date:desc">Newest</option>
+                  <option value="date:asc">Oldest</option>
+                  <option value="cost:desc">Highest share</option>
+                  <option value="cost:asc">Lowest share</option>
+                  <option value="description:asc">A → Z</option>
+                  <option value="description:desc">Z → A</option>
+                </select>
+              </label>
             )}
-            {loadingMore && <span className="text-muted">Loading more…</span>}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {chips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => clearFilter(chip.key)}
+                  className="border-border rounded bg-stone-100 px-1.5 py-0.5 hover:bg-stone-200"
+                >
+                  {chip.label} ×
+                </button>
+              ))}
+              {chips.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-accent hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+              {loadingMore && <span className="text-muted">Loading more…</span>}
+            </div>
           </div>
         )}
 
@@ -374,8 +375,7 @@ export function ExpenseExplorer() {
           <div className="border-border bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
             <div
               ref={parentRef}
-              className="min-h-0 flex-1 overflow-auto"
-              style={{ maxHeight: "calc(100vh - 220px)" }}
+              className="max-h-[calc(100dvh-18rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100vh-220px)]"
             >
               <div
                 style={{

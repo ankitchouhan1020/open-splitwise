@@ -1,9 +1,12 @@
 import { getEnvOptional } from "@/lib/env";
+import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { buildAuthorizeUrl, generateOAuthState } from "@/lib/splitwise/oauth";
 import { getAppSession } from "@/lib/session";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
   if (!getEnvOptional()) {
     return NextResponse.json(
       {
@@ -19,5 +22,6 @@ export async function GET() {
   session.oauthState = state;
   await session.save();
 
-  return NextResponse.redirect(buildAuthorizeUrl(state));
+  const origin = requestOriginFromHeaders(request.headers);
+  return NextResponse.redirect(buildAuthorizeUrl(state, origin));
 }

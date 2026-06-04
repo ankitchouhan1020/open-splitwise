@@ -1,9 +1,12 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { upsertAccountOwner } from "@/lib/db/account";
 import { getCurrentUser } from "@/lib/splitwise/api";
+import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { exchangeCodeForToken } from "@/lib/splitwise/oauth";
 import { getAppSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -32,7 +35,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const token = await exchangeCodeForToken(code);
+    const origin = requestOriginFromHeaders(request.headers);
+    const token = await exchangeCodeForToken(code, origin);
     const { user } = await getCurrentUser(token.access_token);
 
     session.accessToken = token.access_token;

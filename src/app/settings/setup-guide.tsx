@@ -110,7 +110,8 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                     <p className="text-muted text-xs">
                       Derived from app URL{" "}
                       <code className="text-foreground">{setup.appUrl}</code>.
-                      Set <code>NEXT_PUBLIC_APP_URL</code> in production if this
+                      Set <code>APP_URL</code> (or{" "}
+                      <code>SPLITWISE_REDIRECT_URI</code>) in production if this
                       instance sits behind a different domain.
                     </p>
                   )}
@@ -122,6 +123,12 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                       this server must all use the same callback.
                     </p>
                   )}
+                  <p className="text-muted text-xs leading-relaxed">
+                    Using Cloudflare Access? Add a <strong>Bypass</strong>{" "}
+                    policy for <code>/api/auth/splitwise</code> and{" "}
+                    <code>/api/auth/splitwise/callback</code> so Splitwise can
+                    complete OAuth.
+                  </p>
                 </div>
               )}
               {step.id === "env-vars" && (
@@ -150,7 +157,7 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                   <div className="border-border rounded-md border bg-stone-950/5">
                     <div className="border-border flex items-center justify-between border-b px-2 py-1">
                       <span className="text-muted text-[11px] font-medium">
-                        Suggested .env.local
+                        Suggested .env.local (no live secrets)
                       </span>
                       <CopyButton text={setup.envSnippet} label="Copy all" />
                     </div>

@@ -15,8 +15,8 @@ export default async function ExplorePage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex max-w-6xl flex-col px-4 py-4 sm:px-6">
-        <header className="mb-3 shrink-0">
+      <div className="mx-auto flex max-w-6xl flex-col px-4 py-3 sm:px-6 md:py-4">
+        <header className="mb-3 hidden shrink-0 md:block">
           <h1 className="text-foreground text-xl font-semibold tracking-tight">
             Explore
           </h1>
@@ -31,7 +31,7 @@ export default async function ExplorePage() {
             Connect Splitwise using the button in the header to browse expenses.
           </p>
         )}
-      </main>
+      </div>
       <AppFooter />
     </AppShell>
   );

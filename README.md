@@ -12,13 +12,14 @@ Self-hosted companion for [Splitwise](https://splitwise.com): sync your data loc
 cp .env.example .env.local
 ```
 
-| Variable                         | Purpose                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `SESSION_SECRET`                 | Random string (`openssl rand -base64 32`) — no `$(...)` in the file                    |
-| `DATABASE_URL`                   | Postgres connection string                                                             |
-| `SPLITWISE_CLIENT_ID` / `SECRET` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps)                    |
-| `SPLITWISE_REDIRECT_URI`         | Must match OAuth app exactly, e.g. `http://localhost:3000/api/auth/splitwise/callback` |
-| `NEXT_PUBLIC_APP_URL`            | Public app URL (same host as redirect, without path)                                   |
+| Variable                         | Purpose                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| `SESSION_SECRET`                 | Random string (`openssl rand -base64 32`) — no `$(...)` in the file                       |
+| `DATABASE_URL`                   | Postgres connection string                                                                |
+| `SPLITWISE_CLIENT_ID` / `SECRET` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps)                       |
+| `SPLITWISE_REDIRECT_URI`         | OAuth callback URL; must match Splitwise app exactly. Takes precedence when set.          |
+| `APP_URL`                        | Public app URL (server-only, runtime). Preferred in Docker/Railway over `NEXT_PUBLIC_*`   |
+| `NEXT_PUBLIC_APP_URL`            | Optional; baked at build time. Use `APP_URL` if redirect/callback URLs look wrong in prod |
 
 ### 2. Database
 
@@ -38,6 +39,13 @@ Connect in **Settings** → **Sync now** to pull expenses.
 
 **Security:** All `/api/*` routes except health and OAuth require a valid Splitwise session cookie. `/explore` and `/insights` redirect to Settings if not connected. Cloudflare Access is optional extra perimeter, not required.
 
+**Cloudflare Access:** If you protect `split.example.com` with Access, add a **Bypass** policy (higher priority than Allow) for:
+
+- `/api/auth/splitwise`
+- `/api/auth/splitwise/callback`
+
+Splitwise redirects the browser to the callback without an Access JWT; blocking these paths breaks OAuth even when `SPLITWISE_REDIRECT_URI` is correct.
+
 ```bash
 pnpm typecheck && pnpm lint && pnpm test
 ```
@@ -51,7 +59,7 @@ pnpm typecheck && pnpm lint && pnpm test
 | **Docker**  | `docker compose up --build` — app + Postgres, migrations on start                    |
 | **Railway** | Connect repo, add Postgres plugin, set env vars — see [`railway.toml`](railway.toml) |
 
-On Railway, set `NEXT_PUBLIC_APP_URL` and `SPLITWISE_REDIRECT_URI` to your `*.up.railway.app` URL.
+On Railway, set `APP_URL` and `SPLITWISE_REDIRECT_URI` to your public `*.up.railway.app` URL (same host, redirect includes `/api/auth/splitwise/callback`). Redeploy after changing env vars.
 
 ---
 

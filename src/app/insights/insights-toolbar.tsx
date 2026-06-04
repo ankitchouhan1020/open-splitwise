@@ -75,8 +75,8 @@ export function InsightsToolbar({
   onClearPreset,
 }: Props) {
   return (
-    <div className="border-border bg-card space-y-2 rounded-lg border px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="border-border bg-card space-y-3 rounded-lg border px-3 py-3">
+      <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-0.5 md:flex-wrap md:overflow-visible">
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -84,14 +84,15 @@ export function InsightsToolbar({
             onClick={() => onPreset(p.id)}
             className={
               activePreset === p.id
-                ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                : "border-border rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                ? "shrink-0 rounded-md bg-stone-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                : "border-border shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50"
             }
           >
             {p.label}
           </button>
         ))}
-        <span className="text-border hidden h-4 w-px bg-stone-200 sm:block" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="date"
           value={from}
@@ -99,7 +100,7 @@ export function InsightsToolbar({
             onFromChange(e.target.value);
             onClearPreset();
           }}
-          className="border-border rounded-md border px-2 py-1 text-xs"
+          className="border-border min-h-9 flex-1 rounded-md border px-2 py-1.5 text-xs sm:flex-none"
         />
         <span className="text-muted text-xs">→</span>
         <input
@@ -109,12 +110,12 @@ export function InsightsToolbar({
             onToChange(e.target.value);
             onClearPreset();
           }}
-          className="border-border rounded-md border px-2 py-1 text-xs"
+          className="border-border min-h-9 flex-1 rounded-md border px-2 py-1.5 text-xs sm:flex-none"
         />
         <select
           value={groupId}
           onChange={(e) => onGroupChange(e.target.value)}
-          className="border-border max-w-[130px] rounded-md border px-2 py-1 text-xs"
+          className="border-border min-h-9 w-full rounded-md border px-2 py-1.5 text-xs sm:max-w-[130px] sm:w-auto"
         >
           <option value="">All groups</option>
           {groups.map((g) => (
@@ -126,7 +127,7 @@ export function InsightsToolbar({
         <select
           value={currency}
           onChange={(e) => onCurrencyChange(e.target.value)}
-          className="border-border rounded-md border px-2 py-1 text-xs"
+          className="border-border min-h-9 w-full rounded-md border px-2 py-1.5 text-xs sm:w-auto"
         >
           <option value="">All currencies</option>
           {currencies.map((c) => (
