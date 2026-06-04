@@ -20,6 +20,11 @@ type ListResponse = {
   pageSize: number;
 };
 
+type SummaryResponse = {
+  count: number;
+  byCurrency: Array<{ currency: string; myShareTotal: string }>;
+};
+
 type FilterOptions = {
   groups: Array<{ id: number; name: string }>;
   friends: Array<{ id: number; name: string }>;
@@ -55,6 +60,7 @@ export function ExpenseExplorer() {
   const parentRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<ExpenseListItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,40 +116,57 @@ export function ExpenseExplorer() {
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
 
-  const fetchPage = useCallback(
-    async (page: number) => {
-      const params = filtersToSearchParams({
+  const listParams = useCallback(
+    (page?: number) =>
+      filtersToSearchParams({
         ...filters,
-        page,
+        page: page ?? 1,
         pageSize: PAGE_SIZE,
         sort,
         order,
-      });
-      const res = await fetch(`/api/expenses?${params}`);
+      }),
+    [filters, sort, order],
+  );
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const res = await fetch(`/api/expenses?${listParams(page)}`);
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
         throw new Error(data.error ?? "Failed to load expenses");
       }
       return (await res.json()) as ListResponse;
     },
-    [filters, sort, order],
+    [listParams],
   );
+
+  const fetchSummary = useCallback(async () => {
+    const params = filtersToSearchParams(filters);
+    const res = await fetch(`/api/expenses/summary?${params}`);
+    if (!res.ok) return null;
+    return (await res.json()) as SummaryResponse;
+  }, [filters]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPage(1);
+      const [data, summaryData] = await Promise.all([
+        fetchPage(1),
+        fetchSummary(),
+      ]);
       setRows(data.items);
       setTotal(data.total);
+      setSummary(summaryData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
       setRows([]);
       setTotal(0);
+      setSummary(null);
     } finally {
       setLoading(false);
     }
-  }, [fetchPage]);
+  }, [fetchPage, fetchSummary]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -215,6 +238,13 @@ export function ExpenseExplorer() {
   };
   const chips = activeFilterChips(filters, labelMaps);
 
+  function formatShareTotals(totals: SummaryResponse["byCurrency"]) {
+    if (totals.length === 0) return "—";
+    return totals
+      .map((t) => formatMoney(t.currency, t.myShareTotal))
+      .join(" · ");
+  }
+
   function exportCsv() {
     const params = filtersToSearchParams({ ...filters, sort, order });
     window.location.href = `/api/expenses/export?${params}`;
@@ -280,12 +310,24 @@ export function ExpenseExplorer() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <p className="text-muted text-sm">
+        <div className="border-border bg-card flex flex-wrap items-baseline justify-between gap-2 rounded-lg border px-4 py-3">
+          <p className="text-foreground text-sm font-medium">
             {loading
               ? "Loading…"
-              : `${total.toLocaleString()} expenses · showing ${rows.length.toLocaleString()}`}
-            {loadingMore && " · loading more…"}
+              : `${(summary?.count ?? total).toLocaleString()} expenses`}
+          </p>
+          <p className="text-muted text-sm">
+            {loading ? (
+              "…"
+            ) : (
+              <>
+                My share:{" "}
+                <span className="text-foreground font-medium">
+                  {formatShareTotals(summary?.byCurrency ?? [])}
+                </span>
+              </>
+            )}
+            {!loading && loadingMore && " · loading more…"}
           </p>
         </div>
 

@@ -10,6 +10,7 @@ import {
   lte,
   or,
   sql,
+  sum,
   type SQL,
 } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
@@ -323,6 +324,51 @@ function listJoins(owner: { id: number; splitwiseId: number }) {
       eq(schema.expenseShares.expenseId, schema.expenses.id),
       eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
     ),
+  };
+}
+
+export type ExpenseSummary = {
+  count: number;
+  byCurrency: Array<{ currency: string; myShareTotal: string }>;
+};
+
+export async function getExpenseSummary(
+  filters: ExpenseFilters = {},
+): Promise<ExpenseSummary> {
+  const owner = await getAuthenticatedAccountOwner();
+  if (!owner) {
+    return { count: 0, byCurrency: [] };
+  }
+
+  const db = getDb();
+  const where = buildExpenseWhere(owner.id, owner.splitwiseId, filters);
+  const shareJoin = and(
+    eq(schema.expenseShares.expenseId, schema.expenses.id),
+    eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
+  );
+
+  const [{ count: expenseCount }] = await db
+    .select({ count: count() })
+    .from(schema.expenses)
+    .where(where);
+
+  const currencyRows = await db
+    .select({
+      currency: schema.expenses.currencyCode,
+      myShareTotal: sum(schema.expenseShares.owedShare),
+    })
+    .from(schema.expenses)
+    .leftJoin(schema.expenseShares, shareJoin)
+    .where(where)
+    .groupBy(schema.expenses.currencyCode)
+    .orderBy(asc(schema.expenses.currencyCode));
+
+  return {
+    count: expenseCount ?? 0,
+    byCurrency: currencyRows.map((r) => ({
+      currency: r.currency,
+      myShareTotal: r.myShareTotal ?? "0",
+    })),
   };
 }
 
