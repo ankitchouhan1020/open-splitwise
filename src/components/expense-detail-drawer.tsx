@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { ExpenseDetail } from "@/lib/expenses/queries";
 import { splitwiseExpenseUrl, splitwiseGroupUrl } from "@/lib/splitwise/urls";
 
@@ -10,7 +11,18 @@ type Props = {
 };
 
 export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
-  if (!expense && !loading) return null;
+  const open = Boolean(expense) || loading;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
 
   return (
     <>
@@ -21,12 +33,19 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
         onClick={onClose}
       />
       <aside className="border-border bg-card fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l shadow-xl">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="font-semibold">Expense details</h2>
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="font-semibold">Expense details</h2>
+            {expense?.payment && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                Payment
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-muted hover:text-foreground text-sm"
+            className="text-muted hover:text-foreground shrink-0 text-sm"
           >
             Close
           </button>
@@ -43,6 +62,12 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
                 <div>
                   <dt className="text-muted">Notes</dt>
                   <dd>{expense.details}</dd>
+                </div>
+              )}
+              {expense.comments && (
+                <div>
+                  <dt className="text-muted">Comments</dt>
+                  <dd className="whitespace-pre-wrap">{expense.comments}</dd>
                 </div>
               )}
               <div>
@@ -98,8 +123,7 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
                           key={s.splitwiseUserId}
                           className="rounded bg-stone-50 px-2 py-1"
                         >
-                          User {s.splitwiseUserId}: paid {s.paidShare}, owed{" "}
-                          {s.owedShare}
+                          {s.name}: paid {s.paidShare}, owed {s.owedShare}
                         </li>
                       ))}
                     </ul>

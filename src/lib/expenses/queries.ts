@@ -38,8 +38,10 @@ export type ExpenseDetail = ExpenseListItem & {
   groupId: number | null;
   categoryId: number | null;
   friendshipId: number | null;
+  comments: string | null;
   shares: Array<{
     splitwiseUserId: number;
+    name: string;
     paidShare: string;
     owedShare: string;
     netBalance: string | null;
@@ -67,6 +69,97 @@ function paidByFromRaw(raw: unknown): string {
   return (
     [createdBy.first_name, createdBy.last_name].filter(Boolean).join(" ") || "—"
   );
+}
+
+function formatParticipantName(
+  first?: string | null,
+  last?: string | null,
+  fallbackId?: number,
+): string {
+  const name = [first, last].filter(Boolean).join(" ");
+  if (name) return name;
+  if (fallbackId != null) return `User ${fallbackId}`;
+  return "—";
+}
+
+function participantNamesFromRaw(raw: unknown): Map<number, string> {
+  const map = new Map<number, string>();
+  if (!raw || typeof raw !== "object") return map;
+  const users = (
+    raw as {
+      users?: Array<{
+        user_id: number;
+        user?: { id?: number; first_name?: string; last_name?: string };
+      }>;
+    }
+  ).users;
+  if (!Array.isArray(users)) return map;
+  for (const entry of users) {
+    const id = entry.user_id ?? entry.user?.id;
+    if (id == null) continue;
+    map.set(
+      id,
+      formatParticipantName(entry.user?.first_name, entry.user?.last_name, id),
+    );
+  }
+  return map;
+}
+
+function expenseComments(raw: unknown, searchText: string): string | null {
+  if (raw && typeof raw === "object") {
+    const comments = (raw as { comments?: Array<{ content?: string }> })
+      .comments;
+    if (Array.isArray(comments) && comments.length > 0) {
+      const body = comments
+        .map((c) => c.content?.trim())
+        .filter((c): c is string => Boolean(c))
+        .join("\n\n");
+      if (body) return body;
+    }
+  }
+  const text = searchText.trim();
+  return text || null;
+}
+
+async function buildParticipantNameMap(
+  accountUserId: number,
+  raw: unknown,
+): Promise<Map<number, string>> {
+  const db = getDb();
+  const [friendRows, ownerRow] = await Promise.all([
+    db
+      .select({
+        id: schema.friends.splitwiseId,
+        firstName: schema.friends.firstName,
+        lastName: schema.friends.lastName,
+      })
+      .from(schema.friends)
+      .where(eq(schema.friends.accountUserId, accountUserId)),
+    db
+      .select({
+        id: schema.users.splitwiseId,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, accountUserId))
+      .limit(1),
+  ]);
+
+  const map = participantNamesFromRaw(raw);
+  for (const f of friendRows) {
+    if (!map.has(f.id)) {
+      map.set(f.id, formatParticipantName(f.firstName, f.lastName, f.id));
+    }
+  }
+  const owner = ownerRow[0];
+  if (owner && !map.has(owner.id)) {
+    map.set(
+      owner.id,
+      formatParticipantName(owner.firstName, owner.lastName, owner.id),
+    );
+  }
+  return map;
 }
 
 function ftsCondition(query: string): SQL {
@@ -318,6 +411,7 @@ export async function getExpenseDetail(
     .select({
       ...listSelect,
       friendshipId: schema.expenses.friendshipId,
+      searchText: schema.expenses.searchText,
     })
     .from(schema.expenses)
     .leftJoin(schema.groups, joins.groups)
@@ -343,13 +437,20 @@ export async function getExpenseDetail(
     .from(schema.expenseShares)
     .where(eq(schema.expenseShares.expenseId, expenseId));
 
+  const nameMap = await buildParticipantNameMap(owner.id, row.raw);
   const base = mapListRow(row);
   return {
     ...base,
     groupId: row.groupId,
     categoryId: row.categoryId,
     friendshipId: row.friendshipId,
-    shares,
+    comments: expenseComments(row.raw, row.searchText),
+    shares: shares.map((s) => ({
+      ...s,
+      name:
+        nameMap.get(s.splitwiseUserId) ??
+        formatParticipantName(undefined, undefined, s.splitwiseUserId),
+    })),
     raw: row.raw,
   };
 }
