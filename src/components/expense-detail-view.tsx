@@ -136,7 +136,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
           >
             {settled ? (
               <p className="text-muted text-sm font-medium">
-                You're settled on this one
+                You are settled on this one
               </p>
             ) : balance && balanceStyle ? (
               <div className="flex items-end justify-between gap-3">
@@ -165,7 +165,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
         {!involved && (
           <div className="border-border not-involved-stripe border-t px-4 py-3">
             <p className="text-muted text-sm font-medium">
-              You're not on this split
+              You are not on this split
             </p>
           </div>
         )}
