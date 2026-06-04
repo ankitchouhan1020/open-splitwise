@@ -10,7 +10,7 @@ import { parseBulkExpenseText } from "@/lib/expenses/bulk-parse";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { formatMoney } from "@/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type BulkResult = {
   created: number;
@@ -52,15 +52,17 @@ export function BulkAddExpenseForm({ onSuccess }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkResult | null>(null);
+  const defaultGroupApplied = useRef(false);
 
   useEffect(() => {
     if (loading) return;
-    if (defaultGroup && !groupId) {
+    if (defaultGroup && !defaultGroupApplied.current) {
       setGroupId(String(defaultGroup.id));
       setGroupName(defaultGroup.name);
+      defaultGroupApplied.current = true;
     }
     setCurrencyCode(defaultCurrency);
-  }, [loading, defaultGroup, defaultCurrency, groupId]);
+  }, [loading, defaultGroup, defaultCurrency]);
 
   const parsed = useMemo(() => parseBulkExpenseText(text), [text]);
   const totalAmount = useMemo(

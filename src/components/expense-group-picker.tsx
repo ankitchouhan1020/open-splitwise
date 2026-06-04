@@ -26,8 +26,12 @@ export function ExpenseGroupPicker({
   const selectedGroup = groups.find((g) => String(g.id) === groupId);
 
   useEffect(() => {
+    if (!groupId) {
+      setGroupQuery("");
+      return;
+    }
     if (selectedGroup) setGroupQuery(selectedGroup.name);
-  }, [selectedGroup]);
+  }, [groupId, selectedGroup]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -46,6 +50,12 @@ export function ExpenseGroupPicker({
     return sorted.filter((g) => g.name.toLowerCase().includes(q)).slice(0, 8);
   }, [groupQuery, groups]);
 
+  const clearGroup = useCallback(() => {
+    onGroupChange("", "");
+    setGroupQuery("");
+    setGroupOpen(false);
+  }, [onGroupChange]);
+
   const pickGroup = useCallback(
     (g: ExpenseFormGroup) => {
       onGroupChange(String(g.id), g.name);
@@ -55,9 +65,31 @@ export function ExpenseGroupPicker({
     [onGroupChange],
   );
 
+  const toggleTopGroup = useCallback(
+    (g: ExpenseFormGroup) => {
+      if (groupId === String(g.id)) {
+        clearGroup();
+        return;
+      }
+      pickGroup(g);
+    },
+    [clearGroup, groupId, pickGroup],
+  );
+
   return (
     <div className="space-y-2">
-      <span className="text-foreground text-sm font-medium">Group</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-foreground text-sm font-medium">Group</span>
+        {groupId && (
+          <button
+            type="button"
+            onClick={clearGroup}
+            className="text-muted hover:text-foreground text-xs font-medium"
+          >
+            Clear
+          </button>
+        )}
+      </div>
       {topGroups.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {topGroups.map((g) => {
@@ -66,7 +98,7 @@ export function ExpenseGroupPicker({
               <button
                 key={g.id}
                 type="button"
-                onClick={() => pickGroup({ id: g.id, name: g.name })}
+                onClick={() => toggleTopGroup({ id: g.id, name: g.name })}
                 className={
                   active
                     ? "rounded-md bg-teal-700 px-2.5 py-1 text-xs font-medium text-white"
@@ -83,10 +115,15 @@ export function ExpenseGroupPicker({
         <input
           autoComplete="off"
           placeholder="Or search groups…"
-          value={groupOpen ? groupQuery : (selectedGroup?.name ?? groupQuery)}
+          value={groupQuery}
           onChange={(e) => {
-            setGroupQuery(e.target.value);
-            onGroupChange("", e.target.value);
+            const value = e.target.value;
+            setGroupQuery(value);
+            if (!value.trim()) {
+              onGroupChange("", "");
+            } else {
+              onGroupChange("", value);
+            }
             setGroupOpen(true);
           }}
           onFocus={() => setGroupOpen(true)}

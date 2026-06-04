@@ -27,11 +27,13 @@ import {
   useFilterOptions,
 } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 const PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 350;
 
 type ListResponse = {
   items: ExpenseListItem[];
@@ -78,16 +80,21 @@ export function ExpenseExplorer() {
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState(filters.q ?? "");
+  const [searchDraft, setSearchDraft] = useState(filters.q ?? "");
+  const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { data: filterOptions } = useFilterOptions();
-  const options: FilterOptions = filterOptions ?? {
-    groups: [],
-    friends: [],
-    categories: [],
-    currencies: [],
-  };
+  const options = useMemo<FilterOptions>(
+    () =>
+      filterOptions ?? {
+        groups: [],
+        friends: [],
+        categories: [],
+        currencies: [],
+      },
+    [filterOptions],
+  );
   const { data: groupStats = [] } = useExploreContext();
   const { data: detail, isLoading: detailLoading } =
     useExpenseDetail(selectedId);
@@ -95,30 +102,54 @@ export function ExpenseExplorer() {
   const sort = filters.sort ?? "date";
   const order = filters.order ?? "desc";
 
+  // Apply debounced search to URL (replace, not push — avoids history spam).
   useEffect(() => {
-    setSearchInput(filters.q ?? "");
-  }, [filters.q]);
+    const next = debouncedSearch.trim() || undefined;
+    if (next === filters.q) return;
+    setFilters({ q: next }, true);
+  }, [debouncedSearch, filters.q, setFilters]);
 
+  // Sync input from URL only when idle (not mid-keystroke or awaiting apply).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-      if (e.key === "Escape") setSelectedId(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    if (searchDraft.trim() !== debouncedSearch.trim()) return;
+    const urlQ = filters.q ?? "";
+    if (searchDraft !== urlQ) setSearchDraft(urlQ);
+  }, [filters.q, debouncedSearch, searchDraft]);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (searchInput !== (filters.q ?? "")) {
-        setFilters({ q: searchInput || undefined });
+  const searchPending =
+    searchDraft.trim() !== debouncedSearch.trim() ||
+    debouncedSearch.trim() !== (filters.q ?? "").trim();
+
+  const handleClearAll = useCallback(() => {
+    setSearchDraft("");
+    clearAll();
+  }, [clearAll]);
+
+  const handleApplySavedView = useCallback(
+    (viewFilters: Parameters<typeof applySavedView>[0]) => {
+      setSearchDraft(viewFilters.q ?? "");
+      applySavedView(viewFilters);
+    },
+    [applySavedView],
+  );
+
+  const handleClearFilter = useCallback(
+    (key: string) => {
+      if (key === "q") setSearchDraft("");
+      clearFilter(key);
+    },
+    [clearFilter],
+  );
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchDraft(value);
+      if (!value.trim()) {
+        setFilters({ q: undefined }, true);
       }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [searchInput, filters.q, setFilters]);
+    },
+    [setFilters],
+  );
 
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
@@ -154,21 +185,37 @@ export function ExpenseExplorer() {
     return (await res.json()) as SummaryResponse;
   }, [filters]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === "Escape") setSelectedId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const listQueryKey = listParams(1).toString();
   const summaryQueryKey = filtersToSearchParams(filters).toString();
 
   const {
     data: page1,
     isLoading: loading,
+    isFetching: listFetching,
+    isPlaceholderData: listIsPlaceholder,
     error: listError,
   } = useQuery({
     queryKey: queryKeys.expenses.list(listQueryKey),
     queryFn: () => fetchPage(1),
+    placeholderData: keepPreviousData,
   });
 
-  const { data: summary } = useQuery({
+  const { data: summary, isFetching: summaryFetching } = useQuery({
     queryKey: queryKeys.expenses.summary(summaryQueryKey),
     queryFn: fetchSummary,
+    placeholderData: keepPreviousData,
   });
 
   const error =
@@ -179,11 +226,20 @@ export function ExpenseExplorer() {
         : null;
 
   useEffect(() => {
-    if (page1) {
+    if (page1 && !listIsPlaceholder) {
       setRows(page1.items);
       setTotal(page1.total);
     }
-  }, [page1]);
+  }, [page1, listIsPlaceholder]);
+
+  const listRefreshing = listFetching && !loading && rows.length > 0;
+  const showInitialSkeleton = loading && rows.length === 0;
+  const showEmptyState =
+    !showInitialSkeleton && !listRefreshing && total === 0 && !error;
+
+  useEffect(() => {
+    parentRef.current?.scrollTo({ top: 0 });
+  }, [listQueryKey]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -256,14 +312,15 @@ export function ExpenseExplorer() {
         <div className="border-border bg-card overflow-hidden rounded-lg border">
           <ExploreSavedViews
             currentFilters={filters}
-            onApply={applySavedView}
-            onClear={clearAll}
+            onApply={handleApplySavedView}
+            onClear={handleClearAll}
           />
 
           <ExploreToolbar
             filters={filters}
-            searchInput={searchInput}
-            onSearchChange={setSearchInput}
+            searchInput={searchDraft}
+            onSearchChange={handleSearchChange}
+            searchPending={searchPending || listRefreshing || summaryFetching}
             searchRef={searchRef}
             onChange={(patch) => setFilters(patch)}
             filtersOpen={filtersOpen}
@@ -296,9 +353,9 @@ export function ExpenseExplorer() {
           )}
         </div>
 
-        {(chips.length > 0 || !loading) && (
+        {(chips.length > 0 || !showInitialSkeleton) && (
           <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1">
-            {!loading && (
+            {!showInitialSkeleton && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-foreground font-medium tabular-nums">
                   {count.toLocaleString()} expenses
@@ -307,9 +364,12 @@ export function ExpenseExplorer() {
                   · my share{" "}
                   {shareSummary(summary?.byCurrency ?? [], formatMoney)}
                 </span>
+                {(searchPending || listRefreshing) && (
+                  <span className="text-muted font-normal">· searching…</span>
+                )}
               </div>
             )}
-            {!loading && (
+            {!showInitialSkeleton && (
               <label className="text-muted flex items-center gap-1.5 font-normal sm:ml-auto">
                 Sort
                 <select
@@ -337,7 +397,7 @@ export function ExpenseExplorer() {
                 <button
                   key={chip.key}
                   type="button"
-                  onClick={() => clearFilter(chip.key)}
+                  onClick={() => handleClearFilter(chip.key)}
                   className="border-border rounded bg-stone-100 px-1.5 py-0.5 hover:bg-stone-200"
                 >
                   {chip.label} ×
@@ -346,7 +406,7 @@ export function ExpenseExplorer() {
               {chips.length > 0 && (
                 <button
                   type="button"
-                  onClick={clearAll}
+                  onClick={handleClearAll}
                   className="text-accent hover:underline"
                 >
                   Clear
@@ -364,15 +424,17 @@ export function ExpenseExplorer() {
         )}
       </div>
 
-      {loading ? (
+      {showInitialSkeleton ? (
         <ExpenseTableSkeleton rows={12} />
-      ) : !loading && total === 0 && !error ? (
+      ) : showEmptyState ? (
         <p className="text-muted rounded-lg border border-dashed p-6 text-center text-sm">
           {filters.q ? "No matches." : "No expenses in this view."}
         </p>
       ) : (
         total > 0 && (
-          <div className="border-border bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
+          <div
+            className={`border-border bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border transition-opacity ${listRefreshing ? "opacity-60" : ""}`}
+          >
             <div
               ref={parentRef}
               className="max-h-[calc(100dvh-18rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100vh-220px)]"

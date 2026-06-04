@@ -85,6 +85,7 @@ type Props = {
   filters: ExpenseFilters;
   searchInput: string;
   onSearchChange: (q: string) => void;
+  searchPending?: boolean;
   searchRef: React.RefObject<HTMLInputElement | null>;
   onChange: (patch: ExpenseFilters) => void;
   filtersOpen: boolean;
@@ -97,6 +98,7 @@ export function ExploreToolbar({
   filters,
   searchInput,
   onSearchChange,
+  searchPending = false,
   searchRef,
   onChange,
   filtersOpen,
@@ -130,8 +132,19 @@ export function ExploreToolbar({
           placeholder="Search descriptions and notes"
           value={searchInput}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border py-2.5 pr-3 pl-9 text-base outline-none focus:ring-2 md:text-sm"
+          className="border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border py-2.5 pr-10 pl-9 text-base outline-none focus:ring-2 md:text-sm"
+          aria-busy={searchPending}
         />
+        {searchInput.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            className="text-muted hover:text-foreground absolute top-1/2 right-2.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md hover:bg-stone-100"
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">

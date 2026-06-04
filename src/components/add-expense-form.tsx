@@ -61,15 +61,17 @@ export function AddExpenseForm({
 
   const amountRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const defaultGroupApplied = useRef(false);
 
   useEffect(() => {
     if (loading) return;
-    if (defaultGroup && !groupId) {
+    if (defaultGroup && !defaultGroupApplied.current) {
       setGroupId(String(defaultGroup.id));
       setGroupName(defaultGroup.name);
+      defaultGroupApplied.current = true;
     }
     setCurrencyCode(defaultCurrency);
-  }, [loading, defaultGroup, defaultCurrency, groupId]);
+  }, [loading, defaultGroup, defaultCurrency]);
 
   useEffect(() => {
     if (!autoFocus || loading) return;
