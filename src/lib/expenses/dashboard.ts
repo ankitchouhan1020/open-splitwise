@@ -10,7 +10,8 @@ import {
 import { listExpenses } from "@/lib/expenses/queries";
 import type { ExpenseListItem } from "@/lib/expenses/types";
 import { getExpenseSyncStatus } from "@/lib/sync/expenses";
-import { isExpenseSyncInProgress } from "@/lib/sync/lock";
+import { isAnySyncInProgress } from "@/lib/sync/lock";
+import { isSyncActive } from "@/lib/sync/active";
 import {
   getLiveBalanceSummary,
   type BalanceSummary,
@@ -392,7 +393,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary | null> {
       lastSyncAt: sync.lastSyncAt?.toISOString() ?? null,
       expenseCount: sync.expenseCount,
       error: sync.error,
-      inProgress: isExpenseSyncInProgress(),
+      inProgress: isSyncActive({
+        lockHeld: isAnySyncInProgress(),
+        expensesStatus: sync.status,
+        progress: sync.progress,
+      }),
     },
   };
 }

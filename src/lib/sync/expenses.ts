@@ -1,9 +1,8 @@
 import { count, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAuthenticatedAccountOwner } from "@/lib/db/account";
-import { requireAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import { buildExpenseSearchText } from "@/lib/expenses/search";
+import type { SyncRunContext } from "@/lib/sync/context";
 import type {
   SplitwiseCommentsResponse,
   SplitwiseExpense,
@@ -146,38 +145,34 @@ export type ExpenseSyncResult = {
   total: number;
 };
 
-export async function syncExpenses(): Promise<ExpenseSyncResult> {
-  const owner = await getAuthenticatedAccountOwner();
-  if (!owner) {
-    throw new Error("No connected account in database. Reconnect Splitwise.");
-  }
+export async function syncExpenses(ctx: SyncRunContext): Promise<ExpenseSyncResult> {
+  const { accountUserId, accessToken } = ctx;
 
-  await reconcileStaleSyncState(owner.id);
+  await reconcileStaleSyncState(accountUserId);
 
   if (!tryAcquireExpenseSync()) {
     throw new Error("Expense sync already in progress");
   }
 
-  const token = await requireAccessToken();
-  const client = createSplitwiseClient(token);
+  const client = createSplitwiseClient(accessToken);
   const db = getDb();
 
   let [state] = await db
     .select()
     .from(schema.syncState)
-    .where(eq(schema.syncState.accountUserId, owner.id))
+    .where(eq(schema.syncState.accountUserId, accountUserId))
     .limit(1);
 
   if (!state) {
-    await db.insert(schema.syncState).values({ accountUserId: owner.id });
+    await db.insert(schema.syncState).values({ accountUserId });
     [state] = await db
       .select()
       .from(schema.syncState)
-      .where(eq(schema.syncState.accountUserId, owner.id))
+      .where(eq(schema.syncState.accountUserId, accountUserId))
       .limit(1);
   }
 
-  await setSyncStatus(owner.id, {
+  await setSyncStatus(accountUserId, {
     expensesStatus: "syncing",
     expensesError: null,
     syncPhase: "expenses",
@@ -210,7 +205,7 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
         if ((expense.comments_count ?? 0) > 0) {
           searchText = await fetchCommentSearchText(client, expense.id);
         }
-        await upsertExpense(owner.id, expense, { searchText });
+        await upsertExpense(accountUserId, expense, { searchText });
         synced += 1;
         const u = parseDate(expense.updated_at);
         if (u && (!maxUpdatedAt || u > maxUpdatedAt)) {
@@ -219,7 +214,7 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
       }
 
       offset += PAGE_LIMIT;
-      await setSyncProgress(owner.id, {
+      await setSyncProgress(accountUserId, {
         syncPhase: "expenses",
         syncProgressSynced: synced,
       });
@@ -229,9 +224,9 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
     const [{ total }] = await db
       .select({ total: count() })
       .from(schema.expenses)
-      .where(eq(schema.expenses.accountUserId, owner.id));
+      .where(eq(schema.expenses.accountUserId, accountUserId));
 
-    await setSyncStatus(owner.id, {
+    await setSyncStatus(accountUserId, {
       expensesStatus: "idle",
       expensesError: null,
       expensesLastSyncAt: new Date(),
@@ -250,11 +245,11 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
           ? `${err.message}: ${err.cause.message}`
           : err.message
         : "sync_failed";
-    await setSyncStatus(owner.id, {
+    await setSyncStatus(accountUserId, {
       expensesStatus: "error",
       expensesError: message.slice(0, 500),
     });
-    await clearSyncProgress(owner.id);
+    await clearSyncProgress(accountUserId);
     throw err;
   } finally {
     releaseExpenseSync();

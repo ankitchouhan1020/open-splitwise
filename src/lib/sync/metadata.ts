@@ -1,8 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAuthenticatedAccountOwner } from "@/lib/db/account";
-import { requireAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
+import type { SyncRunContext } from "@/lib/sync/context";
 import type {
   SplitwiseCategoriesResponse,
   SplitwiseCategory,
@@ -56,29 +55,25 @@ async function upsertCategory(
   }
 }
 
-export async function syncMetadata(): Promise<{
+export async function syncMetadata(ctx: SyncRunContext): Promise<{
   groups: number;
   friends: number;
   categories: number;
 }> {
-  const owner = await getAuthenticatedAccountOwner();
-  if (!owner) {
-    throw new Error("No connected account in database. Reconnect Splitwise.");
-  }
+  const { accountUserId, accessToken } = ctx;
 
-  await reconcileStaleSyncState(owner.id);
+  await reconcileStaleSyncState(accountUserId);
 
   if (!tryAcquireMetadataSync()) {
     throw new Error("Metadata sync already in progress");
   }
 
-  const token = await requireAccessToken();
-  const client = createSplitwiseClient(token);
+  const client = createSplitwiseClient(accessToken);
   const db = getDb();
   const now = new Date();
 
   try {
-    await setSyncProgress(owner.id, {
+    await setSyncProgress(accountUserId, {
       syncPhase: "metadata",
       syncProgressLabel: "groups",
       syncProgressSynced: 0,
@@ -90,7 +85,7 @@ export async function syncMetadata(): Promise<{
       await db
         .insert(schema.groups)
         .values({
-          accountUserId: owner.id,
+          accountUserId,
           splitwiseId: group.id,
           name: groupName,
           groupType: group.group_type,
@@ -110,7 +105,7 @@ export async function syncMetadata(): Promise<{
         });
     }
 
-    await setSyncProgress(owner.id, { syncProgressLabel: "friends" });
+    await setSyncProgress(accountUserId, { syncProgressLabel: "friends" });
 
     const { friends } =
       await client.get<SplitwiseFriendsResponse>("get_friends");
@@ -120,7 +115,7 @@ export async function syncMetadata(): Promise<{
       await db
         .insert(schema.friends)
         .values({
-          accountUserId: owner.id,
+          accountUserId,
           splitwiseId: friend.id,
           firstName,
           lastName,
@@ -142,7 +137,7 @@ export async function syncMetadata(): Promise<{
         });
     }
 
-    await setSyncProgress(owner.id, { syncProgressLabel: "categories" });
+    await setSyncProgress(accountUserId, { syncProgressLabel: "categories" });
 
     const { categories } =
       await client.get<SplitwiseCategoriesResponse>("get_categories");
@@ -160,9 +155,9 @@ export async function syncMetadata(): Promise<{
         friendsLastSyncAt: now,
         categoriesLastSyncAt: now,
       })
-      .where(eq(schema.syncState.accountUserId, owner.id));
+      .where(eq(schema.syncState.accountUserId, accountUserId));
 
-    await clearSyncProgress(owner.id);
+    await clearSyncProgress(accountUserId);
 
     return {
       groups: groups?.length ?? 0,
@@ -170,7 +165,7 @@ export async function syncMetadata(): Promise<{
       categories: categoryCount,
     };
   } finally {
-    await clearSyncProgress(owner.id).catch(() => undefined);
+    await clearSyncProgress(accountUserId).catch(() => undefined);
     releaseMetadataSync();
   }
 }

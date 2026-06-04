@@ -52,14 +52,12 @@ export function SyncPanel({ dbConfigured }: Props) {
       setScopeMessage(result.error);
       return;
     }
-    if (scope === "metadata" && result.metadata) {
-      const m = result.metadata;
+    const exp = result.status.expenses;
+    if (scope === "metadata") {
+      setScopeMessage("Metadata sync complete.");
+    } else if (exp) {
       setScopeMessage(
-        `Updated ${m.groups} groups, ${m.friends} friends, ${m.categories} categories.`,
-      );
-    } else if (result.expenses) {
-      setScopeMessage(
-        `Synced ${result.expenses.synced} expenses (${result.expenses.total} total stored).`,
+        `Sync complete. ${exp.expenseCount.toLocaleString()} expenses stored.`,
       );
     } else {
       setScopeMessage("Sync complete.");

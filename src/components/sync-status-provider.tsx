@@ -3,6 +3,7 @@
 import { useSyncStatusQuery } from "@/lib/query/hooks";
 import { fetchJson, FetchJsonError } from "@/lib/query/fetch-json";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
+import { waitForSyncComplete } from "@/lib/query/wait-for-sync";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
@@ -44,11 +45,7 @@ type SyncStatusContextValue = {
 };
 
 export type SyncRunResult =
-  | {
-      ok: true;
-      expenses?: { synced: number; total: number };
-      metadata?: { groups: number; friends: number; categories: number };
-    }
+  | { ok: true; status: SyncStatus }
   | { ok: false; error: string };
 
 const SyncStatusContext = createContext<SyncStatusContextValue | null>(null);
@@ -82,21 +79,20 @@ export function SyncStatusProvider({
       }
       setSyncing(true);
       try {
-        const data = await fetchJson<{
-          expenses?: { synced: number; total: number };
-          metadata?: { groups: number; friends: number; categories: number };
-        }>("/api/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scope }),
+        await fetchJson<{ ok: true; started: true; scope: string }>(
+          "/api/sync",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scope }),
+          },
+        );
+        const finalStatus = await waitForSyncComplete(async () => {
+          const result = await refetch();
+          return { data: result.data };
         });
-        await refetch();
         await invalidateExpenseCaches(queryClient);
-        return {
-          ok: true,
-          expenses: data.expenses,
-          metadata: data.metadata,
-        };
+        return { ok: true, status: finalStatus };
       } catch (err) {
         await refetch();
         const message =

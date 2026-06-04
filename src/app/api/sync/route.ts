@@ -1,8 +1,13 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
-import { syncExpenses } from "@/lib/sync/expenses";
-import { syncMetadata } from "@/lib/sync/metadata";
+import { requireAccessToken } from "@/lib/auth";
+import {
+  assertSyncCanStart,
+  runSyncJob,
+  SyncAlreadyInProgressError,
+} from "@/lib/sync/run";
 import { SplitwiseApiError, SplitwiseAuthError } from "@/lib/splitwise/errors";
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -30,17 +35,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const result: Record<string, unknown> = {};
+    const accessToken = await requireAccessToken();
+    await assertSyncCanStart(owner.id, scope);
 
-    if (scope === "all" || scope === "metadata") {
-      result.metadata = await syncMetadata();
-    }
-    if (scope === "all" || scope === "expenses") {
-      result.expenses = await syncExpenses();
-    }
+    const ctx = { accountUserId: owner.id, accessToken };
 
-    return NextResponse.json({ ok: true, ...result });
+    after(async () => {
+      await runSyncJob({ scope, ctx });
+    });
+
+    return NextResponse.json(
+      { ok: true, started: true, scope },
+      { status: 202 },
+    );
   } catch (err) {
+    if (err instanceof SyncAlreadyInProgressError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
     if (err instanceof SplitwiseAuthError) {
       return NextResponse.json(
         { error: "splitwise_auth_required" },
@@ -54,7 +65,6 @@ export async function POST(request: Request) {
       );
     }
     const message = err instanceof Error ? err.message : "sync_failed";
-    const status = message.includes("already in progress") ? 409 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
