@@ -1,5 +1,6 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { upsertAccountOwner } from "@/lib/db/account";
+import { appPathUrl, resolveAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/splitwise/api";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { exchangeCodeForToken } from "@/lib/splitwise/oauth";
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
-  const settingsUrl = new URL("/settings", request.url);
+  const origin = requestOriginFromHeaders(request.headers);
+  const settingsUrl = appPathUrl("/settings", origin);
 
   if (error) {
     settingsUrl.searchParams.set("error", error);
@@ -35,7 +37,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const origin = requestOriginFromHeaders(request.headers);
     const token = await exchangeCodeForToken(code, origin);
     const { user } = await getCurrentUser(token.access_token);
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
         defaultCurrency: user.default_currency,
       });
       // Background sync — do not block redirect
-      const base = new URL(request.url).origin;
+      const base = resolveAppUrl(origin);
       fetch(`${base}/api/sync`, {
         method: "POST",
         headers: {

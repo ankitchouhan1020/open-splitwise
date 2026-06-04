@@ -1,11 +1,11 @@
-import { getSuggestedRedirectUri, resolveAppUrl } from "@/lib/app-url";
+import { getSuggestedRedirectUri, resolvePublicAppUrl } from "@/lib/app-url";
 import { isDatabaseConfigured } from "@/lib/db/config";
 import {
   readConfiguredRedirectUri,
   resolveSplitwiseRedirectUri,
 } from "@/lib/splitwise/redirect-uri";
 
-export { getSuggestedRedirectUri, resolveAppUrl } from "@/lib/app-url";
+export { getSuggestedRedirectUri, resolveAppUrl, resolvePublicAppUrl } from "@/lib/app-url";
 
 export type EnvVarKey =
   | "SESSION_SECRET"
@@ -128,7 +128,7 @@ function isEnvVarConfigured(key: EnvVarKey): boolean {
 }
 
 export function getSetupStatus(requestOrigin: string): SetupStatus {
-  const appUrl = resolveAppUrl(requestOrigin);
+  const appUrl = resolvePublicAppUrl(requestOrigin);
   const suggestedRedirectUri = getSuggestedRedirectUri(appUrl);
   const configuredRedirect = readConfiguredRedirectUri();
   const redirectUri = resolveSplitwiseRedirectUri(requestOrigin);

@@ -1,4 +1,6 @@
 import { getIronSession } from "iron-session";
+import { appPathUrl } from "@/lib/app-url";
+import { requestOriginFromHeaders } from "@/lib/request-origin";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
@@ -53,7 +55,8 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isProtectedPage(pathname) && !sessionHasAccessToken(session)) {
-      const settings = new URL("/settings", request.url);
+      const origin = requestOriginFromHeaders(request.headers);
+      const settings = appPathUrl("/settings", origin);
       settings.searchParams.set("error", "connect_required");
       return NextResponse.redirect(settings);
     }
