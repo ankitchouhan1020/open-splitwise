@@ -17,6 +17,24 @@ function parseDate(value: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Map Splitwise API expense to DB row; never pass undefined (Drizzle emits invalid DEFAULT). */
+function normalizeExpenseRow(expense: SplitwiseExpense) {
+  const description = expense.description?.trim();
+  const details = expense.details?.trim();
+
+  return {
+    groupId: expense.group_id ?? 0,
+    friendshipId: expense.friendship_id ?? null,
+    cost: expense.cost,
+    currencyCode: expense.currency_code,
+    categoryId: expense.category_id ?? expense.category?.id ?? null,
+    description:
+      description && description.length > 0 ? description : "(no description)",
+    details: details && details.length > 0 ? details : null,
+    payment: expense.payment ?? false,
+  };
+}
+
 async function upsertExpense(
   accountUserId: number,
   expense: SplitwiseExpense,
@@ -25,47 +43,35 @@ async function upsertExpense(
   const deletedAt = parseDate(expense.deleted_at);
   const expenseDate = parseDate(expense.date) ?? new Date();
   const updatedAt = parseDate(expense.updated_at) ?? new Date();
+  const row = normalizeExpenseRow(expense);
+  const syncedAt = new Date();
 
-  const [row] = await db
+  const [inserted] = await db
     .insert(schema.expenses)
     .values({
       accountUserId,
       splitwiseId: expense.id,
-      groupId: expense.group_id ?? 0,
-      friendshipId: expense.friendship_id,
-      cost: expense.cost,
-      currencyCode: expense.currency_code,
-      categoryId: expense.category_id,
-      description: expense.description,
-      details: expense.details,
+      ...row,
       date: expenseDate,
-      payment: expense.payment ?? false,
       deletedAt,
       raw: expense,
       updatedAt,
-      syncedAt: new Date(),
+      syncedAt,
     })
     .onConflictDoUpdate({
       target: [schema.expenses.accountUserId, schema.expenses.splitwiseId],
       set: {
-        groupId: expense.group_id ?? 0,
-        friendshipId: expense.friendship_id,
-        cost: expense.cost,
-        currencyCode: expense.currency_code,
-        categoryId: expense.category_id,
-        description: expense.description,
-        details: expense.details,
+        ...row,
         date: expenseDate,
-        payment: expense.payment ?? false,
         deletedAt,
         raw: expense,
         updatedAt,
-        syncedAt: new Date(),
+        syncedAt,
       },
     })
     .returning({ id: schema.expenses.id });
 
-  const expenseId = row.id;
+  const expenseId = inserted.id;
 
   await db
     .delete(schema.expenseShares)
@@ -189,7 +195,12 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
 
     return { synced, total };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "sync_failed";
+    const message =
+      err instanceof Error
+        ? err.cause instanceof Error
+          ? `${err.message}: ${err.cause.message}`
+          : err.message
+        : "sync_failed";
     await setSyncStatus(owner.id, {
       expensesStatus: "error",
       expensesError: message.slice(0, 500),

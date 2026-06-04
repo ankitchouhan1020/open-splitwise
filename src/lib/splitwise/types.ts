@@ -30,7 +30,7 @@ export type SplitwiseExpenseUser = {
 
 export type SplitwiseExpense = {
   id: number;
-  group_id: number;
+  group_id: number | null;
   friendship_id: number | null;
   cost: string;
   currency_code: string;
