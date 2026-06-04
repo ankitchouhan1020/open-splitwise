@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { getAppSession, sessionHasAccessToken } from "@/lib/session";
 
 export async function upsertAccountOwner(user: {
   splitwiseId: number;
@@ -48,6 +49,7 @@ export async function upsertAccountOwner(user: {
   return created;
 }
 
+/** @deprecated Use getAuthenticatedAccountOwner — does not verify session. */
 export async function getAccountOwner() {
   const db = getDb();
   const [owner] = await db
@@ -55,6 +57,23 @@ export async function getAccountOwner() {
     .from(schema.users)
     .where(eq(schema.users.isAccountOwner, true))
     .limit(1);
+  return owner ?? null;
+}
+
+/** Account owner for the current session; null if not connected. */
+export async function getAuthenticatedAccountOwner() {
+  const session = await getAppSession();
+  if (!sessionHasAccessToken(session)) return null;
+
+  const db = getDb();
+  const where = session.splitwiseUserId
+    ? and(
+        eq(schema.users.splitwiseId, session.splitwiseUserId),
+        eq(schema.users.isAccountOwner, true),
+      )
+    : eq(schema.users.isAccountOwner, true);
+
+  const [owner] = await db.select().from(schema.users).where(where).limit(1);
   return owner ?? null;
 }
 

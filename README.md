@@ -12,13 +12,13 @@ Self-hosted companion for [Splitwise](https://splitwise.com): sync your data loc
 cp .env.example .env.local
 ```
 
-| Variable | Purpose |
-| --- | --- |
-| `SESSION_SECRET` | Random string (`openssl rand -base64 32`) — no `$(...)` in the file |
-| `DATABASE_URL` | Postgres connection string |
-| `SPLITWISE_CLIENT_ID` / `SECRET` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps) |
-| `SPLITWISE_REDIRECT_URI` | Must match OAuth app exactly, e.g. `http://localhost:3000/api/auth/splitwise/callback` |
-| `NEXT_PUBLIC_APP_URL` | Public app URL (same host as redirect, without path) |
+| Variable                         | Purpose                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `SESSION_SECRET`                 | Random string (`openssl rand -base64 32`) — no `$(...)` in the file                    |
+| `DATABASE_URL`                   | Postgres connection string                                                             |
+| `SPLITWISE_CLIENT_ID` / `SECRET` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps)                    |
+| `SPLITWISE_REDIRECT_URI`         | Must match OAuth app exactly, e.g. `http://localhost:3000/api/auth/splitwise/callback` |
+| `NEXT_PUBLIC_APP_URL`            | Public app URL (same host as redirect, without path)                                   |
 
 ### 2. Database
 
@@ -36,6 +36,8 @@ pnpm dev          # http://localhost:3000
 
 Connect in **Settings** → **Sync now** to pull expenses.
 
+**Security:** All `/api/*` routes except health and OAuth require a valid Splitwise session cookie. `/explore` and `/insights` redirect to Settings if not connected. Cloudflare Access is optional extra perimeter, not required.
+
 ```bash
 pnpm typecheck && pnpm lint && pnpm test
 ```
@@ -44,9 +46,9 @@ pnpm typecheck && pnpm lint && pnpm test
 
 ### Deploy elsewhere
 
-| Target | How |
-| --- | --- |
-| **Docker** | `docker compose up --build` — app + Postgres, migrations on start |
+| Target      | How                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------ |
+| **Docker**  | `docker compose up --build` — app + Postgres, migrations on start                    |
 | **Railway** | Connect repo, add Postgres plugin, set env vars — see [`railway.toml`](railway.toml) |
 
 On Railway, set `NEXT_PUBLIC_APP_URL` and `SPLITWISE_REDIRECT_URI` to your `*.up.railway.app` URL.
@@ -70,11 +72,11 @@ Browser ──► Next.js (App Router)
                   categories, sync_state, saved_filter_views)
 ```
 
-| Layer | Location |
-| --- | --- |
-| UI | `src/app/`, `src/components/` |
-| HTTP API | `src/app/api/` |
-| Business logic | `src/lib/` |
+| Layer               | Location                           |
+| ------------------- | ---------------------------------- |
+| UI                  | `src/app/`, `src/components/`      |
+| HTTP API            | `src/app/api/`                     |
+| Business logic      | `src/lib/`                         |
 | Schema & migrations | `src/lib/db/schema.ts`, `drizzle/` |
 
 ---
@@ -129,13 +131,13 @@ flowchart LR
 
 ### Key paths
 
-| Flow | Entry |
-| --- | --- |
-| List / filter expenses | `src/lib/expenses/queries.ts` |
-| Expense detail | `GET /api/expenses/[id]` |
-| CSV export | `GET /api/expenses/export` |
-| Splitwise deep links | `src/lib/splitwise/urls.ts` |
-| DB account scope | `src/lib/db/account.ts` (`is_account_owner`) |
+| Flow                   | Entry                                        |
+| ---------------------- | -------------------------------------------- |
+| List / filter expenses | `src/lib/expenses/queries.ts`                |
+| Expense detail         | `GET /api/expenses/[id]`                     |
+| CSV export             | `GET /api/expenses/export`                   |
+| Splitwise deep links   | `src/lib/splitwise/urls.ts`                  |
+| DB account scope       | `src/lib/db/account.ts` (`is_account_owner`) |
 
 ---
 

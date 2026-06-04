@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { requireAccessToken } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type { SplitwiseCreateExpenseResponse } from "@/lib/splitwise/types";
 import { upsertExpense } from "@/lib/sync/expenses";
@@ -22,7 +22,7 @@ export async function createGroupExpense(
   | { ok: true; expenseId: number; splitwiseId: number }
   | { error: string; details?: Record<string, string[]> }
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
   const token = await requireAccessToken();

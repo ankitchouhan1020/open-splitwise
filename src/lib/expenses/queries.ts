@@ -13,7 +13,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import type { ExpenseFilters, ExpenseListSort } from "@/lib/expenses/filters";
 
 export type { ExpenseListSort, ExpenseListOrder } from "@/lib/expenses/filters";
@@ -239,7 +239,7 @@ export async function listExpenses(filters: ExpenseFilters = {}): Promise<{
   page: number;
   pageSize: number;
 }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
     return { items: [], total: 0, page: 1, pageSize: filters.pageSize ?? 100 };
   }
@@ -283,7 +283,7 @@ export async function listAllExpensesForExport(
   filters: ExpenseFilters = {},
   limit = 50_000,
 ): Promise<ExpenseListItem[]> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();
@@ -309,7 +309,7 @@ export async function listAllExpensesForExport(
 export async function getExpenseDetail(
   expenseId: number,
 ): Promise<ExpenseDetail | null> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return null;
 
   const db = getDb();
@@ -360,7 +360,7 @@ export async function getFilterOptions(): Promise<{
   categories: Array<{ id: number; name: string }>;
   currencies: string[];
 }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
     return { groups: [], friends: [], categories: [], currencies: [] };
   }

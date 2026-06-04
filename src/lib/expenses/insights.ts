@@ -1,6 +1,6 @@
 import { and, count, eq, isNull, sql, sum } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
 import { buildExpenseWhere } from "@/lib/expenses/queries";
 
@@ -30,7 +30,7 @@ export async function getMonthlySpend(
 ): Promise<
   Array<{ month: string; currency: string; total: string; count: number }>
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();
@@ -77,7 +77,7 @@ export async function getCategoryBreakdown(
     count: number;
   }>
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();
@@ -133,7 +133,7 @@ export async function getPeriodComparison(
     deltaPct: number | null;
   }>;
 }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
     return {
       currentTotal: "0",
@@ -208,7 +208,7 @@ export async function getGroupSummary(filters: InsightsFilters): Promise<
     percentOfTotal: number;
   }>
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();
@@ -263,7 +263,7 @@ export async function getFriendSummary(filters: InsightsFilters): Promise<
     expenseCount: number;
   }>
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();

@@ -9,7 +9,7 @@ export type AppSession = {
 
 export const SESSION_COOKIE = "open_splitwise_session";
 
-function sessionOptions(): SessionOptions {
+export function getIronSessionOptions(): SessionOptions {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error("SESSION_SECRET must be set (min 32 characters)");
@@ -27,7 +27,11 @@ function sessionOptions(): SessionOptions {
 }
 
 export async function getAppSession() {
-  return getIronSession<AppSession>(await cookies(), sessionOptions());
+  return getIronSession<AppSession>(await cookies(), getIronSessionOptions());
+}
+
+export function sessionHasAccessToken(session: AppSession): boolean {
+  return Boolean(session.accessToken);
 }
 
 export async function clearAppSession() {

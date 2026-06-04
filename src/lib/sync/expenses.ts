@@ -1,6 +1,6 @@
 import { count, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { requireAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import { buildExpenseSearchText } from "@/lib/expenses/search";
@@ -141,7 +141,7 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
     throw new Error("Expense sync already in progress");
   }
 
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
     releaseExpenseSync();
     throw new Error("No connected account in database. Reconnect Splitwise.");

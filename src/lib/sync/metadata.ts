@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { requireAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type {
@@ -63,7 +63,7 @@ export async function syncMetadata(): Promise<{
     throw new Error("Metadata sync already in progress");
   }
 
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
     releaseMetadataSync();
     throw new Error("No connected account in database. Reconnect Splitwise.");

@@ -1,5 +1,5 @@
 import { isDatabaseConfigured } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { syncExpenses } from "@/lib/sync/expenses";
 import { syncMetadata } from "@/lib/sync/metadata";
 import { SplitwiseApiError, SplitwiseAuthError } from "@/lib/splitwise/errors";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const scope = body.scope ?? "all";
 
   try {
-    const owner = await getAccountOwner();
+    const owner = await getAuthenticatedAccountOwner();
     if (!owner) {
       return NextResponse.json(
         {

@@ -1,6 +1,6 @@
 import { and, asc, count, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { getAccountOwner } from "@/lib/db/account";
+import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { filtersFromJson, type ExpenseFilters } from "@/lib/expenses/filters";
 
 const MAX_VIEWS = 20;
@@ -8,7 +8,7 @@ const MAX_VIEWS = 20;
 export async function listSavedViews(): Promise<
   Array<{ id: number; name: string; filters: ExpenseFilters }>
 > {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
 
   const db = getDb();
@@ -29,7 +29,7 @@ export async function createSavedView(
   name: string,
   filters: ExpenseFilters,
 ): Promise<{ id: number; name: string } | { error: string }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
   const trimmed = name.trim();
@@ -64,7 +64,7 @@ export async function updateSavedView(
   id: number,
   patch: { name?: string; filters?: ExpenseFilters },
 ): Promise<{ ok: true } | { error: string }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
   const db = getDb();
@@ -88,7 +88,7 @@ export async function updateSavedView(
 export async function deleteSavedView(
   id: number,
 ): Promise<{ ok: true } | { error: string }> {
-  const owner = await getAccountOwner();
+  const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
   const db = getDb();
