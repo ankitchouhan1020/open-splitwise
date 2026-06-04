@@ -1,6 +1,8 @@
 import { getConnectedUser } from "@/lib/auth";
+import { isDatabaseConfigured } from "@/lib/db";
 import { getEnvOptional } from "@/lib/env";
 import { ConnectionPanel } from "@/app/settings/connection-panel";
+import { SyncPanel } from "@/app/settings/sync-panel";
 
 type PageProps = {
   searchParams: Promise<{
@@ -33,6 +35,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
         error={params.error ?? null}
         justConnected={params.connected === "1"}
       />
+
+      {user && <SyncPanel dbConfigured={isDatabaseConfigured()} />}
     </main>
   );
 }

@@ -48,6 +48,16 @@ export async function GET(request: NextRequest) {
         email: user.email,
         defaultCurrency: user.default_currency,
       });
+      // Background sync — do not block redirect
+      const base = new URL(request.url).origin;
+      fetch(`${base}/api/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: request.headers.get("cookie") ?? "",
+        },
+        body: JSON.stringify({ scope: "all" }),
+      }).catch(() => {});
     }
 
     settingsUrl.searchParams.set("connected", "1");
