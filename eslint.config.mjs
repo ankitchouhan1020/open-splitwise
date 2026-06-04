@@ -14,7 +14,7 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   prettier,
   {
-    ignores: ["node_modules/**", ".next/**", "out/**"],
+    ignores: ["node_modules/**", ".next/**", "out/**", "next-env.d.ts"],
   },
 ];
 

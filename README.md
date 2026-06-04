@@ -27,6 +27,26 @@ pnpm lint
 
 **Health check:** `GET http://localhost:3000/api/health` → `{ "ok": true }`
 
+## Self-hosted (Docker)
+
+1. Register a Splitwise OAuth app at [dev.splitwise.com](https://dev.splitwise.com/).
+2. Set redirect URI to `http://localhost:3000/api/auth/splitwise/callback` (or your public URL).
+3. Configure environment:
+
+```bash
+cp .env.example .env
+# Set SESSION_SECRET (openssl rand -base64 32)
+# Set SPLITWISE_CLIENT_ID and SPLITWISE_CLIENT_SECRET
+```
+
+4. Start stack:
+
+```bash
+docker compose up --build
+```
+
+App waits for Postgres (`pg_isready`) before starting. Database migrations are added in US-005.
+
 ## Ralph setup (installed)
 
 | Path                             | Purpose                                |
