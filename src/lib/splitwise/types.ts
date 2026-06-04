@@ -63,8 +63,8 @@ export type SplitwiseGroupsResponse = {
 
 export type SplitwiseFriend = {
   id: number;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string | null;
   updated_at: string | null;
 };

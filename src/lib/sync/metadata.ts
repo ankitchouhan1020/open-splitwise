@@ -17,6 +17,12 @@ function parseDate(value: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Splitwise may omit or null out name fields; DB columns are NOT NULL text. */
+function normalizeName(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : "";
+}
+
 async function upsertCategory(
   category: SplitwiseCategory,
   parentId: number | null,
@@ -71,12 +77,13 @@ export async function syncMetadata(): Promise<{
   try {
     const { groups } = await client.get<SplitwiseGroupsResponse>("get_groups");
     for (const group of groups ?? []) {
+      const groupName = normalizeName(group.name) || `Group #${group.id}`;
       await db
         .insert(schema.groups)
         .values({
           accountUserId: owner.id,
           splitwiseId: group.id,
-          name: group.name,
+          name: groupName,
           groupType: group.group_type,
           updatedAt: parseDate(group.updated_at),
           raw: group,
@@ -85,7 +92,7 @@ export async function syncMetadata(): Promise<{
         .onConflictDoUpdate({
           target: [schema.groups.accountUserId, schema.groups.splitwiseId],
           set: {
-            name: group.name,
+            name: groupName,
             groupType: group.group_type,
             updatedAt: parseDate(group.updated_at),
             raw: group,
@@ -97,13 +104,15 @@ export async function syncMetadata(): Promise<{
     const { friends } =
       await client.get<SplitwiseFriendsResponse>("get_friends");
     for (const friend of friends ?? []) {
+      const firstName = normalizeName(friend.first_name);
+      const lastName = normalizeName(friend.last_name);
       await db
         .insert(schema.friends)
         .values({
           accountUserId: owner.id,
           splitwiseId: friend.id,
-          firstName: friend.first_name,
-          lastName: friend.last_name,
+          firstName,
+          lastName,
           email: friend.email,
           updatedAt: parseDate(friend.updated_at),
           raw: friend,
@@ -112,8 +121,8 @@ export async function syncMetadata(): Promise<{
         .onConflictDoUpdate({
           target: [schema.friends.accountUserId, schema.friends.splitwiseId],
           set: {
-            firstName: friend.first_name,
-            lastName: friend.last_name,
+            firstName,
+            lastName,
             email: friend.email,
             updatedAt: parseDate(friend.updated_at),
             raw: friend,
