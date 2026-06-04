@@ -1,9 +1,24 @@
+import { HomeDashboard } from "@/app/home-dashboard";
 import { AppNav } from "@/components/app-nav";
 import { getConnectedUser } from "@/lib/auth";
 import Link from "next/link";
 
 export default async function HomePage() {
   const user = await getConnectedUser();
+
+  if (user) {
+    const userName =
+      [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email;
+    return (
+      <>
+        <AppNav />
+        <main className="mx-auto max-w-4xl px-6 py-8">
+          <HomeDashboard userName={userName} />
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <AppNav />
@@ -21,34 +36,12 @@ export default async function HomePage() {
           </p>
         </div>
 
-        {user && (
-          <p className="text-muted text-sm">
-            Connected as {user.first_name} {user.last_name} ({user.email})
-          </p>
-        )}
-
         <div className="flex flex-wrap gap-3">
-          {user && (
-            <>
-              <Link
-                href="/explore"
-                className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-              >
-                Explore expenses
-              </Link>
-              <Link
-                href="/insights"
-                className="border-border bg-card text-foreground rounded-lg border px-4 py-2 text-sm font-medium hover:bg-stone-50"
-              >
-                Insights
-              </Link>
-            </>
-          )}
           <Link
-            href={user ? "/settings" : "/api/auth/splitwise"}
-            className="border-border bg-card text-foreground rounded-lg border px-4 py-2 text-sm font-medium hover:bg-stone-50"
+            href="/api/auth/splitwise"
+            className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            {user ? "Settings" : "Connect Splitwise"}
+            Connect Splitwise
           </Link>
           <a
             href="/api/health"
