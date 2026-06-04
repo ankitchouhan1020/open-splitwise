@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app-shell";
 import { AppFooter } from "@/components/app-footer";
 import { AddExpenseForm } from "@/app/explore/add-expense-form";
 import { ExpenseExplorer } from "@/app/explore/expense-explorer";
@@ -14,8 +14,7 @@ export default async function ExplorePage() {
   const user = await getConnectedUser();
 
   return (
-    <>
-      <AppNav />
+    <AppShell>
       <main className="mx-auto max-w-6xl px-6 py-8">
         <h1 className="text-2xl font-semibold">Explore expenses</h1>
         <p className="text-muted mt-1 text-sm">
@@ -40,6 +39,6 @@ export default async function ExplorePage() {
         )}
       </main>
       <AppFooter />
-    </>
+    </AppShell>
   );
 }

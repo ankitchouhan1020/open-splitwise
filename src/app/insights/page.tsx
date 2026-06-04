@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app-shell";
 import { AppFooter } from "@/components/app-footer";
 import { InsightsDashboard } from "@/app/insights/insights-dashboard";
 import { getConnectedUser } from "@/lib/auth";
@@ -8,8 +8,7 @@ export default async function InsightsPage() {
   const user = await getConnectedUser();
 
   return (
-    <>
-      <AppNav />
+    <AppShell>
       <main className="mx-auto max-w-6xl px-6 py-8">
         <h1 className="text-2xl font-semibold">Insights</h1>
         <p className="text-muted mt-1 text-sm">
@@ -30,6 +29,6 @@ export default async function InsightsPage() {
         )}
       </main>
       <AppFooter />
-    </>
+    </AppShell>
   );
 }

@@ -1,5 +1,5 @@
 import { HomeDashboard } from "@/app/home-dashboard";
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app-shell";
 import { getConnectedUser } from "@/lib/auth";
 import Link from "next/link";
 
@@ -10,18 +10,16 @@ export default async function HomePage() {
     const userName =
       [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email;
     return (
-      <>
-        <AppNav />
+      <AppShell>
         <main className="mx-auto max-w-4xl px-6 py-8">
           <HomeDashboard userName={userName} />
         </main>
-      </>
+      </AppShell>
     );
   }
 
   return (
-    <>
-      <AppNav />
+    <AppShell>
       <main className="mx-auto flex min-h-[calc(100vh-49px)] max-w-3xl flex-col justify-center gap-8 px-6 py-16">
         <div className="space-y-3">
           <p className="text-accent text-sm font-medium tracking-wide uppercase">
@@ -56,6 +54,6 @@ export default async function HomePage() {
           friends.
         </p>
       </main>
-    </>
+    </AppShell>
   );
 }
