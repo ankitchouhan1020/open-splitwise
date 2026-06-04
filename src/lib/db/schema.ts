@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -11,12 +12,15 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
+/** Splitwise API ids can exceed int32; store as bigint. */
+const splitwiseId = (name: string) => bigint(name, { mode: "number" });
+
 /** Connected Splitwise account (owner of synced data). */
 export const users = pgTable(
   "users",
   {
     id: serial("id").primaryKey(),
-    splitwiseId: integer("splitwise_id").notNull(),
+    splitwiseId: splitwiseId("splitwise_id").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     email: text("email").notNull(),
@@ -39,7 +43,7 @@ export const groups = pgTable(
     accountUserId: integer("account_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    splitwiseId: integer("splitwise_id").notNull(),
+    splitwiseId: splitwiseId("splitwise_id").notNull(),
     name: text("name").notNull(),
     groupType: text("group_type"),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
@@ -64,7 +68,7 @@ export const friends = pgTable(
     accountUserId: integer("account_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    splitwiseId: integer("splitwise_id").notNull(),
+    splitwiseId: splitwiseId("splitwise_id").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     email: text("email"),
@@ -87,9 +91,9 @@ export const categories = pgTable(
   "categories",
   {
     id: serial("id").primaryKey(),
-    splitwiseId: integer("splitwise_id").notNull(),
+    splitwiseId: splitwiseId("splitwise_id").notNull(),
     name: text("name").notNull(),
-    parentSplitwiseId: integer("parent_splitwise_id"),
+    parentSplitwiseId: splitwiseId("parent_splitwise_id"),
     raw: jsonb("raw").notNull().default({}),
     syncedAt: timestamp("synced_at", { withTimezone: true })
       .notNull()
@@ -105,14 +109,16 @@ export const expenses = pgTable(
     accountUserId: integer("account_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    splitwiseId: integer("splitwise_id").notNull(),
-    groupId: integer("group_id"),
-    friendshipId: integer("friendship_id"),
+    splitwiseId: splitwiseId("splitwise_id").notNull(),
+    groupId: splitwiseId("group_id"),
+    friendshipId: splitwiseId("friendship_id"),
     cost: numeric("cost", { precision: 14, scale: 2 }).notNull(),
     currencyCode: text("currency_code").notNull(),
-    categoryId: integer("category_id"),
+    categoryId: splitwiseId("category_id"),
     description: text("description").notNull(),
     details: text("details"),
+    /** Extra searchable text (e.g. synced comment bodies). */
+    searchText: text("search_text").notNull().default(""),
     date: timestamp("date", { withTimezone: true }).notNull(),
     payment: boolean("payment").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -143,7 +149,7 @@ export const expenseShares = pgTable(
     expenseId: integer("expense_id")
       .notNull()
       .references(() => expenses.id, { onDelete: "cascade" }),
-    splitwiseUserId: integer("splitwise_user_id").notNull(),
+    splitwiseUserId: splitwiseId("splitwise_user_id").notNull(),
     paidShare: numeric("paid_share", { precision: 14, scale: 2 }).notNull(),
     owedShare: numeric("owed_share", { precision: 14, scale: 2 }).notNull(),
     netBalance: numeric("net_balance", { precision: 14, scale: 2 }),
@@ -154,6 +160,31 @@ export const expenseShares = pgTable(
       table.splitwiseUserId,
     ),
     index("expense_shares_expense_id_idx").on(table.expenseId),
+  ],
+);
+
+export const savedFilterViews = pgTable(
+  "saved_filter_views",
+  {
+    id: serial("id").primaryKey(),
+    accountUserId: integer("account_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    filters: jsonb("filters").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("saved_filter_views_account_name_unique").on(
+      table.accountUserId,
+      table.name,
+    ),
+    index("saved_filter_views_account_user_id_idx").on(table.accountUserId),
   ],
 );
 

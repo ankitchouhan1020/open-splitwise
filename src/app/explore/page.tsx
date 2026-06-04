@@ -1,7 +1,14 @@
 import { AppNav } from "@/components/app-nav";
+import { AppFooter } from "@/components/app-footer";
+import { AddExpenseForm } from "@/app/explore/add-expense-form";
 import { ExpenseExplorer } from "@/app/explore/expense-explorer";
 import { getConnectedUser } from "@/lib/auth";
 import Link from "next/link";
+import { Suspense } from "react";
+
+function ExplorerFallback() {
+  return <p className="text-muted mt-6 text-sm">Loading explorer…</p>;
+}
 
 export default async function ExplorePage() {
   const user = await getConnectedUser();
@@ -12,7 +19,8 @@ export default async function ExplorePage() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <h1 className="text-2xl font-semibold">Explore expenses</h1>
         <p className="text-muted mt-1 text-sm">
-          Dense, sortable list synced from your Splitwise account.
+          Search, filter, and browse synced expenses. Press{" "}
+          <kbd className="rounded border px-1">/</kbd> to focus search.
         </p>
 
         {!user ? (
@@ -23,11 +31,15 @@ export default async function ExplorePage() {
             to view expenses.
           </p>
         ) : (
-          <div className="mt-6">
-            <ExpenseExplorer />
+          <div className="mt-6 space-y-8">
+            <Suspense fallback={<ExplorerFallback />}>
+              <ExpenseExplorer />
+            </Suspense>
+            <AddExpenseForm />
           </div>
         )}
       </main>
+      <AppFooter />
     </>
   );
 }

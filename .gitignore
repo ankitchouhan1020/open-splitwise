@@ -1,14 +1,22 @@
-# Ralph working files (generated during runs)
+# Ralph / agent workflow (local; not shipped with the app)
+tasks/
+skills/
 scripts/ralph/prd.json
 scripts/ralph/progress.txt
 scripts/ralph/.last-branch
+scripts/ralph/archive/
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Next.js
 .next/
 out/
+.vercel/
+.turbo/
+
+# TypeScript
 tsconfig.tsbuildinfo
 
 # Dependencies / env
@@ -17,3 +25,20 @@ node_modules/
 .env.local
 .env.*.local
 !.env.example
+
+# Test / tooling
+coverage/
+.vitest/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE / editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Build output
+dist/

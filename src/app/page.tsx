@@ -29,12 +29,20 @@ export default async function HomePage() {
 
         <div className="flex flex-wrap gap-3">
           {user && (
-            <Link
-              href="/explore"
-              className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Explore expenses
-            </Link>
+            <>
+              <Link
+                href="/explore"
+                className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Explore expenses
+              </Link>
+              <Link
+                href="/insights"
+                className="border-border bg-card text-foreground rounded-lg border px-4 py-2 text-sm font-medium hover:bg-stone-50"
+              >
+                Insights
+              </Link>
+            </>
           )}
           <Link
             href={user ? "/settings" : "/api/auth/splitwise"}

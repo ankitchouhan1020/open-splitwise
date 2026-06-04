@@ -3,10 +3,13 @@ import { getDb, schema } from "@/lib/db";
 import { getAccountOwner } from "@/lib/db/account";
 import { requireAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
+import { buildExpenseSearchText } from "@/lib/expenses/search";
 import type {
+  SplitwiseCommentsResponse,
   SplitwiseExpense,
   SplitwiseExpensesResponse,
 } from "@/lib/splitwise/types";
+import type { SplitwiseClient } from "@/lib/splitwise/client";
 import { releaseExpenseSync, tryAcquireExpenseSync } from "@/lib/sync/lock";
 
 const PAGE_LIMIT = 50;
@@ -18,7 +21,10 @@ function parseDate(value: string | null | undefined): Date | null {
 }
 
 /** Map Splitwise API expense to DB row; never pass undefined (Drizzle emits invalid DEFAULT). */
-function normalizeExpenseRow(expense: SplitwiseExpense) {
+function normalizeExpenseRow(
+  expense: SplitwiseExpense,
+  options?: { searchText?: string },
+) {
   const description = expense.description?.trim();
   const details = expense.details?.trim();
 
@@ -32,18 +38,36 @@ function normalizeExpenseRow(expense: SplitwiseExpense) {
       description && description.length > 0 ? description : "(no description)",
     details: details && details.length > 0 ? details : null,
     payment: expense.payment ?? false,
+    searchText: options?.searchText ?? "",
   };
 }
 
-async function upsertExpense(
+async function fetchCommentSearchText(
+  client: SplitwiseClient,
+  expenseId: number,
+): Promise<string> {
+  try {
+    const { comments } = await client.get<SplitwiseCommentsResponse>(
+      `get_comments?expense_id=${expenseId}`,
+    );
+    return buildExpenseSearchText(
+      (comments ?? []).map((c) => c.content).filter(Boolean),
+    );
+  } catch {
+    return "";
+  }
+}
+
+export async function upsertExpense(
   accountUserId: number,
   expense: SplitwiseExpense,
+  options?: { searchText?: string },
 ): Promise<void> {
   const db = getDb();
   const deletedAt = parseDate(expense.deleted_at);
   const expenseDate = parseDate(expense.date) ?? new Date();
   const updatedAt = parseDate(expense.updated_at) ?? new Date();
-  const row = normalizeExpenseRow(expense);
+  const row = normalizeExpenseRow(expense, options);
   const syncedAt = new Date();
 
   const [inserted] = await db
@@ -168,7 +192,11 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
       if (!expenses?.length) break;
 
       for (const expense of expenses) {
-        await upsertExpense(owner.id, expense);
+        let searchText = "";
+        if ((expense.comments_count ?? 0) > 0) {
+          searchText = await fetchCommentSearchText(client, expense.id);
+        }
+        await upsertExpense(owner.id, expense, { searchText });
         synced += 1;
         const u = parseDate(expense.updated_at);
         if (u && (!maxUpdatedAt || u > maxUpdatedAt)) {

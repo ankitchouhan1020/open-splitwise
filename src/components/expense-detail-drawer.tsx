@@ -1,6 +1,7 @@
 "use client";
 
 import type { ExpenseDetail } from "@/lib/expenses/queries";
+import { splitwiseExpenseUrl, splitwiseGroupUrl } from "@/lib/splitwise/urls";
 
 type Props = {
   expense: ExpenseDetail | null;
@@ -50,7 +51,20 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
               </div>
               <div>
                 <dt className="text-muted">Group</dt>
-                <dd>{expense.groupName}</dd>
+                <dd>
+                  {expense.groupId && expense.groupId > 0 ? (
+                    <a
+                      href={splitwiseGroupUrl(expense.groupId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent underline"
+                    >
+                      {expense.groupName}
+                    </a>
+                  ) : (
+                    expense.groupName
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted">Category</dt>
@@ -95,6 +109,18 @@ export function ExpenseDetailDrawer({ expense, loading, onClose }: Props) {
             </dl>
           )}
         </div>
+        {expense && (
+          <div className="border-t px-4 py-3">
+            <a
+              href={splitwiseExpenseUrl(expense.splitwiseId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent text-sm font-medium underline"
+            >
+              Open in Splitwise
+            </a>
+          </div>
+        )}
       </aside>
     </>
   );

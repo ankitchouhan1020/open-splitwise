@@ -1,9 +1,22 @@
-import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  gte,
+  isNull,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getAccountOwner } from "@/lib/db/account";
+import type { ExpenseFilters, ExpenseListSort } from "@/lib/expenses/filters";
 
-export type ExpenseListSort = "date" | "cost" | "description";
-export type ExpenseListOrder = "asc" | "desc";
+export type { ExpenseListSort, ExpenseListOrder } from "@/lib/expenses/filters";
 
 export type ExpenseListItem = {
   id: number;
@@ -16,6 +29,7 @@ export type ExpenseListItem = {
   cost: string;
   currencyCode: string;
   myShare: string | null;
+  myPaidShare: string | null;
   paidBy: string;
   payment: boolean;
 };
@@ -55,82 +69,118 @@ function paidByFromRaw(raw: unknown): string {
   );
 }
 
-export async function listExpenses(options: {
-  page?: number;
-  pageSize?: number;
-  sort?: ExpenseListSort;
-  order?: ExpenseListOrder;
-}): Promise<{
-  items: ExpenseListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-}> {
-  const owner = await getAccountOwner();
-  if (!owner) {
-    return { items: [], total: 0, page: 1, pageSize: options.pageSize ?? 100 };
+function ftsCondition(query: string): SQL {
+  return sql`to_tsvector('english', coalesce(${schema.expenses.description}, '') || ' ' || coalesce(${schema.expenses.details}, '') || ' ' || coalesce(${schema.expenses.searchText}, '')) @@ plainto_tsquery('english', ${query})`;
+}
+
+export function buildExpenseWhere(
+  accountUserId: number,
+  ownerSplitwiseId: number,
+  filters: ExpenseFilters,
+): SQL {
+  const parts: SQL[] = [
+    eq(schema.expenses.accountUserId, accountUserId),
+    isNull(schema.expenses.deletedAt),
+  ];
+
+  if (filters.q?.trim()) {
+    parts.push(ftsCondition(filters.q.trim()));
+  }
+  if (filters.dateFrom) {
+    parts.push(gte(schema.expenses.date, new Date(filters.dateFrom)));
+  }
+  if (filters.dateTo) {
+    const end = new Date(filters.dateTo);
+    end.setHours(23, 59, 59, 999);
+    parts.push(lte(schema.expenses.date, end));
+  }
+  if (filters.groupId !== undefined) {
+    if (filters.groupId === 0) {
+      parts.push(
+        or(eq(schema.expenses.groupId, 0), isNull(schema.expenses.groupId))!,
+      );
+    } else {
+      parts.push(eq(schema.expenses.groupId, filters.groupId));
+    }
+  }
+  if (filters.categoryId !== undefined) {
+    parts.push(eq(schema.expenses.categoryId, filters.categoryId));
+  }
+  if (filters.currency) {
+    parts.push(eq(schema.expenses.currencyCode, filters.currency));
+  }
+  if (filters.payment === true) {
+    parts.push(eq(schema.expenses.payment, true));
+  }
+  if (filters.payment === false) {
+    parts.push(eq(schema.expenses.payment, false));
+  }
+  if (filters.costMin !== undefined) {
+    parts.push(gte(schema.expenses.cost, String(filters.costMin)));
+  }
+  if (filters.costMax !== undefined) {
+    parts.push(lte(schema.expenses.cost, String(filters.costMax)));
+  }
+  if (filters.friendId !== undefined) {
+    const friendShare = getDb()
+      .select({ one: sql`1` })
+      .from(schema.expenseShares)
+      .where(
+        and(
+          eq(schema.expenseShares.expenseId, schema.expenses.id),
+          eq(schema.expenseShares.splitwiseUserId, filters.friendId),
+        ),
+      );
+    parts.push(
+      or(
+        eq(schema.expenses.friendshipId, filters.friendId),
+        exists(friendShare),
+      )!,
+    );
+  }
+  if (filters.shareMin !== undefined || filters.shareMax !== undefined) {
+    const shareParts: SQL[] = [
+      eq(schema.expenseShares.expenseId, schema.expenses.id),
+      eq(schema.expenseShares.splitwiseUserId, ownerSplitwiseId),
+    ];
+    if (filters.shareMin !== undefined) {
+      shareParts.push(
+        gte(schema.expenseShares.owedShare, String(filters.shareMin)),
+      );
+    }
+    if (filters.shareMax !== undefined) {
+      shareParts.push(
+        lte(schema.expenseShares.owedShare, String(filters.shareMax)),
+      );
+    }
+    const shareSub = getDb()
+      .select({ one: sql`1` })
+      .from(schema.expenseShares)
+      .where(and(...shareParts));
+    parts.push(exists(shareSub));
   }
 
-  const page = Math.max(1, options.page ?? 1);
-  const pageSize = Math.min(200, Math.max(1, options.pageSize ?? 100));
-  const offset = (page - 1) * pageSize;
-  const sort = options.sort ?? "date";
-  const order = options.order ?? "desc";
-  const orderFn = order === "asc" ? asc : desc;
+  return and(...parts)!;
+}
 
-  const db = getDb();
-  const where = and(
-    eq(schema.expenses.accountUserId, owner.id),
-    isNull(schema.expenses.deletedAt),
-  );
-
-  const [{ total }] = await db
-    .select({ total: count() })
-    .from(schema.expenses)
-    .where(where);
-
-  const rows = await db
-    .select({
-      id: schema.expenses.id,
-      splitwiseId: schema.expenses.splitwiseId,
-      date: schema.expenses.date,
-      description: schema.expenses.description,
-      details: schema.expenses.details,
-      cost: schema.expenses.cost,
-      currencyCode: schema.expenses.currencyCode,
-      payment: schema.expenses.payment,
-      groupId: schema.expenses.groupId,
-      categoryId: schema.expenses.categoryId,
-      raw: schema.expenses.raw,
-      groupName: schema.groups.name,
-      categoryName: schema.categories.name,
-      myShare: schema.expenseShares.owedShare,
-    })
-    .from(schema.expenses)
-    .leftJoin(
-      schema.groups,
-      and(
-        eq(schema.groups.splitwiseId, schema.expenses.groupId),
-        eq(schema.groups.accountUserId, owner.id),
-      ),
-    )
-    .leftJoin(
-      schema.categories,
-      eq(schema.categories.splitwiseId, schema.expenses.categoryId),
-    )
-    .leftJoin(
-      schema.expenseShares,
-      and(
-        eq(schema.expenseShares.expenseId, schema.expenses.id),
-        eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
-      ),
-    )
-    .where(where)
-    .orderBy(orderFn(sortColumn(sort)))
-    .limit(pageSize)
-    .offset(offset);
-
-  const items: ExpenseListItem[] = rows.map((r) => ({
+function mapListRow(r: {
+  id: number;
+  splitwiseId: number;
+  date: Date;
+  description: string;
+  details: string | null;
+  cost: string;
+  currencyCode: string;
+  payment: boolean;
+  groupId: number | null;
+  categoryId: number | null;
+  raw: unknown;
+  groupName: string | null;
+  categoryName: string | null;
+  myShare: string | null;
+  myPaidShare: string | null;
+}): ExpenseListItem {
+  return {
     id: r.id,
     splitwiseId: r.splitwiseId,
     date: r.date.toISOString(),
@@ -145,11 +195,115 @@ export async function listExpenses(options: {
     cost: r.cost,
     currencyCode: r.currencyCode,
     myShare: r.myShare,
+    myPaidShare: r.myPaidShare,
     paidBy: paidByFromRaw(r.raw),
     payment: r.payment,
-  }));
+  };
+}
 
-  return { items, total, page, pageSize };
+const listSelect = {
+  id: schema.expenses.id,
+  splitwiseId: schema.expenses.splitwiseId,
+  date: schema.expenses.date,
+  description: schema.expenses.description,
+  details: schema.expenses.details,
+  cost: schema.expenses.cost,
+  currencyCode: schema.expenses.currencyCode,
+  payment: schema.expenses.payment,
+  groupId: schema.expenses.groupId,
+  categoryId: schema.expenses.categoryId,
+  raw: schema.expenses.raw,
+  groupName: schema.groups.name,
+  categoryName: schema.categories.name,
+  myShare: schema.expenseShares.owedShare,
+  myPaidShare: schema.expenseShares.paidShare,
+};
+
+function listJoins(owner: { id: number; splitwiseId: number }) {
+  return {
+    groups: and(
+      eq(schema.groups.splitwiseId, schema.expenses.groupId),
+      eq(schema.groups.accountUserId, owner.id),
+    ),
+    categories: eq(schema.categories.splitwiseId, schema.expenses.categoryId),
+    shares: and(
+      eq(schema.expenseShares.expenseId, schema.expenses.id),
+      eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
+    ),
+  };
+}
+
+export async function listExpenses(filters: ExpenseFilters = {}): Promise<{
+  items: ExpenseListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const owner = await getAccountOwner();
+  if (!owner) {
+    return { items: [], total: 0, page: 1, pageSize: filters.pageSize ?? 100 };
+  }
+
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, filters.pageSize ?? 100));
+  const offset = (page - 1) * pageSize;
+  const sort = filters.sort ?? "date";
+  const order = filters.order ?? "desc";
+  const orderFn = order === "asc" ? asc : desc;
+
+  const db = getDb();
+  const where = buildExpenseWhere(owner.id, owner.splitwiseId, filters);
+  const joins = listJoins(owner);
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(schema.expenses)
+    .where(where);
+
+  const rows = await db
+    .select(listSelect)
+    .from(schema.expenses)
+    .leftJoin(schema.groups, joins.groups)
+    .leftJoin(schema.categories, joins.categories)
+    .leftJoin(schema.expenseShares, joins.shares)
+    .where(where)
+    .orderBy(orderFn(sortColumn(sort)))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items: rows.map(mapListRow),
+    total,
+    page,
+    pageSize,
+  };
+}
+
+export async function listAllExpensesForExport(
+  filters: ExpenseFilters = {},
+  limit = 50_000,
+): Promise<ExpenseListItem[]> {
+  const owner = await getAccountOwner();
+  if (!owner) return [];
+
+  const db = getDb();
+  const where = buildExpenseWhere(owner.id, owner.splitwiseId, filters);
+  const joins = listJoins(owner);
+  const sort = filters.sort ?? "date";
+  const order = filters.order ?? "desc";
+  const orderFn = order === "asc" ? asc : desc;
+
+  const rows = await db
+    .select(listSelect)
+    .from(schema.expenses)
+    .leftJoin(schema.groups, joins.groups)
+    .leftJoin(schema.categories, joins.categories)
+    .leftJoin(schema.expenseShares, joins.shares)
+    .where(where)
+    .orderBy(orderFn(sortColumn(sort)))
+    .limit(limit);
+
+  return rows.map(mapListRow);
 }
 
 export async function getExpenseDetail(
@@ -159,43 +313,16 @@ export async function getExpenseDetail(
   if (!owner) return null;
 
   const db = getDb();
+  const joins = listJoins(owner);
   const [row] = await db
     .select({
-      id: schema.expenses.id,
-      splitwiseId: schema.expenses.splitwiseId,
-      date: schema.expenses.date,
-      description: schema.expenses.description,
-      details: schema.expenses.details,
-      cost: schema.expenses.cost,
-      currencyCode: schema.expenses.currencyCode,
-      payment: schema.expenses.payment,
-      groupId: schema.expenses.groupId,
-      categoryId: schema.expenses.categoryId,
+      ...listSelect,
       friendshipId: schema.expenses.friendshipId,
-      raw: schema.expenses.raw,
-      groupName: schema.groups.name,
-      categoryName: schema.categories.name,
-      myShare: schema.expenseShares.owedShare,
     })
     .from(schema.expenses)
-    .leftJoin(
-      schema.groups,
-      and(
-        eq(schema.groups.splitwiseId, schema.expenses.groupId),
-        eq(schema.groups.accountUserId, owner.id),
-      ),
-    )
-    .leftJoin(
-      schema.categories,
-      eq(schema.categories.splitwiseId, schema.expenses.categoryId),
-    )
-    .leftJoin(
-      schema.expenseShares,
-      and(
-        eq(schema.expenseShares.expenseId, schema.expenses.id),
-        eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
-      ),
-    )
+    .leftJoin(schema.groups, joins.groups)
+    .leftJoin(schema.categories, joins.categories)
+    .leftJoin(schema.expenseShares, joins.shares)
     .where(
       and(
         eq(schema.expenses.id, expenseId),
@@ -216,28 +343,71 @@ export async function getExpenseDetail(
     .from(schema.expenseShares)
     .where(eq(schema.expenseShares.expenseId, expenseId));
 
+  const base = mapListRow(row);
   return {
-    id: row.id,
-    splitwiseId: row.splitwiseId,
-    date: row.date.toISOString(),
-    description: row.description,
-    details: row.details,
-    groupName:
-      row.groupId === 0 || row.groupId == null
-        ? "No group"
-        : (row.groupName ?? `Group #${row.groupId}`),
-    categoryName:
-      row.categoryName ??
-      (row.categoryId ? `Category #${row.categoryId}` : null),
-    cost: row.cost,
-    currencyCode: row.currencyCode,
-    myShare: row.myShare,
-    paidBy: paidByFromRaw(row.raw),
-    payment: row.payment,
+    ...base,
     groupId: row.groupId,
     categoryId: row.categoryId,
     friendshipId: row.friendshipId,
     shares,
     raw: row.raw,
+  };
+}
+
+export async function getFilterOptions(): Promise<{
+  groups: Array<{ id: number; name: string }>;
+  friends: Array<{ id: number; name: string }>;
+  categories: Array<{ id: number; name: string }>;
+  currencies: string[];
+}> {
+  const owner = await getAccountOwner();
+  if (!owner) {
+    return { groups: [], friends: [], categories: [], currencies: [] };
+  }
+
+  const db = getDb();
+  const [groupRows, friendRows, categoryRows, currencyRows] = await Promise.all(
+    [
+      db
+        .select({
+          id: schema.groups.splitwiseId,
+          name: schema.groups.name,
+        })
+        .from(schema.groups)
+        .where(eq(schema.groups.accountUserId, owner.id))
+        .orderBy(asc(schema.groups.name)),
+      db
+        .select({
+          id: schema.friends.splitwiseId,
+          firstName: schema.friends.firstName,
+          lastName: schema.friends.lastName,
+        })
+        .from(schema.friends)
+        .where(eq(schema.friends.accountUserId, owner.id))
+        .orderBy(asc(schema.friends.firstName)),
+      db
+        .select({
+          id: schema.categories.splitwiseId,
+          name: schema.categories.name,
+        })
+        .from(schema.categories)
+        .orderBy(asc(schema.categories.name)),
+      db
+        .selectDistinct({ currency: schema.expenses.currencyCode })
+        .from(schema.expenses)
+        .where(eq(schema.expenses.accountUserId, owner.id))
+        .orderBy(asc(schema.expenses.currencyCode)),
+    ],
+  );
+
+  return {
+    groups: [{ id: 0, name: "No group" }, ...groupRows],
+    friends: friendRows.map((f) => ({
+      id: f.id,
+      name:
+        [f.firstName, f.lastName].filter(Boolean).join(" ") || `User ${f.id}`,
+    })),
+    categories: categoryRows,
+    currencies: currencyRows.map((r) => r.currency),
   };
 }

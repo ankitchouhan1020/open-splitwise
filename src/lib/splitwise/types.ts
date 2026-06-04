@@ -42,8 +42,23 @@ export type SplitwiseExpense = {
   deleted_at: string | null;
   updated_at: string;
   created_at: string;
+  comments_count?: number;
   users: SplitwiseExpenseUser[];
   category?: { id: number; name: string } | null;
+};
+
+export type SplitwiseComment = {
+  id: number;
+  content: string;
+};
+
+export type SplitwiseCommentsResponse = {
+  comments: SplitwiseComment[];
+};
+
+export type SplitwiseCreateExpenseResponse = {
+  expenses: SplitwiseExpense[];
+  errors?: Record<string, string[]>;
 };
 
 export type SplitwiseExpensesResponse = {

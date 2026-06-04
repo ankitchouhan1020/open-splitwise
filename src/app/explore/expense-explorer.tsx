@@ -1,12 +1,14 @@
 "use client";
 
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
+import { HighlightText } from "@/components/highlight-text";
 import type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/queries";
+import { filtersToSearchParams } from "@/lib/expenses/filters";
+import { ExpenseFiltersPanel } from "@/app/explore/expense-filters-panel";
+import { SavedViewsPanel } from "@/app/explore/saved-views-panel";
+import { useExpenseFilters } from "@/app/explore/use-expense-filters";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-type SortKey = "date" | "cost" | "description";
-type SortOrder = "asc" | "desc";
 
 const PAGE_SIZE = 100;
 const ROW_HEIGHT = 44;
@@ -16,6 +18,13 @@ type ListResponse = {
   total: number;
   page: number;
   pageSize: number;
+};
+
+type FilterOptions = {
+  groups: Array<{ id: number; name: string }>;
+  friends: Array<{ id: number; name: string }>;
+  categories: Array<{ id: number; name: string }>;
+  currencies: string[];
 };
 
 function formatMoney(currency: string, amount: string | null) {
@@ -33,26 +42,80 @@ function formatDate(iso: string) {
 }
 
 export function ExpenseExplorer() {
+  const {
+    filters,
+    setFilters,
+    clearFilter,
+    clearAll,
+    applySavedView,
+    activeFilterChips,
+  } = useExpenseFilters();
+
+  const searchRef = useRef<HTMLInputElement>(null);
   const parentRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<ExpenseListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("date");
-  const [order, setOrder] = useState<SortOrder>("desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [options, setOptions] = useState<FilterOptions>({
+    groups: [],
+    friends: [],
+    categories: [],
+    currencies: [],
+  });
+  const [searchInput, setSearchInput] = useState(filters.q ?? "");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<ExpenseDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const sort = filters.sort ?? "date";
+  const order = filters.order ?? "desc";
+
+  useEffect(() => {
+    setSearchInput(filters.q ?? "");
+  }, [filters.q]);
+
+  useEffect(() => {
+    fetch("/api/filters/options")
+      .then((r) => r.json())
+      .then((data: FilterOptions) => setOptions(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchInput !== (filters.q ?? "")) {
+        setFilters({ q: searchInput || undefined });
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchInput, filters.q, setFilters]);
 
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
 
   const fetchPage = useCallback(
     async (page: number) => {
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(PAGE_SIZE),
+      const params = filtersToSearchParams({
+        ...filters,
+        page,
+        pageSize: PAGE_SIZE,
         sort,
         order,
       });
@@ -63,7 +126,7 @@ export function ExpenseExplorer() {
       }
       return (await res.json()) as ListResponse;
     },
-    [sort, order],
+    [filters, sort, order],
   );
 
   const loadInitial = useCallback(async () => {
@@ -86,11 +149,10 @@ export function ExpenseExplorer() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const nextPage = loadedPages + 1;
-      const data = await fetchPage(nextPage);
+      const data = await fetchPage(loadedPages + 1);
       setRows((prev) => [...prev, ...data.items]);
     } catch {
-      /* keep existing rows */
+      /* keep rows */
     } finally {
       setLoadingMore(false);
     }
@@ -130,151 +192,232 @@ export function ExpenseExplorer() {
       .finally(() => setDetailLoading(false));
   }, [selectedId]);
 
-  function toggleSort(key: SortKey) {
+  function toggleSort(key: "date" | "cost" | "description") {
     if (sort === key) {
-      setOrder((o) => (o === "desc" ? "asc" : "desc"));
+      setFilters({ order: order === "desc" ? "asc" : "desc" });
     } else {
-      setSort(key);
-      setOrder(key === "date" ? "desc" : "asc");
+      setFilters({
+        sort: key,
+        order: key === "date" ? "desc" : "asc",
+      });
     }
   }
 
-  const sortIndicator = (key: SortKey) => {
+  const sortIndicator = (key: "date" | "cost" | "description") => {
     if (sort !== key) return "";
     return order === "desc" ? " ↓" : " ↑";
   };
 
+  const labelMaps = {
+    groups: new Map(options.groups.map((g) => [g.id, g.name])),
+    friends: new Map(options.friends.map((f) => [f.id, f.name])),
+    categories: new Map(options.categories.map((c) => [c.id, c.name])),
+  };
+  const chips = activeFilterChips(filters, labelMaps);
+
+  function exportCsv() {
+    const params = filtersToSearchParams({ ...filters, sort, order });
+    window.location.href = `/api/expenses/export?${params}`;
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-muted text-sm">
-          {loading
-            ? "Loading…"
-            : `${total.toLocaleString()} expenses · showing ${rows.length.toLocaleString()}`}
-          {loadingMore && " · loading more…"}
-        </p>
-      </div>
+    <div className="flex flex-col gap-4 lg:flex-row">
+      <SavedViewsPanel currentFilters={filters} onApply={applySavedView} />
 
-      {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-          {error}
-        </p>
-      )}
+      <div className="min-w-0 flex-1 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={searchRef}
+            type="search"
+            placeholder="Search descriptions, notes, comments… (/)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="border-border min-w-[200px] flex-1 rounded-lg border px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            className="border-border rounded-lg border px-3 py-2 text-sm"
+          >
+            {showFilters ? "Hide filters" : "Filters"}
+          </button>
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="border-border rounded-lg border px-3 py-2 text-sm"
+          >
+            Export CSV
+          </button>
+        </div>
 
-      {!loading && total === 0 && !error && (
-        <p className="text-muted rounded-xl border border-dashed p-8 text-center text-sm">
-          No expenses yet. Go to Settings and run Sync now.
-        </p>
-      )}
+        {showFilters && (
+          <ExpenseFiltersPanel
+            filters={filters}
+            options={options}
+            onChange={(patch) => setFilters(patch)}
+          />
+        )}
 
-      {total > 0 && (
-        <div className="border-border bg-card overflow-hidden rounded-xl border">
-          <div className="border-border grid grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b bg-stone-50 px-3 py-2 text-xs font-medium tracking-wide uppercase">
+        {chips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {chips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => clearFilter(chip.key)}
+                className="border-border rounded-full border bg-stone-50 px-2 py-0.5 text-xs hover:bg-stone-100"
+              >
+                {chip.label} ×
+              </button>
+            ))}
             <button
               type="button"
-              onClick={() => toggleSort("date")}
-              className="text-left"
+              onClick={clearAll}
+              className="text-accent text-xs underline"
             >
-              Date{sortIndicator("date")}
+              Clear all
             </button>
-            <button
-              type="button"
-              onClick={() => toggleSort("description")}
-              className="text-left"
-            >
-              Description{sortIndicator("description")}
-            </button>
-            <span>Group</span>
-            <span>Category</span>
-            <button
-              type="button"
-              onClick={() => toggleSort("cost")}
-              className="text-left"
-            >
-              Total{sortIndicator("cost")}
-            </button>
-            <span>My share</span>
-            <span>Paid by</span>
-            <span>Cur.</span>
           </div>
+        )}
 
-          <div ref={parentRef} className="h-[calc(100vh-220px)] overflow-auto">
+        <div className="flex items-center justify-between">
+          <p className="text-muted text-sm">
+            {loading
+              ? "Loading…"
+              : `${total.toLocaleString()} expenses · showing ${rows.length.toLocaleString()}`}
+            {loadingMore && " · loading more…"}
+          </p>
+        </div>
+
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            {error}
+          </p>
+        )}
+
+        {!loading && total === 0 && !error && (
+          <p className="text-muted rounded-xl border border-dashed p-8 text-center text-sm">
+            {filters.q
+              ? "No expenses match your search."
+              : "No expenses yet. Go to Settings and run Sync now."}
+          </p>
+        )}
+
+        {total > 0 && (
+          <div className="border-border bg-card overflow-hidden rounded-xl border">
+            <div className="border-border grid grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b bg-stone-50 px-3 py-2 text-xs font-medium tracking-wide uppercase">
+              <button
+                type="button"
+                onClick={() => toggleSort("date")}
+                className="text-left"
+              >
+                Date{sortIndicator("date")}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSort("description")}
+                className="text-left"
+              >
+                Description{sortIndicator("description")}
+              </button>
+              <span>Group</span>
+              <span>Category</span>
+              <button
+                type="button"
+                onClick={() => toggleSort("cost")}
+                className="text-left"
+              >
+                Total{sortIndicator("cost")}
+              </button>
+              <span>My share</span>
+              <span>Paid by</span>
+              <span>Cur.</span>
+            </div>
+
             <div
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-                width: "100%",
-                position: "relative",
-              }}
+              ref={parentRef}
+              className="h-[calc(100vh-320px)] overflow-auto"
             >
-              {virtualItems.map((virtualRow) => {
-                const expense = rows[virtualRow.index];
-                return (
-                  <div
-                    key={virtualRow.key}
-                    data-index={virtualRow.index}
-                    ref={rowVirtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    {expense ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(expense.id)}
-                        className="border-border grid w-full grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-teal-50/50"
-                        style={{ minHeight: ROW_HEIGHT }}
-                      >
-                        <span className="text-muted">
-                          {formatDate(expense.date)}
-                        </span>
-                        <span className="truncate font-medium">
-                          {expense.description}
-                          {expense.payment && (
-                            <span className="text-muted ml-1 text-xs">
-                              (payment)
-                            </span>
-                          )}
-                        </span>
-                        <span className="truncate">{expense.groupName}</span>
-                        <span className="truncate">
-                          {expense.categoryName ?? "—"}
-                        </span>
-                        <span>
-                          {formatMoney(expense.currencyCode, expense.cost)}
-                        </span>
-                        <span>
-                          {formatMoney(expense.currencyCode, expense.myShare)}
-                        </span>
-                        <span className="truncate">{expense.paidBy}</span>
-                        <span className="text-muted">
-                          {expense.currencyCode}
-                        </span>
-                      </button>
-                    ) : (
-                      <div
-                        className="text-muted flex items-center px-3 text-sm"
-                        style={{ height: ROW_HEIGHT }}
-                      >
-                        Loading row…
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {virtualItems.map((virtualRow) => {
+                  const expense = rows[virtualRow.index];
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      {expense ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(expense.id)}
+                          className="border-border grid w-full grid-cols-[110px_1fr_120px_100px_90px_90px_100px_56px] gap-2 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-teal-50/50"
+                          style={{ minHeight: ROW_HEIGHT }}
+                        >
+                          <span className="text-muted">
+                            {formatDate(expense.date)}
+                          </span>
+                          <span className="truncate font-medium">
+                            <HighlightText
+                              text={expense.description}
+                              query={filters.q ?? ""}
+                            />
+                            {expense.payment && (
+                              <span className="text-muted ml-1 text-xs">
+                                (payment)
+                              </span>
+                            )}
+                          </span>
+                          <span className="truncate">{expense.groupName}</span>
+                          <span className="truncate">
+                            {expense.categoryName ?? "—"}
+                          </span>
+                          <span>
+                            {formatMoney(expense.currencyCode, expense.cost)}
+                          </span>
+                          <span>
+                            {formatMoney(expense.currencyCode, expense.myShare)}
+                          </span>
+                          <span className="truncate">{expense.paidBy}</span>
+                          <span className="text-muted">
+                            {expense.currencyCode}
+                          </span>
+                        </button>
+                      ) : (
+                        <div
+                          className="text-muted flex items-center px-3 text-sm"
+                          style={{ height: ROW_HEIGHT }}
+                        >
+                          Loading row…
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <ExpenseDetailDrawer
-        expense={detail}
-        loading={detailLoading}
-        onClose={() => setSelectedId(null)}
-      />
+        <ExpenseDetailDrawer
+          expense={detail}
+          loading={detailLoading}
+          onClose={() => setSelectedId(null)}
+        />
+      </div>
     </div>
   );
 }

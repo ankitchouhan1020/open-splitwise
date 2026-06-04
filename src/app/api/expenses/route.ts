@@ -1,9 +1,7 @@
 import { isDatabaseConfigured } from "@/lib/db";
-import {
-  listExpenses,
-  type ExpenseListOrder,
-  type ExpenseListSort,
-} from "@/lib/expenses/queries";
+import { createGroupExpense } from "@/lib/expenses/create";
+import { parseExpenseFilters } from "@/lib/expenses/filters";
+import { listExpenses } from "@/lib/expenses/queries";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -14,23 +12,57 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { searchParams } = request.nextUrl;
-  const page = Number(searchParams.get("page") ?? "1");
-  const pageSize = Number(searchParams.get("pageSize") ?? "100");
-  const sort = (searchParams.get("sort") ?? "date") as ExpenseListSort;
-  const order = (searchParams.get("order") ?? "desc") as ExpenseListOrder;
-
-  const validSort = ["date", "cost", "description"].includes(sort)
-    ? sort
-    : "date";
-  const validOrder = order === "asc" ? "asc" : "desc";
-
-  const result = await listExpenses({
-    page: Number.isFinite(page) ? page : 1,
-    pageSize: Number.isFinite(pageSize) ? pageSize : 100,
-    sort: validSort,
-    order: validOrder,
-  });
-
+  const filters = parseExpenseFilters(request.nextUrl.searchParams);
+  const result = await listExpenses(filters);
   return NextResponse.json(result);
+}
+
+export async function POST(request: NextRequest) {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      { error: "database_not_configured" },
+      { status: 503 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const data = body as Record<string, unknown>;
+  const groupId = Number(data.groupId);
+  const description = String(data.description ?? "");
+  const cost = String(data.cost ?? "");
+  const currencyCode = String(data.currencyCode ?? "");
+
+  if (!Number.isFinite(groupId) || groupId <= 0) {
+    return NextResponse.json({ error: "group_required" }, { status: 400 });
+  }
+  if (!description.trim() || !cost.trim() || !currencyCode.trim()) {
+    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  }
+
+  try {
+    const result = await createGroupExpense({
+      groupId,
+      description,
+      cost,
+      currencyCode,
+      categoryId: data.categoryId ? Number(data.categoryId) : undefined,
+      date: data.date ? String(data.date) : undefined,
+      details: data.details ? String(data.details) : undefined,
+    });
+
+    if ("error" in result && !("ok" in result)) {
+      return NextResponse.json(result, { status: 400 });
+    }
+
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "create_failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
