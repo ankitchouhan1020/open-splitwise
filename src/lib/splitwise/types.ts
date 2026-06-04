@@ -61,6 +61,11 @@ export type SplitwiseCreateExpenseResponse = {
   errors?: Record<string, string[]>;
 };
 
+export type SplitwiseDeleteExpenseResponse = {
+  success?: boolean;
+  errors?: Record<string, string[]>;
+};
+
 export type SplitwiseExpensesResponse = {
   expenses: SplitwiseExpense[];
 };

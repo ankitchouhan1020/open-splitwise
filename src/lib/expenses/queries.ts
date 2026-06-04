@@ -283,6 +283,7 @@ function mapListRow(r: {
     date: r.date.toISOString(),
     description: r.description,
     details: r.details,
+    groupId: r.groupId,
     groupName:
       r.groupId === 0 || r.groupId == null
         ? "No group"

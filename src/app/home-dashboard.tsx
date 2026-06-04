@@ -249,12 +249,12 @@ export function HomeDashboard({ userName }: { userName: string }) {
         <div className="space-y-2">
           <p className="text-muted text-xs md:text-sm">{monthLabel}</p>
           {!loading && quickViews.length > 0 && (
-            <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+            <div className="-mx-4 flex scrollbar-none gap-1.5 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
               {quickViews.map((view) => (
                 <Link
                   key={view.id}
                   href={view.href}
-                  className="border-border hover:bg-stone-50/80 shrink-0 rounded-md border bg-white px-2.5 py-1.5 text-xs font-medium md:py-1"
+                  className="border-border shrink-0 rounded-md border bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50/80 md:py-1"
                 >
                   {view.label}
                 </Link>
@@ -323,7 +323,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                       <Link
                         key={insight.id}
                         href={insight.href}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]} hover:opacity-90 sm:flex-1 sm:min-w-[12rem]`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]} hover:opacity-90 sm:min-w-[12rem] sm:flex-1`}
                       >
                         <span className="font-medium">{insight.headline}</span>
                         <span className="opacity-80">
@@ -336,7 +336,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                     ) : (
                       <div
                         key={insight.id}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug sm:flex-1 sm:min-w-[12rem] ${INSIGHT_STYLES[insight.tone]}`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug sm:min-w-[12rem] sm:flex-1 ${INSIGHT_STYLES[insight.tone]}`}
                       >
                         <span className="font-medium">{insight.headline}</span>
                         <span className="hidden opacity-80 sm:inline">

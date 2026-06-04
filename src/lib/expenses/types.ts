@@ -4,6 +4,7 @@ export type ExpenseListItem = {
   date: string;
   description: string;
   details: string | null;
+  groupId: number | null;
   groupName: string;
   categoryId: number | null;
   categoryName: string | null;

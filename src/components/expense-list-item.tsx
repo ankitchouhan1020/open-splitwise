@@ -194,7 +194,7 @@ export function ExpenseListItemRow({
           <span className="text-muted shrink-0 text-[11px] md:hidden">
             {formatShortDate(expense.date)}
           </span>
-          {expense.groupName && (
+          {expense.groupName && expense.groupName !== "No group" && (
             <span className="text-muted inline-block max-w-full truncate rounded bg-stone-100 px-1.5 py-0.5 text-[11px] leading-none">
               {expense.groupName}
             </span>
