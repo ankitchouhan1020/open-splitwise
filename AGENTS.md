@@ -14,3 +14,6 @@ This file is updated by Ralph iterations and human developers with reusable patt
 - `output: "standalone"` in `next.config.ts` for Docker (US-002)
 - Run `pnpm typecheck` and `pnpm lint` before commits
 - API routes live in `src/app/api/`
+- Splitwise OAuth: authorize `https://secure.splitwise.com/oauth/authorize`, token `https://secure.splitwise.com/oauth/token`, API `https://secure.splitwise.com/api/v3.0/`
+- Session via `iron-session` in `src/lib/session.ts`; access token never sent to client
+- `getEnv()` requires OAuth + SESSION_SECRET; use `getEnvOptional()` on settings when explaining missing config

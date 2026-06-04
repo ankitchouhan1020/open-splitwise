@@ -29,8 +29,8 @@ pnpm lint
 
 ## Self-hosted (Docker)
 
-1. Register a Splitwise OAuth app at [dev.splitwise.com](https://dev.splitwise.com/).
-2. Set redirect URI to `http://localhost:3000/api/auth/splitwise/callback` (or your public URL).
+1. Register a Splitwise OAuth app at [secure.splitwise.com/apps](https://secure.splitwise.com/apps).
+2. Set redirect URI to `http://localhost:3000/api/auth/splitwise/callback` (must match `SPLITWISE_REDIRECT_URI` exactly).
 3. Configure environment:
 
 ```bash

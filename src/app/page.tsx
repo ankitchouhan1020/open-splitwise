@@ -1,6 +1,8 @@
+import { getConnectedUser } from "@/lib/auth";
 import Link from "next/link";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getConnectedUser();
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-8 px-6 py-16">
       <div className="space-y-3">
@@ -16,12 +18,18 @@ export default function HomePage() {
         </p>
       </div>
 
+      {user && (
+        <p className="text-muted text-sm">
+          Connected as {user.first_name} {user.last_name} ({user.email})
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/settings"
+          href={user ? "/settings" : "/api/auth/splitwise"}
           className="bg-accent rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
-          Connect Splitwise
+          {user ? "Settings" : "Connect Splitwise"}
         </Link>
         <a
           href="/api/health"
