@@ -24,3 +24,11 @@ export function releaseMetadataSync(): void {
 export function isExpenseSyncInProgress(): boolean {
   return expenseSyncInProgress;
 }
+
+export function isMetadataSyncInProgress(): boolean {
+  return metadataSyncInProgress;
+}
+
+export function isAnySyncInProgress(): boolean {
+  return expenseSyncInProgress || metadataSyncInProgress;
+}

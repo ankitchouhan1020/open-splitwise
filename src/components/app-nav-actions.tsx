@@ -1,6 +1,7 @@
 "use client";
 
 import { AddExpenseButton } from "@/components/add-expense-dialog";
+import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { useSyncStatus } from "@/components/sync-status-provider";
 import Link from "next/link";
 
@@ -41,12 +42,18 @@ export function AppNavActions({ connected, dbConfigured }: Props) {
               : btnSecondary
           }
           title={
-            status?.expenses?.lastSyncAt
-              ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
-              : "Sync expenses from Splitwise"
+            busy
+              ? undefined
+              : status?.expenses?.lastSyncAt
+                ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
+                : "Sync expenses from Splitwise"
           }
         >
-          {busy ? "Syncing…" : "Sync"}
+          {busy ? (
+            <SyncProgressIndicator progress={status?.progress} compact />
+          ) : (
+            "Sync"
+          )}
         </button>
       )}
       <AddExpenseButton className={btnPrimary}>+ Add expense</AddExpenseButton>

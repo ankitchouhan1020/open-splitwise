@@ -10,6 +10,8 @@ import type {
   SplitwiseGroupsResponse,
 } from "@/lib/splitwise/types";
 import { releaseMetadataSync, tryAcquireMetadataSync } from "@/lib/sync/lock";
+import { clearSyncProgress, setSyncProgress } from "@/lib/sync/progress";
+import { reconcileStaleSyncState } from "@/lib/sync/reconcile";
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -59,14 +61,15 @@ export async function syncMetadata(): Promise<{
   friends: number;
   categories: number;
 }> {
-  if (!tryAcquireMetadataSync()) {
-    throw new Error("Metadata sync already in progress");
-  }
-
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
-    releaseMetadataSync();
     throw new Error("No connected account in database. Reconnect Splitwise.");
+  }
+
+  await reconcileStaleSyncState(owner.id);
+
+  if (!tryAcquireMetadataSync()) {
+    throw new Error("Metadata sync already in progress");
   }
 
   const token = await requireAccessToken();
@@ -75,6 +78,12 @@ export async function syncMetadata(): Promise<{
   const now = new Date();
 
   try {
+    await setSyncProgress(owner.id, {
+      syncPhase: "metadata",
+      syncProgressLabel: "groups",
+      syncProgressSynced: 0,
+    });
+
     const { groups } = await client.get<SplitwiseGroupsResponse>("get_groups");
     for (const group of groups ?? []) {
       const groupName = normalizeName(group.name) || `Group #${group.id}`;
@@ -100,6 +109,8 @@ export async function syncMetadata(): Promise<{
           },
         });
     }
+
+    await setSyncProgress(owner.id, { syncProgressLabel: "friends" });
 
     const { friends } =
       await client.get<SplitwiseFriendsResponse>("get_friends");
@@ -131,6 +142,8 @@ export async function syncMetadata(): Promise<{
         });
     }
 
+    await setSyncProgress(owner.id, { syncProgressLabel: "categories" });
+
     const { categories } =
       await client.get<SplitwiseCategoriesResponse>("get_categories");
     let categoryCount = 0;
@@ -149,12 +162,15 @@ export async function syncMetadata(): Promise<{
       })
       .where(eq(schema.syncState.accountUserId, owner.id));
 
+    await clearSyncProgress(owner.id);
+
     return {
       groups: groups?.length ?? 0,
       friends: friends?.length ?? 0,
       categories: categoryCount,
     };
   } finally {
+    await clearSyncProgress(owner.id).catch(() => undefined);
     releaseMetadataSync();
   }
 }

@@ -82,8 +82,8 @@ export function useSyncStatusQuery(enabled: boolean, localSyncing: boolean) {
     enabled,
     refetchInterval: (query) => {
       if (!enabled) return false;
-      if (localSyncing) return 3000;
-      return query.state.data?.inProgress ? 3000 : false;
+      if (localSyncing) return 1500;
+      return query.state.data?.inProgress ? 1500 : false;
     },
   });
 }

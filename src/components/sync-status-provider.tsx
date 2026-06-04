@@ -17,6 +17,11 @@ export type SyncStatus = {
   configured: boolean;
   connected?: boolean;
   inProgress?: boolean;
+  progress?: {
+    phase: "metadata" | "expenses";
+    synced: number;
+    label: string | null;
+  } | null;
   expenses?: {
     status: string;
     lastSyncAt: string | null;

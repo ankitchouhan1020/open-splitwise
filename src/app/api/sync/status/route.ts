@@ -2,7 +2,7 @@ import { isDatabaseConfigured } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { getDb, schema } from "@/lib/db";
 import { getExpenseSyncStatus } from "@/lib/sync/expenses";
-import { isExpenseSyncInProgress } from "@/lib/sync/lock";
+import { isAnySyncInProgress } from "@/lib/sync/lock";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -34,8 +34,14 @@ export async function GET() {
   return NextResponse.json({
     configured: true,
     connected: true,
-    inProgress: isExpenseSyncInProgress(),
-    expenses,
+    inProgress: isAnySyncInProgress(),
+    expenses: {
+      status: expenses.status,
+      lastSyncAt: expenses.lastSyncAt?.toISOString() ?? null,
+      expenseCount: expenses.expenseCount,
+      error: expenses.error,
+    },
+    progress: expenses.progress,
     metadata: {
       groupsLastSyncAt: state?.groupsLastSyncAt?.toISOString() ?? null,
       friendsLastSyncAt: state?.friendsLastSyncAt?.toISOString() ?? null,

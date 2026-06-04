@@ -10,6 +10,7 @@ import {
   useSyncStatus,
   type SyncStatus,
 } from "@/components/sync-status-provider";
+import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { formatRelativeSync } from "@/lib/format";
 import Link from "next/link";
 import { useState } from "react";
@@ -131,6 +132,8 @@ export function SyncPanel({ dbConfigured }: Props) {
 
         {exp?.error && <SettingsAlert tone="error">{exp.error}</SettingsAlert>}
 
+        {busy && <SyncProgressIndicator progress={status?.progress} />}
+
         {scopeMessage && (
           <SettingsAlert tone="success">{scopeMessage}</SettingsAlert>
         )}
@@ -143,7 +146,11 @@ export function SyncPanel({ dbConfigured }: Props) {
             disabled={busy}
             className={btnSecondary}
           >
-            {busy ? "Syncing…" : "All"}
+            {busy ? (
+              <SyncProgressIndicator progress={status?.progress} compact />
+            ) : (
+              "All"
+            )}
           </button>
           <button
             type="button"

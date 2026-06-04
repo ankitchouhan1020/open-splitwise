@@ -201,6 +201,9 @@ export const syncState = pgTable("sync_state", {
   expensesStatus: text("expenses_status").notNull().default("idle"),
   expensesError: text("expenses_error"),
   expenseCount: integer("expense_count").notNull().default(0),
+  syncPhase: text("sync_phase"),
+  syncProgressSynced: integer("sync_progress_synced").notNull().default(0),
+  syncProgressLabel: text("sync_progress_label"),
   groupsLastSyncAt: timestamp("groups_last_sync_at", { withTimezone: true }),
   friendsLastSyncAt: timestamp("friends_last_sync_at", { withTimezone: true }),
   categoriesLastSyncAt: timestamp("categories_last_sync_at", {

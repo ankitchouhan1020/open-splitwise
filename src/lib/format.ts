@@ -92,6 +92,33 @@ export function formatPercent(value: number, signed = true): string {
   return `${prefix}${value.toFixed(0)}%`;
 }
 
+export function formatSyncProgressMessage(
+  progress:
+    | {
+        phase: string;
+        synced?: number;
+        label?: string | null;
+      }
+    | null
+    | undefined,
+): string {
+  if (!progress?.phase) return "Syncing…";
+  if (progress.phase === "metadata") {
+    if (progress.label === "groups") return "Syncing groups…";
+    if (progress.label === "friends") return "Syncing friends…";
+    if (progress.label === "categories") return "Syncing categories…";
+    return "Syncing metadata…";
+  }
+  if (progress.phase === "expenses") {
+    const synced = progress.synced ?? 0;
+    if (synced > 0) {
+      return `Syncing… ${synced.toLocaleString()} expenses`;
+    }
+    return "Syncing expenses…";
+  }
+  return "Syncing…";
+}
+
 export function formatRelativeSync(iso: string | null): string {
   if (!iso) return "Never synced";
   const then = new Date(iso).getTime();

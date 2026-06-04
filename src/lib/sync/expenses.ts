@@ -11,6 +11,13 @@ import type {
 } from "@/lib/splitwise/types";
 import type { SplitwiseClient } from "@/lib/splitwise/client";
 import { releaseExpenseSync, tryAcquireExpenseSync } from "@/lib/sync/lock";
+import {
+  clearSyncProgress,
+  readSyncProgress,
+  setSyncProgress,
+  type SyncProgress,
+} from "@/lib/sync/progress";
+import { reconcileStaleSyncState } from "@/lib/sync/reconcile";
 
 const PAGE_LIMIT = 50;
 
@@ -122,6 +129,9 @@ async function setSyncStatus(
     expensesLastSyncAt: Date | null;
     expensesUpdatedAfter: Date | null;
     expenseCount: number;
+    syncPhase: string | null;
+    syncProgressSynced: number;
+    syncProgressLabel: string | null;
   }>,
 ) {
   const db = getDb();
@@ -137,14 +147,15 @@ export type ExpenseSyncResult = {
 };
 
 export async function syncExpenses(): Promise<ExpenseSyncResult> {
-  if (!tryAcquireExpenseSync()) {
-    throw new Error("Expense sync already in progress");
-  }
-
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
-    releaseExpenseSync();
     throw new Error("No connected account in database. Reconnect Splitwise.");
+  }
+
+  await reconcileStaleSyncState(owner.id);
+
+  if (!tryAcquireExpenseSync()) {
+    throw new Error("Expense sync already in progress");
   }
 
   const token = await requireAccessToken();
@@ -169,6 +180,9 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
   await setSyncStatus(owner.id, {
     expensesStatus: "syncing",
     expensesError: null,
+    syncPhase: "expenses",
+    syncProgressSynced: 0,
+    syncProgressLabel: null,
   });
 
   let synced = 0;
@@ -205,6 +219,10 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
       }
 
       offset += PAGE_LIMIT;
+      await setSyncProgress(owner.id, {
+        syncPhase: "expenses",
+        syncProgressSynced: synced,
+      });
       if (expenses.length < PAGE_LIMIT) break;
     }
 
@@ -219,6 +237,9 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
       expensesLastSyncAt: new Date(),
       expensesUpdatedAfter: maxUpdatedAt ?? new Date(),
       expenseCount: total,
+      syncPhase: null,
+      syncProgressSynced: 0,
+      syncProgressLabel: null,
     });
 
     return { synced, total };
@@ -233,13 +254,22 @@ export async function syncExpenses(): Promise<ExpenseSyncResult> {
       expensesStatus: "error",
       expensesError: message.slice(0, 500),
     });
+    await clearSyncProgress(owner.id);
     throw err;
   } finally {
     releaseExpenseSync();
   }
 }
 
-export async function getExpenseSyncStatus(accountUserId: number) {
+export async function getExpenseSyncStatus(accountUserId: number): Promise<{
+  status: "idle" | "syncing" | "error";
+  lastSyncAt: Date | null;
+  expenseCount: number;
+  error: string | null;
+  progress: SyncProgress | null;
+}> {
+  await reconcileStaleSyncState(accountUserId);
+
   const db = getDb();
   const [state] = await db
     .select()
@@ -249,10 +279,11 @@ export async function getExpenseSyncStatus(accountUserId: number) {
 
   if (!state) {
     return {
-      status: "idle" as const,
+      status: "idle",
       lastSyncAt: null,
       expenseCount: 0,
       error: null,
+      progress: null,
     };
   }
 
@@ -261,5 +292,6 @@ export async function getExpenseSyncStatus(accountUserId: number) {
     lastSyncAt: state.expensesLastSyncAt,
     expenseCount: state.expenseCount,
     error: state.expensesError,
+    progress: readSyncProgress(state),
   };
 }
