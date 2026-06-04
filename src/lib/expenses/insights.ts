@@ -117,20 +117,85 @@ export async function getCategoryBreakdown(
   }));
 }
 
+function shiftCalendarYear(date: Date, years: number): Date {
+  const out = new Date(date);
+  out.setFullYear(out.getFullYear() + years);
+  return out;
+}
+
+export async function getRangeSummary(filters: InsightsFilters): Promise<{
+  totalSpend: string;
+  expenseCount: number;
+  currency: string | null;
+  topCategory: {
+    categoryId: number | null;
+    categoryName: string;
+    total: string;
+  } | null;
+}> {
+  const owner = await getAuthenticatedAccountOwner();
+  if (!owner) {
+    return {
+      totalSpend: "0",
+      expenseCount: 0,
+      currency: filters.currency ?? null,
+      topCategory: null,
+    };
+  }
+
+  const db = getDb();
+  const where = baseWhere(owner.id, owner.splitwiseId, filters);
+
+  const [agg] = await db
+    .select({
+      total: sum(schema.expenseShares.owedShare),
+      expenseCount: count(),
+    })
+    .from(schema.expenses)
+    .innerJoin(
+      schema.expenseShares,
+      and(
+        eq(schema.expenseShares.expenseId, schema.expenses.id),
+        eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
+      ),
+    )
+    .where(where);
+
+  const topCats = await getCategoryBreakdown(filters, 1);
+  const top = topCats[0];
+
+  return {
+    totalSpend: agg?.total ?? "0",
+    expenseCount: agg?.expenseCount ?? 0,
+    currency: filters.currency ?? null,
+    topCategory: top
+      ? {
+          categoryId: top.categoryId,
+          categoryName: top.categoryName,
+          total: top.total,
+        }
+      : null,
+  };
+}
+
 export async function getPeriodComparison(
   filters: InsightsFilters,
   periodDays = 30,
 ): Promise<{
   currentTotal: string;
   previousTotal: string;
+  yearAgoTotal: string;
   currency: string | null;
   categories: Array<{
     categoryId: number | null;
     categoryName: string;
     current: string;
     previous: string;
+    yearAgo: string;
     delta: number;
     deltaPct: number | null;
+    yoyDelta: number;
+    yoyDeltaPct: number | null;
   }>;
 }> {
   const owner = await getAuthenticatedAccountOwner();
@@ -138,6 +203,7 @@ export async function getPeriodComparison(
     return {
       currentTotal: "0",
       previousTotal: "0",
+      yearAgoTotal: "0",
       currency: null,
       categories: [],
     };
@@ -150,6 +216,8 @@ export async function getPeriodComparison(
   const span = end.getTime() - start.getTime();
   const prevEnd = new Date(start.getTime() - 1);
   const prevStart = new Date(prevEnd.getTime() - span);
+  const yearAgoStart = shiftCalendarYear(start, -1);
+  const yearAgoEnd = shiftCalendarYear(end, -1);
 
   const currentFilters: InsightsFilters = {
     ...filters,
@@ -161,39 +229,58 @@ export async function getPeriodComparison(
     dateFrom: prevStart.toISOString(),
     dateTo: prevEnd.toISOString(),
   };
+  const yearAgoFilters: InsightsFilters = {
+    ...filters,
+    dateFrom: yearAgoStart.toISOString(),
+    dateTo: yearAgoEnd.toISOString(),
+  };
 
-  const [currentCats, previousCats] = await Promise.all([
+  const [currentCats, previousCats, yearAgoCats] = await Promise.all([
     getCategoryBreakdown(currentFilters, 50),
     getCategoryBreakdown(previousFilters, 50),
+    getCategoryBreakdown(yearAgoFilters, 50),
   ]);
 
   const prevMap = new Map(
     previousCats.map((c) => [c.categoryId ?? -1, Number(c.total)]),
   );
+  const yearAgoMap = new Map(
+    yearAgoCats.map((c) => [c.categoryId ?? -1, Number(c.total)]),
+  );
   let currentTotal = 0;
   let previousTotal = 0;
+  let yearAgoTotal = 0;
   for (const c of previousCats) previousTotal += Number(c.total);
   for (const c of currentCats) currentTotal += Number(c.total);
+  for (const c of yearAgoCats) yearAgoTotal += Number(c.total);
 
   const categories = currentCats.map((c) => {
     const key = c.categoryId ?? -1;
     const cur = Number(c.total);
     const prev = prevMap.get(key) ?? 0;
+    const yoy = yearAgoMap.get(key) ?? 0;
     const delta = cur - prev;
     const deltaPct = prev === 0 ? (cur === 0 ? 0 : null) : (delta / prev) * 100;
+    const yoyDelta = cur - yoy;
+    const yoyDeltaPct =
+      yoy === 0 ? (cur === 0 ? 0 : null) : (yoyDelta / yoy) * 100;
     return {
       categoryId: c.categoryId,
       categoryName: c.categoryName,
       current: c.total,
       previous: String(prev),
+      yearAgo: String(yoy),
       delta,
       deltaPct: deltaPct === null ? null : deltaPct,
+      yoyDelta,
+      yoyDeltaPct: yoyDeltaPct === null ? null : yoyDeltaPct,
     };
   });
 
   return {
     currentTotal: String(currentTotal),
     previousTotal: String(previousTotal),
+    yearAgoTotal: String(yearAgoTotal),
     currency: filters.currency ?? null,
     categories,
   };

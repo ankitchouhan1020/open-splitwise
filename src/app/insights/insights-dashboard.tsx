@@ -18,7 +18,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
 const COLORS = [
   "#0d9488",
   "#0891b2",
@@ -28,7 +27,109 @@ const COLORS = [
   "#f97316",
 ];
 
+type DatePreset = "thisMonth" | "last30" | "thisYear" | "lastYear";
+
+const PRESET_LABELS: Record<DatePreset, string> = {
+  thisMonth: "This month",
+  last30: "Last 30 days",
+  thisYear: "This year",
+  lastYear: "Last year",
+};
+
+function toDateInput(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function defaultDateRange(): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date();
+  from.setMonth(from.getMonth() - 12);
+  return { from: toDateInput(from), to: toDateInput(to) };
+}
+
+function presetRange(preset: DatePreset): { from: string; to: string } {
+  const now = new Date();
+  switch (preset) {
+    case "thisMonth": {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: toDateInput(from), to: toDateInput(now) };
+    }
+    case "last30": {
+      const from = new Date(now);
+      from.setDate(from.getDate() - 30);
+      return { from: toDateInput(from), to: toDateInput(now) };
+    }
+    case "thisYear": {
+      const from = new Date(now.getFullYear(), 0, 1);
+      return { from: toDateInput(from), to: toDateInput(now) };
+    }
+    case "lastYear": {
+      const from = new Date(now.getFullYear() - 1, 0, 1);
+      const to = new Date(now.getFullYear() - 1, 11, 31);
+      return { from: toDateInput(from), to: toDateInput(to) };
+    }
+  }
+}
+
+function formatMoney(amount: number, currency?: string): string {
+  if (currency) {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+      }).format(amount);
+    } catch {
+      /* invalid currency code */
+    }
+  }
+  return new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+type ChartTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    name?: string;
+    value?: number;
+    color?: string;
+    dataKey?: string | number;
+  }>;
+  label?: string | number;
+  currency?: string;
+};
+
+function ChartTooltip({ active, payload, label, currency }: ChartTooltipProps) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="border-border bg-card rounded-md border px-3 py-2 text-xs shadow-sm">
+      {label != null && <p className="text-muted mb-1 font-medium">{label}</p>}
+      <ul className="space-y-0.5">
+        {payload.map((entry) => (
+          <li key={String(entry.dataKey)} className="flex gap-2">
+            <span style={{ color: entry.color }}>{entry.name}:</span>
+            <span className="font-medium">
+              {formatMoney(Number(entry.value ?? 0), currency ?? entry.name)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 type InsightsData = {
+  summary: {
+    totalSpend: string;
+    expenseCount: number;
+    currency: string | null;
+    topCategory: {
+      categoryId: number | null;
+      categoryName: string;
+      total: string;
+    } | null;
+  };
   monthly: Array<{
     month: string;
     currency: string;
@@ -44,13 +145,17 @@ type InsightsData = {
   trends: {
     currentTotal: string;
     previousTotal: string;
+    yearAgoTotal: string;
     categories: Array<{
       categoryId: number | null;
       categoryName: string;
       current: string;
       previous: string;
+      yearAgo: string;
       delta: number;
       deltaPct: number | null;
+      yoyDelta: number;
+      yoyDeltaPct: number | null;
     }>;
   };
   groups: Array<{
@@ -69,14 +174,18 @@ type InsightsData = {
 };
 
 export function InsightsDashboard() {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const defaults = useMemo(() => defaultDateRange(), []);
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(defaults.to);
+  const [activePreset, setActivePreset] = useState<DatePreset | null>(null);
   const [groupId, setGroupId] = useState("");
   const [currency, setCurrency] = useState("");
   const [groups, setGroups] = useState<Array<{ id: number; name: string }>>([]);
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [data, setData] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const displayCurrency = currency || undefined;
 
   useEffect(() => {
     fetch("/api/filters/options")
@@ -118,6 +227,13 @@ export function InsightsDashboard() {
     void load();
   }, [load]);
 
+  function applyPreset(preset: DatePreset) {
+    const range = presetRange(preset);
+    setFrom(range.from);
+    setTo(range.to);
+    setActivePreset(preset);
+  }
+
   const monthlyChart = useMemo(() => {
     if (!data?.monthly.length) return [];
     const byMonth = new Map<
@@ -143,6 +259,20 @@ export function InsightsDashboard() {
     [data?.categories],
   );
 
+  const kpis = useMemo(() => {
+    const summary = data?.summary;
+    if (!summary) return null;
+    const total = Number(summary.totalSpend);
+    const count = summary.expenseCount;
+    const avg = count === 0 ? 0 : total / count;
+    return {
+      total,
+      count,
+      avg,
+      topCategory: summary.topCategory,
+    };
+  }, [data?.summary]);
+
   function exploreLink(patch: Record<string, string | number | undefined>) {
     const params = filtersToSearchParams({
       dateFrom: from ? new Date(from).toISOString() : undefined,
@@ -162,67 +292,148 @@ export function InsightsDashboard() {
 
   const current = Number(data?.trends.currentTotal ?? 0);
   const previous = Number(data?.trends.previousTotal ?? 0);
+  const yearAgo = Number(data?.trends.yearAgoTotal ?? 0);
   const delta = current - previous;
   const deltaPct =
     previous === 0 ? null : ((current - previous) / previous) * 100;
+  const yoyDelta = current - yearAgo;
+  const yoyDeltaPct =
+    yearAgo === 0 ? null : ((current - yearAgo) / yearAgo) * 100;
+
+  const fmt = (n: number) => formatMoney(n, displayCurrency);
 
   return (
     <div className="space-y-8">
-      <div className="border-border bg-card grid gap-3 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">From</span>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">To</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">Group</span>
-          <select
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
-          >
-            <option value="">All groups</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">Currency</span>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
-          >
-            <option value="">All (per series)</option>
-            {currencies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="border-border bg-card space-y-3 rounded-xl border p-4">
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(PRESET_LABELS) as DatePreset[]).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => applyPreset(preset)}
+              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                activePreset === preset
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border hover:bg-muted/30"
+              }`}
+            >
+              {PRESET_LABELS[preset]}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted font-medium">From</span>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setActivePreset(null);
+              }}
+              className="border-border rounded-md border px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted font-medium">To</span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setActivePreset(null);
+              }}
+              className="border-border rounded-md border px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted font-medium">Group</span>
+            <select
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+              className="border-border rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All groups</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted font-medium">Currency</span>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="border-border rounded-md border px-2 py-1.5 text-sm"
+            >
+              <option value="">All (per series)</option>
+              {currencies.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {loading && <p className="text-muted text-sm">Loading insights…</p>}
 
-      {!loading && data && (
+      {!loading && data && kpis && (
         <>
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="border-border bg-card rounded-xl border p-4">
+              <p className="text-muted text-xs font-medium uppercase">
+                Total spend
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {fmt(kpis.total)}
+              </p>
+            </div>
+            <div className="border-border bg-card rounded-xl border p-4">
+              <p className="text-muted text-xs font-medium uppercase">
+                Expenses
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {kpis.count.toLocaleString()}
+              </p>
+            </div>
+            <div className="border-border bg-card rounded-xl border p-4">
+              <p className="text-muted text-xs font-medium uppercase">
+                Avg per expense
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {fmt(kpis.avg)}
+              </p>
+            </div>
+            <div className="border-border bg-card rounded-xl border p-4">
+              <p className="text-muted text-xs font-medium uppercase">
+                Top category
+              </p>
+              {kpis.topCategory ? (
+                <>
+                  <p className="mt-1 truncate text-lg font-semibold">
+                    <Link
+                      href={exploreLink({
+                        categoryId: kpis.topCategory.categoryId ?? undefined,
+                      })}
+                      className="text-accent underline"
+                    >
+                      {kpis.topCategory.categoryName}
+                    </Link>
+                  </p>
+                  <p className="text-muted mt-0.5 text-sm tabular-nums">
+                    {fmt(Number(kpis.topCategory.total))}
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted mt-1 text-sm">—</p>
+              )}
+            </div>
+          </section>
+
           <section>
             <h2 className="text-lg font-semibold">Spend over time</h2>
             <p className="text-muted text-sm">
@@ -235,7 +446,9 @@ export function InsightsDashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      content={<ChartTooltip currency={displayCurrency} />}
+                    />
                     <Legend />
                     {(currency
                       ? [currency]
@@ -277,7 +490,9 @@ export function InsightsDashboard() {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip
+                        content={<ChartTooltip currency={displayCurrency} />}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -289,23 +504,36 @@ export function InsightsDashboard() {
             <div>
               <h2 className="text-lg font-semibold">Period comparison</h2>
               <p className="text-muted mt-1 text-sm">
-                Current range vs previous period of equal length.
+                Current range vs previous period of equal length vs same period
+                last year.
               </p>
               <dl className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted">Current</dt>
-                  <dd className="font-medium">{current.toFixed(2)}</dd>
+                  <dd className="font-medium tabular-nums">{fmt(current)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted">Previous</dt>
-                  <dd>{previous.toFixed(2)}</dd>
+                  <dd className="tabular-nums">{fmt(previous)}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted">Change</dt>
-                  <dd>
+                  <dt className="text-muted">Same period last year</dt>
+                  <dd className="tabular-nums">{fmt(yearAgo)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted">vs previous</dt>
+                  <dd className="tabular-nums">
                     {delta >= 0 ? "+" : ""}
-                    {delta.toFixed(2)}
+                    {fmt(delta)}
                     {deltaPct != null && ` (${deltaPct.toFixed(1)}%)`}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted">vs last year</dt>
+                  <dd className="tabular-nums">
+                    {yoyDelta >= 0 ? "+" : ""}
+                    {fmt(yoyDelta)}
+                    {yoyDeltaPct != null && ` (${yoyDeltaPct.toFixed(1)}%)`}
                   </dd>
                 </div>
               </dl>
@@ -313,8 +541,10 @@ export function InsightsDashboard() {
                 <thead>
                   <tr className="text-muted border-b">
                     <th className="py-1">Category</th>
-                    <th className="py-1">Δ</th>
+                    <th className="py-1">Δ prev</th>
                     <th className="py-1">%</th>
+                    <th className="py-1">Δ YoY</th>
+                    <th className="py-1">YoY %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -333,12 +563,21 @@ export function InsightsDashboard() {
                           {c.categoryName}
                         </Link>
                       </td>
-                      <td className="py-1">
+                      <td className="py-1 tabular-nums">
                         {c.delta >= 0 ? "+" : ""}
-                        {c.delta.toFixed(2)}
+                        {fmt(c.delta)}
                       </td>
                       <td className="py-1">
                         {c.deltaPct == null ? "—" : `${c.deltaPct.toFixed(0)}%`}
+                      </td>
+                      <td className="py-1 tabular-nums">
+                        {c.yoyDelta >= 0 ? "+" : ""}
+                        {fmt(c.yoyDelta)}
+                      </td>
+                      <td className="py-1">
+                        {c.yoyDeltaPct == null
+                          ? "—"
+                          : `${c.yoyDeltaPct.toFixed(0)}%`}
                       </td>
                     </tr>
                   ))}
@@ -370,7 +609,9 @@ export function InsightsDashboard() {
                       </Link>
                     </td>
                     <td>{g.expenseCount}</td>
-                    <td>{Number(g.myShareTotal).toFixed(2)}</td>
+                    <td className="tabular-nums">
+                      {fmt(Number(g.myShareTotal))}
+                    </td>
                     <td>{g.percentOfTotal.toFixed(1)}%</td>
                   </tr>
                 ))}
@@ -403,7 +644,9 @@ export function InsightsDashboard() {
                       </Link>
                     </td>
                     <td>{f.expenseCount}</td>
-                    <td>{Number(f.myShareTotal).toFixed(2)}</td>
+                    <td className="tabular-nums">
+                      {fmt(Number(f.myShareTotal))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -418,7 +661,9 @@ export function InsightsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
+                  <Tooltip
+                    content={<ChartTooltip currency={displayCurrency} />}
+                  />
                   <Bar dataKey="value" fill="#0d9488" />
                 </BarChart>
               </ResponsiveContainer>

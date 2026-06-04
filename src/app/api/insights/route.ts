@@ -5,6 +5,7 @@ import {
   getGroupSummary,
   getMonthlySpend,
   getPeriodComparison,
+  getRangeSummary,
   type InsightsFilters,
 } from "@/lib/expenses/insights";
 import { NextRequest, NextResponse } from "next/server";
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
       });
     default:
       return NextResponse.json({
+        summary: await getRangeSummary(filters),
         monthly: await getMonthlySpend(filters),
         categories: await getCategoryBreakdown(filters),
         trends: await getPeriodComparison(filters),
