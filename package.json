@@ -16,6 +16,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.2",
     "drizzle-orm": "^0.45.2",
     "iron-session": "^8.0.4",
     "next": "^15.5.0",

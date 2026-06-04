@@ -1,3 +1,4 @@
+import { AppNav } from "@/components/app-nav";
 import { getConnectedUser } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getEnvOptional } from "@/lib/env";
@@ -20,23 +21,26 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     "http://localhost:3000/api/auth/splitwise/callback";
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold">Settings</h1>
-      <p className="text-muted mt-2">
-        Connect your Splitwise account using your own OAuth application. Tokens
-        are stored in an encrypted session cookie on this server.
-      </p>
+    <>
+      <AppNav />
+      <main className="mx-auto max-w-2xl px-6 py-8">
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <p className="text-muted mt-2">
+          Connect your Splitwise account using your own OAuth application.
+          Tokens are stored in an encrypted session cookie on this server.
+        </p>
 
-      <ConnectionPanel
-        connected={!!user}
-        user={user}
-        oauthConfigured={!!env}
-        redirectUri={redirectUri}
-        error={params.error ?? null}
-        justConnected={params.connected === "1"}
-      />
+        <ConnectionPanel
+          connected={!!user}
+          user={user}
+          oauthConfigured={!!env}
+          redirectUri={redirectUri}
+          error={params.error ?? null}
+          justConnected={params.connected === "1"}
+        />
 
-      {user && <SyncPanel dbConfigured={isDatabaseConfigured()} />}
-    </main>
+        {user && <SyncPanel dbConfigured={isDatabaseConfigured()} />}
+      </main>
+    </>
   );
 }
