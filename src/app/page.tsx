@@ -5,6 +5,7 @@ import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
 import { PageContainer } from "@/components/page-container";
 import { getConnectedUser } from "@/lib/auth";
 import { isGuestDemoAllowed } from "@/lib/demo/config";
+import { isShowcaseMode } from "@/lib/deploy-mode";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -16,6 +17,7 @@ const HIGHLIGHTS = [
 ] as const;
 
 export default async function HomePage() {
+  const showcase = isShowcaseMode();
   const user = await getConnectedUser();
 
   if (user) {
@@ -63,7 +65,7 @@ export default async function HomePage() {
           >
             Connect Splitwise
           </Link>
-          {isGuestDemoAllowed() && (
+          {isGuestDemoAllowed() && !showcase && (
             <DemoModeButton className="border-border bg-card text-foreground hover:bg-hover rounded-xl border px-6 py-3 text-center text-sm font-medium disabled:opacity-50" />
           )}
           <Link

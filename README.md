@@ -18,36 +18,24 @@ This project syncs your Splitwise expenses into a **self-hosted** Postgres datab
 
 This is not a Splitwise replacement. It provides query and analysis over data you already have.
 
-## Quick start (local demo)
+## Quick start (local)
 
-No Splitwise account is required. Enable guest demo mode to explore the UI with sample data before configuring OAuth.
+**Sample data only** — no Splitwise or Postgres required:
 
 ```bash
 git clone https://github.com/ankitchouhan1020/open-splitwise.git
 cd open-splitwise
-cp .env.example .env.local
-```
-
-Add a session secret (paste the output into `.env.local`):
-
-```bash
-openssl rand -base64 32
-```
-
-Enable the guest demo:
-
-```bash
-echo "DEMO_MODE=true" >> .env.local
-```
-
-Start the development server:
-
-```bash
 pnpm install
 pnpm local
 ```
 
-Open **http://localhost:3000**, select **Try demo**, and review `/explore` and `/insights`.
+Open **http://localhost:3000** — the app runs in showcase mode with fictional expenses until you add Splitwise credentials in **Settings**.
+
+For a persistent session cookie in development, add to `.env.local`:
+
+```bash
+openssl rand -base64 32   # paste as SESSION_SECRET=
+```
 
 To use your own data, configure Splitwise OAuth as described below.
 
@@ -62,34 +50,41 @@ When connected, the **mask icon** in the header toggles between your synced data
 
 ## Hosting
 
-### Docker
+### Try it with zero configuration
+
+Deploy the app **without** Postgres, Splitwise, or secrets. It starts in **showcase mode**: Home, Explore, and Insights use built-in sample data. Add credentials later in **Settings** to switch to your own expenses.
+
+**Railway (fastest)**
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → select this repository.
+2. **Settings** → **Networking** → **Generate Domain**.
+3. Deploy. Open the URL — no variables required for the demo.
+
+**Docker (app only)**
+
+```bash
+docker compose -f docker-compose.showcase.yml up --build
+```
+
+Open **http://localhost:3000**.
+
+**Showcase security** — A zero-config deploy is a **public, read-only demo** (fictional data only). It is not multi-tenant production. Anyone can browse sample expenses via the API; writes are blocked. Before connecting real Splitwise users on the same URL, set a strong `SESSION_SECRET` (`openssl rand -base64 32`) and complete OAuth setup in **Settings**.
+
+### Full install (your Splitwise data)
 
 Runs the application and Postgres; migrations execute on container start:
 
 ```bash
 cp .env.example .env
-# SESSION_SECRET, SPLITWISE_*, APP_URL
+# SESSION_SECRET, SPLITWISE_*, APP_URL, DATABASE_URL
 docker compose up --build
 ```
 
-### Railway
+**Railway with Postgres**
 
-Deploy using Railway's built-in `*.up.railway.app` HTTPS domain. A Cloudflare tunnel is not required for this setup.
-
-**1. Create the project**
-
-1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → select this repository.
-2. Railway builds from the root [`Dockerfile`](Dockerfile) ([`railway.toml`](railway.toml) sets the health check).
-3. In the same project: **+ New** → **Database** → **PostgreSQL**.
-
-**2. Generate a public URL**
-
-1. Open the app service → **Settings** → **Networking**.
-2. **Generate Domain** and copy the URL (e.g. `https://open-splitwise-production-xxxx.up.railway.app`).
-
-**3. Set environment variables**
-
-On the **app** service → **Variables**. Set these **before** the first successful deploy; the application will not start without them:
+1. Deploy from GitHub (same as above).
+2. **+ New** → **Database** → **PostgreSQL**.
+3. Set variables on the **app** service:
 
 | Variable                  | Value                                                               |
 | ------------------------- | ------------------------------------------------------------------- |
@@ -101,28 +96,27 @@ On the **app** service → **Variables**. Set these **before** the first success
 | `SESSION_SECRET`          | Output of `openssl rand -base64 32`                                 |
 | `DATABASE_URL`            | `${{Postgres.DATABASE_URL}}`                                        |
 
-Do **not** set `PORT` — Railway injects the listen port automatically. Do **not** set `DEMO_MODE` in production.
+Do **not** set `PORT` — Railway injects the listen port automatically.
 
-**4. Splitwise OAuth**
+**Splitwise OAuth**
 
 1. Create an OAuth app at [secure.splitwise.com/apps](https://secure.splitwise.com/apps).
-2. Add the **exact** redirect URI from the table above (must match `SPLITWISE_REDIRECT_URI` character-for-character).
+2. Add the **exact** redirect URI from the table above.
 
-**5. Deploy and verify**
+**Verify**
 
-1. Deploy (or redeploy after variables are set). Migrations run automatically on start.
-2. Wait for the health check: `GET /api/health` → `{ "ok": true }`.
-3. Open your Railway URL → **Settings** → **Connect Splitwise** → **Sync**.
+1. `GET /api/health` → `{ "ok": true }`.
+2. Open your URL → **Settings** → **Connect Splitwise** → **Sync**.
 
-**Custom domain (optional)** — Railway **Networking** → add your domain, then update `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SPLITWISE_REDIRECT_URI`, and the Splitwise app redirect URI to match.
+**Custom domain (optional)** — update `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SPLITWISE_REDIRECT_URI`, and the Splitwise app redirect URI to match.
 
 **Troubleshooting**
 
-| Symptom                    | Fix                                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Application fails to start | Verify **Variables**: `SESSION_SECRET` (32+ characters), `APP_URL`, and `SPLITWISE_REDIRECT_URI` are set |
-| OAuth redirect mismatch    | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must share the same origin                        |
-| Database connection errors | Use `${{Postgres.DATABASE_URL}}` on the app service (not `DATABASE_PUBLIC_URL`)                          |
+| Symptom                            | Fix                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| App won't start after adding OAuth | Set `SESSION_SECRET` (32+ chars), `APP_URL`, and `SPLITWISE_REDIRECT_URI` with matching origins |
+| OAuth redirect mismatch            | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must share the same origin               |
+| Database connection errors         | Use `${{Postgres.DATABASE_URL}}` on the app service (not `DATABASE_PUBLIC_URL`)                 |
 
 ### Cloudflare Tunnel (optional)
 

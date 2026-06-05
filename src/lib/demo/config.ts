@@ -1,6 +1,12 @@
-/** When true, visitors can start a guest demo from the home page. */
+import { isShowcaseMode } from "@/lib/deploy-mode";
+
+/** When true, visitors can browse sample data without Splitwise OAuth. */
 export function isGuestDemoAllowed(): boolean {
-  return process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1";
+  return (
+    isShowcaseMode() ||
+    process.env.DEMO_MODE === "true" ||
+    process.env.DEMO_MODE === "1"
+  );
 }
 
 /** @deprecated Use isGuestDemoAllowed */

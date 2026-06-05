@@ -8,6 +8,7 @@ import { getConnectedUser } from "@/lib/auth";
 import { getSetupStatus } from "@/lib/setup/status";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { sessionIsGuestDemo } from "@/lib/demo/session";
+import { isShowcaseMode } from "@/lib/deploy-mode";
 import { shouldExposeSetupDetails } from "@/lib/security/production";
 import {
   getAppSession,
@@ -42,7 +43,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const user = await getConnectedUser();
   const session = await getAppSession();
-  const fakeDataOn = sessionShowsFakeData(session);
+  const showcase = isShowcaseMode();
+  const fakeDataOn = sessionShowsFakeData(session) || showcase;
   const guestDemo = sessionIsGuestDemo(session);
   const headerList = await headers();
   const setup = getSetupStatus(requestOriginFromHeaders(headerList));
@@ -52,7 +54,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     dbConfigured: setup.dbConfigured,
   });
   const showSync = !fakeDataOn && (!!user || setup.dbConfigured);
-  const oauthConnected = !!user && !guestDemo;
+  const oauthConnected = !!user && !guestDemo && !showcase;
 
   return (
     <AppShell>

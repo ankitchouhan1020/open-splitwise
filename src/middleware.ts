@@ -1,6 +1,8 @@
 import { getIronSession } from "iron-session";
 import { appPathUrl } from "@/lib/app-url";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
+import { isSameOriginMutation } from "@/lib/security/csrf";
+import { isDemoWriteBlocked, isPublicApiPath } from "@/lib/security/demo-write";
 import {
   AUTHENTICATED_READ_RULE,
   authenticatedReadRateLimitKey,
@@ -8,28 +10,13 @@ import {
   clientIpFromHeaders,
   rateLimitRuleForPath,
 } from "@/lib/security/rate-limit";
-import { isSameOriginMutation } from "@/lib/security/csrf";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   getIronSessionOptions,
   sessionIsActive,
-  sessionShowsFakeData,
   type AppSession,
 } from "@/lib/session-config";
-
-const PUBLIC_API_PATHS = new Set([
-  "/api/health",
-  "/api/auth/splitwise",
-  "/api/auth/splitwise/callback",
-  "/api/auth/splitwise/config",
-  "/api/demo/start",
-]);
-
-const FAKE_DATA_WRITE_ALLOWED = new Set([
-  "/api/demo/stop",
-  "/api/fake-data/toggle",
-]);
 
 const PROTECTED_PAGE_PREFIXES = [
   "/explore",
@@ -37,10 +24,6 @@ const PROTECTED_PAGE_PREFIXES = [
   "/friends",
   "/groups",
 ];
-
-function isPublicApi(pathname: string): boolean {
-  return PUBLIC_API_PATHS.has(pathname);
-}
 
 function isProtectedPage(pathname: string): boolean {
   return PROTECTED_PAGE_PREFIXES.some(
@@ -51,7 +34,7 @@ function isProtectedPage(pathname: string): boolean {
 async function sessionFromRequest(
   request: NextRequest,
   response: NextResponse,
-): Promise<AppSession> {
+) {
   return getIronSession<AppSession>(request, response, getIronSessionOptions());
 }
 
@@ -76,12 +59,12 @@ export async function middleware(request: NextRequest) {
       if (!allowed) return rateLimitedResponse(retryAfterSec);
     }
 
-    if (!isPublicApi(pathname) && !isSameOriginMutation(request)) {
+    if (!isPublicApiPath(pathname) && !isSameOriginMutation(request)) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
   }
 
-  if (isPublicApi(pathname)) {
+  if (isPublicApiPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -105,11 +88,7 @@ export async function middleware(request: NextRequest) {
         if (!allowed) return rateLimitedResponse(retryAfterSec);
       }
 
-      if (
-        sessionShowsFakeData(session) &&
-        request.method !== "GET" &&
-        !FAKE_DATA_WRITE_ALLOWED.has(pathname)
-      ) {
+      if (isDemoWriteBlocked(pathname, request.method, session)) {
         return NextResponse.json(
           { error: "fake_data_read_only" },
           { status: 403 },

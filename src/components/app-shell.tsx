@@ -7,6 +7,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SyncStatusBanner } from "@/components/sync-status-banner";
 import { SyncStatusProvider } from "@/components/sync-status-provider";
 import { sessionIsGuestDemo } from "@/lib/demo/session";
+import { isShowcaseMode } from "@/lib/deploy-mode";
 import { isDatabaseConfigured } from "@/lib/db/config";
 import {
   getAppSession,
@@ -17,9 +18,10 @@ import {
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getAppSession();
+  const showcase = isShowcaseMode();
   const connected = sessionIsActive(session);
   const oauthConnected = sessionHasAccessToken(session);
-  const fakeDataOn = sessionShowsFakeData(session);
+  const fakeDataOn = sessionShowsFakeData(session) || showcase;
   const guestDemo = sessionIsGuestDemo(session);
   const dbConfigured = isDatabaseConfigured();
   const syncEnabled = oauthConnected && dbConfigured && !fakeDataOn;
@@ -42,7 +44,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 dbConfigured={dbConfigured}
                 fakeDataOn={fakeDataOn}
               />
-              {fakeDataOn && <FakeDataBanner guestDemo={guestDemo} />}
+              {fakeDataOn && (
+                <FakeDataBanner guestDemo={guestDemo} showcase={showcase} />
+              )}
               <SyncStatusBanner
                 connected={connected}
                 dbConfigured={dbConfigured}

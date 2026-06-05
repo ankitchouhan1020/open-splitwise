@@ -1,4 +1,12 @@
-const WEAK_SESSION_SECRETS = new Set(["local-dev-only-change-me-32chars-min"]);
+import {
+  isFullyConfiguredForProduction,
+  isShowcaseMode,
+} from "@/lib/deploy-mode";
+
+const WEAK_SESSION_SECRETS = new Set([
+  "local-dev-only-change-me-32chars-min",
+  "showcase-deploy-only-32chars-min!!!",
+]);
 
 export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
@@ -11,13 +19,26 @@ export function shouldExposeSetupDetails(opts: {
   dbConfigured: boolean;
 }): boolean {
   if (!isProduction()) return true;
+  if (!opts.oauthConfigured) return true;
   if (opts.sessionActive) return true;
-  if (!opts.oauthConfigured || !opts.dbConfigured) return true;
+  if (!opts.dbConfigured) return true;
   return false;
 }
 
 export function assertProductionEnv(): void {
   if (!isProduction()) return;
+
+  if (isShowcaseMode()) {
+    const secret = process.env.SESSION_SECRET?.trim();
+    if (secret && secret.length >= 32 && WEAK_SESSION_SECRETS.has(secret)) {
+      console.warn(
+        "[open-splitwise] Showcase deploy: replace SESSION_SECRET before connecting Splitwise.",
+      );
+    }
+    return;
+  }
+
+  if (!isFullyConfiguredForProduction()) return;
 
   const errors: string[] = [];
 
@@ -57,7 +78,9 @@ export function assertProductionEnv(): void {
   }
 
   if (process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1") {
-    errors.push("DEMO_MODE must be disabled in production");
+    errors.push(
+      "DEMO_MODE must be disabled when Splitwise OAuth is configured",
+    );
   }
 
   if (errors.length > 0) {

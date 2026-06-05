@@ -1,4 +1,5 @@
 import { sessionIsGuestDemo } from "@/lib/demo/session";
+import { isShowcaseMode } from "@/lib/deploy-mode";
 import { DEMO_USER } from "@/lib/demo/user";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import { SplitwiseAuthError } from "@/lib/splitwise/errors";
@@ -24,6 +25,8 @@ export async function getSplitwiseClient() {
 }
 
 export async function getConnectedUser(): Promise<SplitwiseUser | null> {
+  if (isShowcaseMode()) return DEMO_USER;
+
   const session = await getAppSession();
   if (sessionIsGuestDemo(session)) return DEMO_USER;
 
