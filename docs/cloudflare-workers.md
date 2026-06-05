@@ -144,7 +144,7 @@ Wrangler loads **`.dev.vars` only** — it does not read `.env.local`.
 pnpm cf:sync-vars
 ```
 
-This copies `SESSION_SECRET` and OAuth credentials from `.env.local` and sets preview URLs to `http://localhost:8787`.
+This copies `SESSION_SECRET`, OAuth credentials, and **`DATABASE_URL`** from `.env.local`. Local preview uses direct Postgres (Wrangler's Hyperdrive proxy is bypassed when `DATABASE_URL` is set).
 
 2. Ensure Postgres is running and migrated:
 
@@ -206,6 +206,7 @@ Workers do not run migrations at startup (unlike Docker). Options:
 | Symptom                                                         | Fix                                                                        |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `Server failed to respond` / `SESSION_SECRET must be at least 32 characters` | Run `pnpm cf:sync-vars` or create `.dev.vars` (Wrangler ignores `.env.local`) |
+| `CONNECT_TIMEOUT` / hung requests (~30s) on API routes | Ensure Postgres is running; run `pnpm cf:sync-vars` so `DATABASE_URL` is in `.dev.vars` (local preview bypasses the Hyperdrive proxy) |
 | OAuth redirect mismatch                                         | `APP_URL`, `SPLITWISE_REDIRECT_URI`, and Splitwise app must match          |
 | Sync never completes                                            | Workers Paid required; check logs in Cloudflare dashboard                  |
 | `503 database_not_configured`                                   | Confirm `DEPLOY_TARGET=cloudflare` in wrangler vars and Hyperdrive binding |

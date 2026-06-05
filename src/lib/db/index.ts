@@ -36,15 +36,20 @@ function postgresSslOption(url: string): false | "require" {
 }
 
 function createPostgresClient(url: string, viaHyperdrive: boolean) {
+  const timeouts = viaHyperdrive
+    ? { connect_timeout: 10, idle_timeout: 20 }
+    : {};
+
   if (viaHyperdrive) {
     return postgres(url, {
-      max: 1,
+      max: 5,
       fetch_types: false,
       prepare: false,
       ssl: postgresSslOption(url),
+      ...timeouts,
     });
   }
-  return postgres(url, { max: 10, ssl: postgresSslOption(url) });
+  return postgres(url, { max: 10, ssl: postgresSslOption(url), ...timeouts });
 }
 
 export function getPostgresSql(): ReturnType<typeof postgres> {
