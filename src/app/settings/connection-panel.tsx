@@ -138,7 +138,7 @@ export function ConnectionPanel({
                 type="button"
                 onClick={() => void disconnect()}
                 disabled={disconnecting}
-                className="border-border text-muted hover:text-foreground shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
+                className="border-border text-muted hover:text-foreground hover:bg-error-bg hover:text-error-text shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
               >
                 {disconnecting
                   ? guestDemo
@@ -172,7 +172,7 @@ export function ConnectionPanel({
 }
 
 const btnPrimary =
-  "bg-accent shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90";
+  "bg-accent shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90";
 
 function formatConnectionError(code: string): string {
   const messages: Record<string, string> = {

@@ -40,7 +40,7 @@ export function DeleteSyncedDataButton() {
       type="button"
       onClick={() => void deleteSyncedData()}
       disabled={deleting}
-      className="border-border text-muted hover:text-foreground shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
+      className="border-border text-muted hover:text-foreground hover:bg-error-bg hover:text-error-text shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
     >
       {deleting ? "Deleting…" : "Delete synced data"}
     </button>

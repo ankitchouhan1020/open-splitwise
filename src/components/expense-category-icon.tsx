@@ -111,12 +111,12 @@ export function ExpenseCategoryIcon({
 
   return (
     <span
-      className={`${ICON_TILE} bg-stone-100 ${className}`}
+      className={`${ICON_TILE} bg-muted-surface ${className}`}
       title={label}
       aria-hidden
     >
       <svg
-        className="h-5 w-5 text-stone-400"
+        className="text-muted h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

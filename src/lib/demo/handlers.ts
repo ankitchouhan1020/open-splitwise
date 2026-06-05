@@ -1,3 +1,5 @@
+import type { GroupDetail } from "@/lib/groups/detail";
+import type { GroupListItem } from "@/lib/groups/list";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
 import type { InsightsFilters } from "@/lib/expenses/insights";
@@ -12,6 +14,7 @@ import {
   getDemoExpenses,
 } from "@/lib/demo/fixtures";
 import type { GroupMember } from "@/lib/groups/members";
+import type { FriendsBalancePage } from "@/lib/splitwise/balances";
 import { DEMO_OWNER_SPLITWISE_ID, DEMO_USER } from "@/lib/demo/user";
 
 function startOfMonth(d: Date): Date {
@@ -556,5 +559,71 @@ export function demoDashboardSummary(now = new Date()): DashboardSummary {
       error: null,
       inProgress: false,
     },
+  };
+}
+
+export function demoFriendsBalancePage(): FriendsBalancePage {
+  return {
+    currency: DEMO_BALANCES.currency,
+    summary: DEMO_BALANCES,
+    toGet: [
+      { id: 3002, name: "Sam Patel", direction: "to_get", amount: 65.83 },
+      { id: 3001, name: "Jordan Lee", direction: "to_get", amount: 9.25 },
+    ],
+    toPay: [
+      { id: 3003, name: "Taylor Kim", direction: "to_pay", amount: 36.0 },
+      { id: 3001, name: "Jordan Lee", direction: "to_pay", amount: 28.8 },
+    ],
+  };
+}
+
+export function demoGroupsList(now = new Date()) {
+  const groups: GroupListItem[] = DEMO_GROUPS.map((g) => {
+    const rows = filterDemoExpenses({ groupId: g.id }, now);
+    const myShare = rows.reduce((s, r) => s + Number(r.myShare ?? 0), 0);
+    const last = rows[0]?.date ?? null;
+    return {
+      id: g.id,
+      name: g.name,
+      groupType: null,
+      expenseCount: rows.length,
+      myShareTotal: String(myShare),
+      lastActivityAt: last,
+    };
+  });
+  return { currency: "USD", groups };
+}
+
+export function demoGroupDetail(
+  groupId: number,
+  now = new Date(),
+): GroupDetail | null {
+  const group = DEMO_GROUPS.find((g) => g.id === groupId);
+  if (!group) return null;
+
+  const members = demoGroupMembers(groupId);
+  if (!members) return null;
+
+  const recent = demoListExpenses(
+    { groupId, sort: "date", order: "desc", page: 1, pageSize: 25 },
+    now,
+  );
+  const rows = filterDemoExpenses({ groupId }, now);
+  const myShare = rows.reduce((s, r) => s + Number(r.myShare ?? 0), 0);
+
+  return {
+    id: group.id,
+    name: group.name,
+    groupType: null,
+    currency: "USD",
+    expenseCount: rows.length,
+    myShareTotal: String(myShare),
+    members: members.map((m) => ({
+      id: m.id,
+      name: m.name,
+      expenseCount: 0,
+      myShareTotal: "0",
+    })),
+    recentActivity: recent.items,
   };
 }

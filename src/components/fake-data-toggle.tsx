@@ -63,8 +63,8 @@ export function FakeDataToggle({ enabled, compact = false }: Props) {
         aria-pressed={enabled}
         className={
           enabled
-            ? "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-50 disabled:opacity-50"
-            : "border-border text-muted hover:text-foreground inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-white hover:bg-stone-50 disabled:opacity-50"
+            ? "bg-balance-pay-bg text-warn-text ring-warn-border hover:bg-warn-bg inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 disabled:opacity-50"
+            : "border-border text-muted hover:text-foreground bg-card hover:bg-hover inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border disabled:opacity-50"
         }
       >
         <MaskIcon className="h-[17px] w-[17px]" />
@@ -82,8 +82,8 @@ export function FakeDataToggle({ enabled, compact = false }: Props) {
       aria-pressed={enabled}
       className={
         enabled
-          ? "inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-semibold text-amber-950 ring-1 ring-amber-200 hover:bg-amber-50 disabled:opacity-50 md:px-3 md:text-sm"
-          : "border-border text-muted hover:text-foreground inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50 disabled:opacity-50 md:px-3 md:text-sm"
+          ? "bg-balance-pay-bg text-warn-text ring-warn-border hover:bg-warn-bg inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 disabled:opacity-50 md:px-3 md:text-sm"
+          : "border-border text-muted hover:text-foreground bg-card hover:bg-hover inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 md:px-3 md:text-sm"
       }
     >
       <MaskIcon className="h-4 w-4 shrink-0" />

@@ -54,16 +54,16 @@ export default async function HomePage() {
         <div className="flex flex-col gap-2.5 pt-1 sm:flex-row sm:flex-wrap sm:gap-3">
           <Link
             href="/api/auth/splitwise"
-            className="bg-accent rounded-xl px-6 py-3 text-center text-sm font-semibold text-white hover:opacity-90"
+            className="bg-accent text-accent-foreground rounded-xl px-6 py-3 text-center text-sm font-semibold hover:opacity-90"
           >
             Connect Splitwise
           </Link>
           {isGuestDemoAllowed() && (
-            <DemoModeButton className="border-border bg-card text-foreground rounded-xl border px-6 py-3 text-center text-sm font-medium hover:bg-stone-50 disabled:opacity-50" />
+            <DemoModeButton className="border-border bg-card text-foreground hover:bg-hover rounded-xl border px-6 py-3 text-center text-sm font-medium disabled:opacity-50" />
           )}
           <Link
             href="/privacy"
-            className="border-border bg-card text-foreground rounded-xl border px-6 py-3 text-center text-sm font-medium hover:bg-stone-50"
+            className="border-border bg-card text-foreground hover:bg-hover rounded-xl border px-6 py-3 text-center text-sm font-medium"
           >
             Privacy
           </Link>

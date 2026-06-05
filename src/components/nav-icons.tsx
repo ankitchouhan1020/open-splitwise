@@ -57,6 +57,44 @@ export function NavIconInsights({ className }: IconProps) {
   );
 }
 
+export function NavIconFriends({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+      />
+    </svg>
+  );
+}
+
+export function NavIconGroups({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 7h18M3 12h18M3 17h18"
+      />
+    </svg>
+  );
+}
+
 export function NavIconSettings({ className }: IconProps) {
   return (
     <svg
@@ -117,6 +155,8 @@ export function NavIconAdd({ className }: IconProps) {
 
 const NAV_ICON_MAP = {
   "/": NavIconHome,
+  "/friends": NavIconFriends,
+  "/groups": NavIconGroups,
   "/explore": NavIconExplore,
   "/insights": NavIconInsights,
   "/settings": NavIconSettings,

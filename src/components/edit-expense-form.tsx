@@ -206,8 +206,8 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
               onClick={() => setCategoryId("")}
               className={
                 !categoryId
-                  ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                  : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                  ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
+                  : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
               }
             >
               None
@@ -221,8 +221,8 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
                   onClick={() => setCategoryId(active ? "" : String(c.id))}
                   className={
                     active
-                      ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                      : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                      ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
+                      : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
                   }
                 >
                   {c.name}
@@ -261,7 +261,7 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-sm">
           {error}
         </p>
       )}
@@ -270,7 +270,7 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
         <button
           type="submit"
           disabled={submitting}
-          className="bg-accent inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          className="bg-accent text-accent-foreground inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
         >
           <IconCheck className="h-4 w-4" />
           {submitting ? "Saving…" : "Save changes"}

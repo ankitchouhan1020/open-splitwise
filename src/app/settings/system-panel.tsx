@@ -40,8 +40,8 @@ export function SystemPanel({ setup }: Props) {
               <span
                 className={
                   v.configured
-                    ? "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs text-teal-800"
-                    : "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-900"
+                    ? "bg-balance-get-bg text-balance-get mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
+                    : "bg-balance-pay-bg text-warn-text mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
                 }
                 aria-hidden
               >
@@ -58,7 +58,7 @@ export function SystemPanel({ setup }: Props) {
             </li>
           ))}
           {!oauthReady && (
-            <li className="text-muted border-border mt-2 rounded-md border bg-stone-50/60 px-3 py-2 text-xs">
+            <li className="text-muted border-border bg-muted-surface mt-2 rounded-md border px-3 py-2 text-xs">
               Callback URL for Splitwise:{" "}
               <code className="text-foreground">{setup.redirectUri}</code>
             </li>

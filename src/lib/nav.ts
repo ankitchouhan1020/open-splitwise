@@ -6,9 +6,19 @@ export type NavLink = {
 
 export const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Home" },
+  { href: "/friends", label: "Friends" },
+  { href: "/groups", label: "Groups" },
   { href: "/explore", label: "Explore" },
   { href: "/insights", label: "Insights", shortLabel: "Stats" },
   { href: "/settings", label: "Settings" },
+];
+
+/** Bottom nav on mobile (Settings lives in header). */
+export const MOBILE_NAV_LINKS: NavLink[] = [
+  { href: "/", label: "Home" },
+  { href: "/friends", label: "Friends" },
+  { href: "/groups", label: "Groups" },
+  { href: "/insights", label: "Insights", shortLabel: "Stats" },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

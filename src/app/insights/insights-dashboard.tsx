@@ -15,6 +15,8 @@ import {
   INSIGHTS_TH,
 } from "@/app/insights/insights-table-layout";
 import { filtersToSearchParams } from "@/lib/expenses/filters";
+import { useTheme } from "@/components/theme-provider";
+import { chartThemeFromDocument } from "@/lib/chart-theme";
 import { formatAmount, formatMoney, formatPercent } from "@/lib/format";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -28,7 +30,8 @@ import {
   YAxis,
 } from "recharts";
 
-const LINE_COLORS = ["#0d9488", "#0891b2", "#6366f1", "#a855f7"];
+const LINE_COLORS_LIGHT = ["#0d9488", "#0891b2", "#6366f1", "#a855f7"];
+const LINE_COLORS_DARK = ["#2dd4bf", "#38bdf8", "#818cf8", "#c084fc"];
 
 type ChartTooltipProps = {
   active?: boolean;
@@ -84,7 +87,9 @@ function DeltaBadge({
   const down = value < 0;
   return (
     <span
-      className={up ? "text-amber-700" : down ? "text-teal-700" : "text-muted"}
+      className={
+        up ? "text-balance-pay" : down ? "text-balance-get" : "text-muted"
+      }
     >
       {label} {up ? "+" : ""}
       {pct != null ? formatPercent(pct) : "—"}
@@ -93,6 +98,9 @@ function DeltaBadge({
 }
 
 export function InsightsDashboard() {
+  const { resolved: theme } = useTheme();
+  const chart = chartThemeFromDocument();
+  const lineColors = theme === "dark" ? LINE_COLORS_DARK : LINE_COLORS_LIGHT;
   const defaults = useMemo(() => defaultDateRange(), []);
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
@@ -269,10 +277,16 @@ export function InsightsDashboard() {
                 {monthlyChart.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyChart}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={chart.grid}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 10, fill: chart.axis }}
+                      />
                       <YAxis
-                        tick={{ fontSize: 10 }}
+                        tick={{ fontSize: 10, fill: chart.axis }}
                         width={52}
                         tickFormatter={(v) =>
                           formatAmount(Number(v), {
@@ -293,7 +307,7 @@ export function InsightsDashboard() {
                           key={cur}
                           type="monotone"
                           dataKey={cur}
-                          stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                          stroke={lineColors[i % lineColors.length]}
                           strokeWidth={2}
                           dot={false}
                           name={cur}
@@ -329,7 +343,7 @@ export function InsightsDashboard() {
                           {fmt(total)}
                         </span>
                       </div>
-                      <div className="mt-1 h-1 overflow-hidden rounded-full bg-stone-100">
+                      <div className="bg-muted-surface mt-1 h-1 overflow-hidden rounded-full">
                         <div
                           className="bg-accent h-full rounded-full"
                           style={{ width: `${(total / categoryMax) * 100}%` }}
@@ -365,7 +379,7 @@ export function InsightsDashboard() {
                   </thead>
                   <tbody>
                     {data.trends.categories.slice(0, 12).map((c) => (
-                      <tr key={c.categoryName} className="hover:bg-stone-50/80">
+                      <tr key={c.categoryName} className="hover:bg-hover">
                         <td className={INSIGHTS_TD}>
                           <Link
                             href={exploreLink({
@@ -383,9 +397,9 @@ export function InsightsDashboard() {
                           <span
                             className={
                               c.delta > 0
-                                ? "text-amber-700"
+                                ? "text-balance-pay"
                                 : c.delta < 0
-                                  ? "text-teal-700"
+                                  ? "text-balance-get"
                                   : ""
                             }
                           >
@@ -402,9 +416,9 @@ export function InsightsDashboard() {
                           <span
                             className={
                               c.yoyDelta > 0
-                                ? "text-amber-700"
+                                ? "text-balance-pay"
                                 : c.yoyDelta < 0
-                                  ? "text-teal-700"
+                                  ? "text-balance-get"
                                   : ""
                             }
                           >
@@ -445,7 +459,7 @@ export function InsightsDashboard() {
                   </thead>
                   <tbody>
                     {data.groups.map((g) => (
-                      <tr key={g.groupId} className="hover:bg-stone-50/80">
+                      <tr key={g.groupId} className="hover:bg-hover">
                         <td className={INSIGHTS_TD}>
                           <Link
                             href={exploreLink({ groupId: g.groupId })}
@@ -486,7 +500,7 @@ export function InsightsDashboard() {
                   </thead>
                   <tbody>
                     {data.friends.map((f) => (
-                      <tr key={f.friendId} className="hover:bg-stone-50/80">
+                      <tr key={f.friendId} className="hover:bg-hover">
                         <td className={INSIGHTS_TD}>
                           <Link
                             href={exploreLink({ friendId: f.friendId })}

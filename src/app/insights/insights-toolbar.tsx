@@ -76,7 +76,7 @@ export function InsightsToolbar({
 }: Props) {
   return (
     <div className="border-border bg-card space-y-3 rounded-lg border px-3 py-3">
-      <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-0.5 md:flex-wrap md:overflow-visible">
+      <div className="-mx-1 flex scrollbar-none items-center gap-1 overflow-x-auto px-1 pb-0.5 md:flex-wrap md:overflow-visible">
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -84,8 +84,8 @@ export function InsightsToolbar({
             onClick={() => onPreset(p.id)}
             className={
               activePreset === p.id
-                ? "shrink-0 rounded-md bg-stone-800 px-2.5 py-1.5 text-xs font-medium text-white"
-                : "border-border shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50"
+                ? "bg-pill-active text-pill-active-fg shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium"
+                : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium"
             }
           >
             {p.label}
@@ -115,7 +115,7 @@ export function InsightsToolbar({
         <select
           value={groupId}
           onChange={(e) => onGroupChange(e.target.value)}
-          className="border-border min-h-9 w-full rounded-md border px-2 py-1.5 text-xs sm:max-w-[130px] sm:w-auto"
+          className="border-border min-h-9 w-full rounded-md border px-2 py-1.5 text-xs sm:w-auto sm:max-w-[130px]"
         >
           <option value="">All groups</option>
           {groups.map((g) => (

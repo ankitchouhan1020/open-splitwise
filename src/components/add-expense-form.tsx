@@ -89,7 +89,10 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
   const topCategories = useMemo(() => {
     const seen = new Set<number>();
     const out: { id: number; name: string }[] = [];
-    for (const c of [...(form.suggestions?.categories ?? []), ...form.categories]) {
+    for (const c of [
+      ...(form.suggestions?.categories ?? []),
+      ...form.categories,
+    ]) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
       out.push(c);
@@ -235,8 +238,8 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
   if (singleSuccess) {
     return (
       <div className="space-y-4 py-1">
-        <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
-          <p className="text-sm font-medium text-teal-900">
+        <div className="border-success-border bg-success-bg rounded-lg border px-4 py-3">
+          <p className="text-success-text text-sm font-medium">
             {singleSuccess.text}
           </p>
         </div>
@@ -244,7 +247,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
           <button
             type="button"
             onClick={resetSingleForAnother}
-            className="bg-accent rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
           >
             Add another
           </button>
@@ -252,7 +255,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
             href={splitwiseExpenseUrl(singleSuccess.splitwiseId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="border-border rounded-lg border px-4 py-2 text-sm font-medium hover:bg-stone-50"
+            className="border-border hover:bg-hover rounded-lg border px-4 py-2 text-sm font-medium"
           >
             Open in Splitwise
           </a>
@@ -274,11 +277,11 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
         <div
           className={
             bulkResult.failed === 0
-              ? "rounded-lg border border-teal-200 bg-teal-50 px-4 py-3"
-              : "rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
+              ? "border-success-border bg-success-bg rounded-lg border px-4 py-3"
+              : "border-warn-border bg-warn-bg rounded-lg border px-4 py-3"
           }
         >
-          <p className="text-sm font-medium text-stone-900">
+          <p className="text-foreground text-sm font-medium">
             {bulkResult.created} added
             {bulkResult.failed > 0
               ? `, ${bulkResult.failed} failed`
@@ -290,7 +293,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
             {bulkResult.results
               .filter((r) => !r.ok)
               .map((r) => (
-                <li key={r.index} className="text-red-800">
+                <li key={r.index} className="text-error-text">
                   {r.description}: {r.error ?? "failed"}
                 </li>
               ))}
@@ -303,14 +306,14 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
               setBulkResult(null);
               setBulkText("");
             }}
-            className="bg-accent rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
           >
             Add more
           </button>
           <button
             type="button"
             onClick={onSuccess}
-            className="border-border rounded-lg border px-4 py-2 text-sm font-medium hover:bg-stone-50"
+            className="border-border hover:bg-hover rounded-lg border px-4 py-2 text-sm font-medium"
           >
             Done
           </button>
@@ -361,7 +364,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
                     key={d}
                     type="button"
                     onClick={() => setDescription(d)}
-                    className="border-border text-muted hover:border-accent hover:text-foreground rounded-full border bg-stone-50/80 px-2.5 py-0.5 text-xs hover:bg-white"
+                    className="border-border text-muted hover:border-accent hover:text-foreground bg-muted-surface hover:bg-card rounded-full border px-2.5 py-0.5 text-xs"
                   >
                     {d}
                   </button>
@@ -414,8 +417,8 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
                   onClick={() => setCategoryId("")}
                   className={
                     !categoryId
-                      ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                      : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                      ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
+                      : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
                   }
                 >
                   None
@@ -429,8 +432,8 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
                       onClick={() => setCategoryId(active ? "" : String(c.id))}
                       className={
                         active
-                          ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                          : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                          ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
+                          : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
                       }
                     >
                       {c.name}
@@ -480,7 +483,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-sm">
               {error}
             </p>
           )}
@@ -489,7 +492,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
             <button
               type="submit"
               disabled={submitting || !form.groupId}
-              className="bg-accent rounded-lg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="bg-accent text-accent-foreground rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
             >
               {submitting ? "Adding…" : "Add expense"}
             </button>
@@ -560,7 +563,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
           )}
 
           {parsedBulk.errors.length > 0 && (
-            <ul className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+            <ul className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-xs">
               {parsedBulk.errors.slice(0, 5).map((e) => (
                 <li key={e.lineNumber}>
                   Line {e.lineNumber}: {e.message}
@@ -570,7 +573,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-sm">
               {error}
             </p>
           )}
@@ -584,7 +587,7 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
               parsedBulk.errors.length > 0
             }
             onClick={() => void submitBulk()}
-            className="bg-accent rounded-lg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="bg-accent text-accent-foreground rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
           >
             {submitting
               ? `Adding ${parsedBulk.rows.length}…`

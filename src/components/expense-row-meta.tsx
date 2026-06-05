@@ -28,7 +28,7 @@ export function ExpenseRowMeta({ expense }: { expense: ExpenseListItem }) {
   return (
     <span className="mt-0.5 flex flex-wrap items-center gap-1">
       {expense.payment && (
-        <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-medium text-violet-800">
+        <span className="bg-violet-bg text-violet-text rounded px-1.5 py-0.5 text-[11px] font-medium">
           Settlement
         </span>
       )}

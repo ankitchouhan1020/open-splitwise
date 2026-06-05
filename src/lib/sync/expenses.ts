@@ -145,7 +145,9 @@ export type ExpenseSyncResult = {
   total: number;
 };
 
-export async function syncExpenses(ctx: SyncRunContext): Promise<ExpenseSyncResult> {
+export async function syncExpenses(
+  ctx: SyncRunContext,
+): Promise<ExpenseSyncResult> {
   const { accountUserId, accessToken } = ctx;
 
   await reconcileStaleSyncState(accountUserId);

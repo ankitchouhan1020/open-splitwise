@@ -9,8 +9,15 @@ import { ExpenseListItemRow } from "@/components/expense-list-item";
 import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { useDashboard, useExpenseDetail } from "@/lib/query/hooks";
-import { balanceClasses } from "@/lib/balance-style";
+import {
+  balanceClasses,
+  balanceNetLabel,
+  balanceSectionLabel,
+} from "@/lib/balance-style";
+import { chartThemeFromDocument } from "@/lib/chart-theme";
 import { formatAmount, formatMoney, formatRelativeSync } from "@/lib/format";
+import { insightToneClass } from "@/lib/tone-styles";
+import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -27,14 +34,6 @@ function formatMonthLabel(month: string): string {
   const d = new Date(Number(y), Number(m) - 1, 1);
   return d.toLocaleString(undefined, { month: "short" });
 }
-
-const INSIGHT_STYLES: Record<DashboardSummary["insights"][0]["tone"], string> =
-  {
-    neutral: "border-stone-200 bg-stone-50/80 text-stone-800",
-    spend: "border-teal-200 bg-teal-50/80 text-teal-900",
-    balance: "border-indigo-200 bg-indigo-50/80 text-indigo-900",
-    alert: "border-amber-200 bg-amber-50/80 text-amber-900",
-  };
 
 function BalancePanel({
   balances,
@@ -91,7 +90,7 @@ function BalancePanel({
                   netTone ? balanceClasses(netTone).label : "text-muted"
                 }`}
               >
-                {netTone === "you_owe" ? "You owe" : "You're owed"} overall
+                {netTone ? balanceNetLabel(netTone) : ""}
               </p>
             </>
           )}
@@ -99,14 +98,14 @@ function BalancePanel({
         {!settled && both && (
           <dl className="text-muted flex gap-4 text-xs tabular-nums sm:block sm:space-y-0.5 sm:text-right">
             <div>
-              <dt className="inline text-teal-700">In </dt>
-              <dd className="inline font-medium text-teal-800">
+              <dt className="text-balance-get inline">In </dt>
+              <dd className="text-balance-get inline font-medium">
                 {formatMoney(balances.youAreOwed, currency)}
               </dd>
             </div>
             <div>
-              <dt className="inline text-amber-700">Out </dt>
-              <dd className="inline font-medium text-amber-800">
+              <dt className="text-balance-pay inline">Out </dt>
+              <dd className="text-balance-pay inline font-medium">
                 {formatMoney(balances.youOwe, currency)}
               </dd>
             </div>
@@ -120,7 +119,7 @@ function BalancePanel({
         >
           {hasOwed && (
             <BalancePeople
-              label={both ? "Owed to you" : undefined}
+              label={both ? balanceSectionLabel("you_are_owed") : undefined}
               currency={currency}
               people={balances.topOwedToYou}
               tone="you_are_owed"
@@ -128,7 +127,7 @@ function BalancePanel({
           )}
           {hasOwe && (
             <BalancePeople
-              label={both ? "You owe" : undefined}
+              label={both ? balanceSectionLabel("you_owe") : undefined}
               currency={currency}
               people={balances.topYouOwe}
               tone="you_owe"
@@ -136,6 +135,13 @@ function BalancePanel({
           )}
         </div>
       )}
+
+      <Link
+        href="/friends"
+        className="text-accent border-border mt-3 inline-block border-t pt-3 text-xs font-medium hover:underline"
+      >
+        View all friends →
+      </Link>
     </div>
   );
 }
@@ -185,6 +191,8 @@ function timeGreeting(): string {
 }
 
 export function HomeDashboard({ userName }: { userName: string }) {
+  useTheme(); // re-render when theme changes so chart colors refresh
+  const chart = chartThemeFromDocument();
   const {
     data,
     isLoading: loading,
@@ -254,7 +262,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                 <Link
                   key={view.id}
                   href={view.href}
-                  className="border-border shrink-0 rounded-md border bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50/80 md:py-1"
+                  className="border-border bg-card hover:bg-hover shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium md:py-1"
                 >
                   {view.label}
                 </Link>
@@ -267,7 +275,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
       {loading && <HomeDashboardSkeleton />}
 
       {error && !loading && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p className="bg-error-bg text-error-text rounded-xl px-4 py-3 text-sm">
           {error === "database_not_configured"
             ? "Database not configured. Set DATABASE_URL and run migrations in Settings."
             : error}
@@ -323,7 +331,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                       <Link
                         key={insight.id}
                         href={insight.href}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${INSIGHT_STYLES[insight.tone]} hover:opacity-90 sm:min-w-[12rem] sm:flex-1`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug ${insightToneClass[insight.tone]} hover:opacity-90 sm:min-w-[12rem] sm:flex-1`}
                       >
                         <span className="font-medium">{insight.headline}</span>
                         <span className="opacity-80">
@@ -336,7 +344,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                     ) : (
                       <div
                         key={insight.id}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-snug sm:min-w-[12rem] sm:flex-1 ${INSIGHT_STYLES[insight.tone]}`}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-snug sm:min-w-[12rem] sm:flex-1 ${insightToneClass[insight.tone]}`}
                       >
                         <span className="font-medium">{insight.headline}</span>
                         <span className="hidden opacity-80 sm:inline">
@@ -389,7 +397,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                 <p className="text-muted mt-3 text-xs">
                   Sync from Splitwise or add one below.
                 </p>
-                <AddExpenseButton className="bg-accent mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+                <AddExpenseButton className="bg-accent text-accent-foreground mt-4 inline-flex rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90">
                   Add expense
                 </AddExpenseButton>
               </div>
@@ -413,11 +421,11 @@ export function HomeDashboard({ userName }: { userName: string }) {
                     >
                       <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 10 }}
+                        tick={{ fontSize: 10, fill: chart.axis }}
                         interval="preserveStartEnd"
                       />
                       <YAxis
-                        tick={{ fontSize: 9 }}
+                        tick={{ fontSize: 9, fill: chart.axis }}
                         width={36}
                         tickFormatter={(v) =>
                           formatAmount(Number(v), {
@@ -434,7 +442,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                       />
                       <Bar
                         dataKey="total"
-                        fill="#0d9488"
+                        fill={chart.accent}
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -476,7 +484,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
                             {formatMoney(Number(g.myShareTotal), currency)}
                           </span>
                         </div>
-                        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-stone-100">
+                        <div className="bg-muted-surface mt-1.5 h-1 overflow-hidden rounded-full">
                           <div
                             className="bg-accent h-full rounded-full"
                             style={{

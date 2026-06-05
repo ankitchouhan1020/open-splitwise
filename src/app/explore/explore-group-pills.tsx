@@ -27,12 +27,16 @@ export function ExploreGroupPills({
             title={`${g.expenseCount} expenses`}
             className={
               active
-                ? "shrink-0 rounded-md bg-teal-700 px-2.5 py-1 text-xs font-medium text-white"
-                : "border-border shrink-0 rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                ? "bg-accent text-accent-foreground shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+                : "border-border bg-card hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
             }
           >
             {g.groupName}
-            <span className={active ? "ml-1 text-teal-200" : "text-muted ml-1"}>
+            <span
+              className={
+                active ? "text-balance-get/70 ml-1" : "text-muted ml-1"
+              }
+            >
               {g.expenseCount}
             </span>
           </button>

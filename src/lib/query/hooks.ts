@@ -1,8 +1,11 @@
 "use client";
 
+import type { GroupDetail } from "@/lib/groups/detail";
+import type { GroupListItem } from "@/lib/groups/list";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseDetail } from "@/lib/expenses/types";
 import type { ExploreGroupStat } from "@/lib/expenses/explore-context";
+import type { FriendsBalancePage } from "@/lib/splitwise/balances";
 import { fetchSplitwiseCategoryIconMap } from "@/lib/splitwise/category-icon";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
@@ -70,6 +73,32 @@ export function useDashboard() {
   return useQuery({
     queryKey: queryKeys.dashboard(),
     queryFn: () => fetchJson<DashboardSummary>("/api/dashboard"),
+  });
+}
+
+export function useFriendsBalances() {
+  return useQuery({
+    queryKey: queryKeys.friends.balances(),
+    queryFn: () => fetchJson<FriendsBalancePage>("/api/friends"),
+    staleTime: 60_000,
+  });
+}
+
+export function useGroupsList() {
+  return useQuery({
+    queryKey: queryKeys.groups.list(),
+    queryFn: () =>
+      fetchJson<{ currency: string; groups: GroupListItem[] }>("/api/groups"),
+    staleTime: FILTER_OPTIONS_STALE,
+  });
+}
+
+export function useGroupDetail(groupId: number) {
+  return useQuery({
+    queryKey: queryKeys.groups.detail(groupId),
+    queryFn: () => fetchJson<GroupDetail>(`/api/groups/${groupId}/detail`),
+    enabled: Number.isFinite(groupId) && groupId > 0,
+    staleTime: FILTER_OPTIONS_STALE,
   });
 }
 

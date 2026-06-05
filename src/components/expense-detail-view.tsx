@@ -5,6 +5,7 @@ import { expenseBalanceTag } from "@/components/expense-row-meta";
 import type { ExpenseDetail } from "@/lib/expenses/types";
 import { isUserInvolvedInExpense } from "@/lib/expenses/involvement";
 import { balanceClasses, balanceLabel } from "@/lib/balance-style";
+import { describeSplitFromShares } from "@/lib/expenses/split-summary";
 import { formatMoney } from "@/lib/format";
 import { splitwiseGroupUrl } from "@/lib/splitwise/urls";
 
@@ -35,14 +36,14 @@ function MetaPill({
   href?: string;
 }) {
   const className =
-    "inline-flex max-w-full items-center truncate rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-700";
+    "inline-flex max-w-full items-center truncate rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground";
   if (href) {
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${className} hover:border-teal-300 hover:text-teal-800`}
+        className={`${className} hover:border-accent hover:text-balance-get`}
       >
         {children}
       </a>
@@ -73,10 +74,11 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
   const balance = expenseBalanceTag(expense);
   const balanceStyle = balance ? balanceClasses(balance.tag) : null;
   const settled = involved && !balance;
+  const splitSummary = describeSplitFromShares(expense.shares);
 
   return (
     <div className="space-y-5 pb-2">
-      <section className="border-border overflow-hidden rounded-2xl border bg-gradient-to-b from-stone-50 to-white shadow-sm">
+      <section className="border-border from-gradient-from to-gradient-to overflow-hidden rounded-2xl border bg-gradient-to-b shadow-sm">
         <div className="p-4">
           <div className="flex items-start gap-3">
             <ExpenseCategoryIcon
@@ -104,7 +106,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
           <div className="mt-3 flex flex-wrap gap-1.5">
             {expense.payment && (
               <MetaPill>
-                <span className="text-teal-800">Settlement</span>
+                <span className="text-balance-get">Settlement</span>
               </MetaPill>
             )}
             {expense.groupName && expense.groupName !== "No group" && (
@@ -128,10 +130,10 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
           <div
             className={`border-t px-4 py-3 ${
               settled
-                ? "border-stone-200 bg-stone-50/80"
+                ? "border-border bg-muted-surface"
                 : balanceStyle
                   ? balanceStyle.card
-                  : "border-stone-200 bg-stone-50/80"
+                  : "border-border bg-muted-surface"
             }`}
           >
             {settled ? (
@@ -187,7 +189,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
       </div>
 
       {expense.details && (
-        <section className="border-border rounded-xl border bg-stone-50/60 p-3.5">
+        <section className="border-border bg-muted-surface rounded-xl border p-3.5">
           <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
             Notes
           </p>
@@ -198,7 +200,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
       )}
 
       {expense.comments && (
-        <section className="border-border rounded-xl border bg-stone-50/60 p-3.5">
+        <section className="border-border bg-muted-surface rounded-xl border p-3.5">
           <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
             Comments
           </p>
@@ -210,10 +212,19 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
 
       {expense.shares.length > 0 && (
         <section>
+          <div className="border-border bg-card mb-3 rounded-xl border p-3 shadow-sm">
+            <p className="text-muted text-[11px] font-semibold tracking-wide uppercase">
+              How it&apos;s split
+            </p>
+            <p className="text-foreground mt-1 text-sm font-semibold">
+              {splitSummary.headline}
+            </p>
+            <p className="text-muted mt-0.5 text-xs">{splitSummary.detail}</p>
+          </div>
           <p className="text-muted mb-2 text-[11px] font-semibold tracking-wide uppercase">
-            Split breakdown
+            Per person
           </p>
-          <ul className="border-border divide-border divide-y overflow-hidden rounded-xl border bg-white shadow-sm">
+          <ul className="border-border divide-border bg-card divide-y overflow-hidden rounded-xl border shadow-sm">
             {expense.shares.map((s) => {
               const net = Number(s.netBalance ?? 0);
               const netPositive = net > 0.005;
@@ -224,7 +235,7 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
                   className="flex items-center gap-3 px-3 py-2.5"
                 >
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600"
+                    className="bg-muted-surface text-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
                     aria-hidden
                   >
                     {initials(s.name)}
@@ -245,9 +256,9 @@ export function ExpenseDetailView({ expense }: { expense: ExpenseDetail }) {
                     <span
                       className={`shrink-0 text-right text-xs font-semibold tabular-nums ${
                         netPositive
-                          ? "text-teal-700"
+                          ? "text-balance-get"
                           : netNegative
-                            ? "text-amber-700"
+                            ? "text-balance-pay"
                             : "text-muted"
                       }`}
                     >

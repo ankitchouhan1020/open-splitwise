@@ -12,7 +12,10 @@ export function HighlightText({ text, query, className }: Props) {
     <span className={className}>
       {parts.map((part, i) =>
         part.match ? (
-          <mark key={i} className="rounded bg-amber-100 px-0.5 text-inherit">
+          <mark
+            key={i}
+            className="bg-balance-pay-bg rounded px-0.5 text-inherit"
+          >
             {part.text}
           </mark>
         ) : (
