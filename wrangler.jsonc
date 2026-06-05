@@ -18,8 +18,7 @@
     "mode": "smart",
   },
   "vars": {
-    "DEPLOY_TARGET": "cloudflare",
-    "NODE_ENV": "production",
+    "DEPLOY_TARGET": "cloudflare"
   },
   "hyperdrive": [
     {

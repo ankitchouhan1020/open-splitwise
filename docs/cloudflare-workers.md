@@ -136,15 +136,38 @@ Other commands:
 
 ## Local preview
 
-1. Copy [`.dev.vars.example`](../.dev.vars.example) to `.dev.vars` and fill in OAuth/session vars.
-2. Set Hyperdrive `localConnectionString` in `wrangler.jsonc` **or** set `DATABASE_URL` in `.dev.vars`.
-3. Run:
+Wrangler loads **`.dev.vars` only** — it does not read `.env.local`.
+
+1. Generate `.dev.vars` from your existing local env:
+
+```bash
+pnpm cf:sync-vars
+```
+
+This copies `SESSION_SECRET` and OAuth credentials from `.env.local` and sets preview URLs to `http://localhost:8787`.
+
+2. Ensure Postgres is running and migrated:
+
+```bash
+docker compose up postgres -d
+pnpm db:migrate
+```
+
+3. Add the preview OAuth callback in [Splitwise app settings](https://secure.splitwise.com/apps):
+
+```text
+http://localhost:8787/api/auth/splitwise/callback
+```
+
+4. Run:
 
 ```bash
 pnpm cf:preview
 ```
 
-Day-to-day UI development still uses `pnpm dev` (Node.js). Use `cf:preview` to test Workers + Hyperdrive behavior.
+Open **http://localhost:8787**. If you see `Server failed to respond`, check the wrangler terminal for errors — usually a missing or short `SESSION_SECRET` in `.dev.vars`.
+
+Day-to-day UI development still uses `pnpm dev` (Node.js on `:3000`). Use `cf:preview` to test Workers + Hyperdrive behavior.
 
 ---
 
@@ -182,7 +205,7 @@ Workers do not run migrations at startup (unlike Docker). Options:
 
 | Symptom                                                         | Fix                                                                        |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `DATABASE_URL is not set and Hyperdrive binding is unavailable` | Check Hyperdrive ID in `wrangler.jsonc`; redeploy after fixing             |
+| `Server failed to respond` / `SESSION_SECRET must be at least 32 characters` | Run `pnpm cf:sync-vars` or create `.dev.vars` (Wrangler ignores `.env.local`) |
 | OAuth redirect mismatch                                         | `APP_URL`, `SPLITWISE_REDIRECT_URI`, and Splitwise app must match          |
 | Sync never completes                                            | Workers Paid required; check logs in Cloudflare dashboard                  |
 | `503 database_not_configured`                                   | Confirm `DEPLOY_TARGET=cloudflare` in wrangler vars and Hyperdrive binding |
