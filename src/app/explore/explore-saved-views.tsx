@@ -88,8 +88,8 @@ export function ExploreSavedViews({ currentFilters, onApply, onClear }: Props) {
         onClick={onClear}
         className={
           !hasActiveFilters
-            ? "shrink-0 rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-            : "border-border shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+            ? "bg-pill-active text-pill-active-fg shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+            : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
         }
       >
         All
@@ -104,8 +104,8 @@ export function ExploreSavedViews({ currentFilters, onApply, onClear }: Props) {
             onClick={() => onApply(v.filters)}
             className={
               isActive
-                ? "bg-accent shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-white"
-                : "border-border shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                ? "bg-accent text-accent-foreground shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+                : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
             }
           >
             {v.name}
@@ -141,7 +141,7 @@ export function ExploreSavedViews({ currentFilters, onApply, onClear }: Props) {
             type="button"
             disabled={saving || !saveName.trim()}
             onClick={() => void saveView()}
-            className="bg-accent rounded-md px-2 py-1 text-xs text-white disabled:opacity-50"
+            className="bg-accent text-accent-foreground rounded-md px-2 py-1 text-xs disabled:opacity-50"
           >
             Save
           </button>

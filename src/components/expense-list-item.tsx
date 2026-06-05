@@ -3,6 +3,10 @@
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { HighlightText } from "@/components/highlight-text";
 import { expenseBalanceTag } from "@/components/expense-row-meta";
+import {
+  expenseActivityHeadline,
+  expenseActivitySubline,
+} from "@/lib/expenses/activity-copy";
 import { balanceClasses } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
 import { isUserInvolvedInExpense } from "@/lib/expenses/involvement";
@@ -13,6 +17,7 @@ type Props = {
   searchQuery?: string;
   onSelect?: () => void;
   compact?: boolean;
+  selected?: boolean;
 };
 
 /** Grid: mobile drops date column; desktop keeps Splitwise-style date block. */
@@ -43,40 +48,12 @@ function ExpenseDateBlock({ date }: { date: string }) {
   );
 }
 
-function PaidLine({ expense }: { expense: ExpenseListItem }) {
-  const total = formatMoney(Number(expense.cost), expense.currencyCode);
-  const payer = expense.paidBy !== "—" ? expense.paidBy : null;
-
-  if (expense.payment) {
-    return (
-      <p className="text-foreground text-right text-sm leading-snug font-medium">
-        {expense.description}
-      </p>
-    );
-  }
-
-  return (
-    <p className="text-muted text-right text-sm leading-snug">
-      {payer ? (
-        <>
-          <span className="text-foreground/80">{payer}</span> paid{" "}
-          <span className="text-foreground font-semibold tabular-nums">
-            {total}
-          </span>
-        </>
-      ) : (
-        <span className="text-foreground font-semibold tabular-nums">
-          {total}
-        </span>
-      )}
-    </p>
-  );
-}
-
 function BalanceLine({ expense }: { expense: ExpenseListItem }) {
   if (expense.payment) {
     return (
-      <p className="text-right text-xs font-medium text-teal-700">Settlement</p>
+      <p className="text-balance-get text-right text-xs font-medium">
+        Settlement
+      </p>
     );
   }
 
@@ -136,6 +113,7 @@ export function ExpenseListItemRow({
   searchQuery = "",
   onSelect,
   compact = false,
+  selected = false,
 }: Props) {
   const involved = isUserInvolvedInExpense(expense);
   const balance = expenseBalanceTag(expense);
@@ -143,25 +121,31 @@ export function ExpenseListItemRow({
     involved && balance
       ? balanceClasses(balance.tag).rowStripe
       : expense.payment
-        ? "border-l-2 border-l-teal-500"
+        ? "border-l-2 border-l-balance-get-border"
         : "";
+
+  const rowInteractive = `border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-hover active:bg-active`;
+  const rowSelected = "bg-balance-get-bg/40 ring-accent/25 ring-1 ring-inset";
 
   if (expense.payment) {
     return (
       <button
         type="button"
         onClick={onSelect}
-        className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 active:bg-stone-100/80 ${rowTint}`}
+        className={`${rowInteractive} ${rowTint} ${selected ? rowSelected : ""}`}
         style={{ minHeight: compact ? 60 : 72 }}
       >
         <ExpenseDateBlock date={expense.date} />
         <ExpenseCategoryIcon categoryName={null} payment />
         <div className="min-w-0">
           <p className="text-foreground truncate text-sm leading-snug font-medium">
-            <HighlightText text={expense.description} query={searchQuery} />
+            {expenseActivityHeadline(expense)}
           </p>
-          <p className="text-muted mt-0.5 text-[11px] md:hidden">
-            {formatShortDate(expense.date)}
+          <p className="text-muted mt-0.5 truncate text-[11px]">
+            <HighlightText
+              text={expenseActivitySubline(expense) || expense.description}
+              query={searchQuery}
+            />
           </p>
         </div>
         <span className="text-foreground text-right text-sm leading-snug font-semibold tabular-nums">
@@ -171,11 +155,20 @@ export function ExpenseListItemRow({
     );
   }
 
+  const headline = expenseActivityHeadline(expense);
+  const subline = expenseActivitySubline(expense);
+  const displayAmount = balance
+    ? formatMoney(balance.amount, expense.currencyCode)
+    : formatMoney(
+        Number(expense.myShare ?? expense.cost),
+        expense.currencyCode,
+      );
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-stone-50/80 active:bg-stone-100/80 ${rowTint}`}
+      className={`${rowInteractive} ${rowTint} ${selected ? rowSelected : ""}`}
       style={{ minHeight: compact ? 60 : 72 }}
     >
       <ExpenseDateBlock date={expense.date} />
@@ -188,21 +181,24 @@ export function ExpenseListItemRow({
       />
       <div className="min-w-0">
         <p className="text-foreground truncate text-sm leading-snug font-medium">
-          <HighlightText text={expense.description} query={searchQuery} />
+          <HighlightText text={headline} query={searchQuery} />
         </p>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 md:mt-1">
-          <span className="text-muted shrink-0 text-[11px] md:hidden">
-            {formatShortDate(expense.date)}
-          </span>
-          {expense.groupName && expense.groupName !== "No group" && (
-            <span className="text-muted inline-block max-w-full truncate rounded bg-stone-100 px-1.5 py-0.5 text-[11px] leading-none">
-              {expense.groupName}
-            </span>
-          )}
-        </div>
+        <p className="text-muted mt-0.5 truncate text-[11px]">
+          <HighlightText
+            text={subline || expense.description}
+            query={searchQuery}
+          />
+          <span className="md:hidden"> · {formatShortDate(expense.date)}</span>
+        </p>
       </div>
       <div className="flex shrink-0 flex-col gap-0.5 text-right leading-snug">
-        <PaidLine expense={expense} />
+        <span
+          className={`text-sm font-semibold tabular-nums ${
+            balance ? balanceClasses(balance.tag).amount : "text-foreground"
+          }`}
+        >
+          {displayAmount}
+        </span>
         <BalanceLine expense={expense} />
       </div>
     </button>
@@ -212,7 +208,7 @@ export function ExpenseListItemRow({
 export function ExpenseListMonthHeader({ label }: { label: string }) {
   return (
     <div
-      className="border-border text-muted sticky top-0 z-10 border-b bg-stone-100/90 px-4 py-2 text-xs font-semibold tracking-widest"
+      className="border-border text-muted bg-header-subtle sticky top-0 z-10 border-b px-4 py-2 text-xs font-semibold tracking-widest"
       style={{ minHeight: 36 }}
     >
       {label}

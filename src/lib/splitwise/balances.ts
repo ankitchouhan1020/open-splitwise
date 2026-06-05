@@ -26,6 +26,20 @@ export type BalanceSummary = {
   topYouOwe: Array<{ name: string; amount: number }>;
 };
 
+export type FriendBalanceEntry = {
+  id: number;
+  name: string;
+  direction: "to_get" | "to_pay";
+  amount: number;
+};
+
+export type FriendsBalancePage = {
+  currency: string;
+  summary: BalanceSummary;
+  toGet: FriendBalanceEntry[];
+  toPay: FriendBalanceEntry[];
+};
+
 function friendName(f: FriendWithBalance): string {
   return (
     [f.first_name, f.last_name].filter(Boolean).join(" ") || `Friend #${f.id}`
@@ -79,6 +93,75 @@ export async function getLiveBalanceSummary(
       topOwedToYou: owedToYou.slice(0, 3),
       topYouOwe: youOweList.slice(0, 3),
     };
+  } catch (err) {
+    if (err instanceof SplitwiseAuthError) return null;
+    throw err;
+  }
+}
+
+function collectFriendBalances(
+  friends: FriendWithBalance[],
+  defaultCurrency: string,
+): Omit<FriendsBalancePage, "currency" | "summary"> & {
+  summary: BalanceSummary;
+} {
+  let youAreOwed = 0;
+  let youOwe = 0;
+  const toGet: FriendBalanceEntry[] = [];
+  const toPay: FriendBalanceEntry[] = [];
+
+  for (const friend of friends ?? []) {
+    const entry = friend.balance?.find(
+      (b) => b.currency_code === defaultCurrency,
+    );
+    if (!entry) continue;
+    const amount = Number(entry.amount);
+    if (Number.isNaN(amount) || amount === 0) continue;
+    const name = friendName(friend);
+    if (amount > 0) {
+      youAreOwed += amount;
+      toGet.push({ id: friend.id, name, direction: "to_get", amount });
+    } else {
+      const abs = Math.abs(amount);
+      youOwe += abs;
+      toPay.push({ id: friend.id, name, direction: "to_pay", amount: abs });
+    }
+  }
+
+  toGet.sort((a, b) => b.amount - a.amount);
+  toPay.sort((a, b) => b.amount - a.amount);
+
+  const summary: BalanceSummary = {
+    currency: defaultCurrency,
+    youAreOwed,
+    youOwe,
+    net: youAreOwed - youOwe,
+    topOwedToYou: toGet
+      .slice(0, 3)
+      .map((f) => ({ name: f.name, amount: f.amount })),
+    topYouOwe: toPay
+      .slice(0, 3)
+      .map((f) => ({ name: f.name, amount: f.amount })),
+  };
+
+  return { summary, toGet, toPay };
+}
+
+/** Full friends list with live balances from Splitwise get_friends. */
+export async function getFriendsBalancePage(
+  defaultCurrency: string,
+): Promise<FriendsBalancePage | null> {
+  try {
+    const token = await requireAccessToken();
+    const client = createSplitwiseClient(token);
+    const { friends } = await client.get<{ friends: FriendWithBalance[] }>(
+      "get_friends",
+    );
+    const { summary, toGet, toPay } = collectFriendBalances(
+      friends ?? [],
+      defaultCurrency,
+    );
+    return { currency: defaultCurrency, summary, toGet, toPay };
   } catch (err) {
     if (err instanceof SplitwiseAuthError) return null;
     throw err;

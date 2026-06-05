@@ -28,7 +28,13 @@ export const queryKeys = {
   categories: {
     icons: () => [...queryKeys.all, "categories", "icons"] as const,
   },
+  friends: {
+    balances: () => [...queryKeys.all, "friends", "balances"] as const,
+  },
   groups: {
+    list: () => [...queryKeys.all, "groups", "list"] as const,
+    detail: (groupId: number) =>
+      [...queryKeys.all, "groups", groupId, "detail"] as const,
     members: (groupId: number) =>
       [...queryKeys.all, "groups", groupId, "members"] as const,
   },

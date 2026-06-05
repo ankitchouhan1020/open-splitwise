@@ -3,10 +3,87 @@
 :root {
   --background: #fafaf9;
   --foreground: #1c1917;
-  --muted: #78716c;
+  --muted: #57534e;
   --accent: #0d9488;
+  --accent-foreground: #ffffff;
   --card: #ffffff;
   --border: #e7e5e4;
+  --muted-surface: #f5f5f4;
+  --hover: #f5f5f4;
+  --active: #e7e5e4;
+  --input: #ffffff;
+  --pill-active: #1c1917;
+  --pill-active-fg: #fafaf9;
+  --header-subtle: rgb(245 245 244 / 0.92);
+  --overlay: rgb(0 0 0 / 0.35);
+  --gradient-from: #fafaf9;
+  --gradient-to: #ffffff;
+  --chart-grid: #e7e5e4;
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --error-text: #991b1b;
+  --warn-bg: #fffbeb;
+  --warn-border: #fde68a;
+  --warn-text: #78350f;
+  --success-bg: #f0fdfa;
+  --success-border: #99f6e4;
+  --success-text: #134e4a;
+  --balance-get: #0f766e;
+  --balance-get-bg: #ccfbf1;
+  --balance-get-border: #5eead4;
+  --balance-pay: #b45309;
+  --balance-pay-bg: #fef3c7;
+  --balance-pay-border: #fcd34d;
+  --highlight-bg: #fef3c7;
+  --settlement: #0f766e;
+  --violet-bg: #ede9fe;
+  --violet-text: #5b21b6;
+  --indigo-bg: #eef2ff;
+  --indigo-text: #3730a3;
+  --stripe: rgb(120 113 108 / 0.08);
+}
+
+:root.dark {
+  --background: #1c1917;
+  --foreground: #fafaf9;
+  --muted: #a8a29e;
+  --accent: #2dd4bf;
+  --accent-foreground: #042f2e;
+  --card: #292524;
+  --border: #44403c;
+  --muted-surface: #1f1c1a;
+  --hover: #353330;
+  --active: #44403c;
+  --input: #292524;
+  --pill-active: #2dd4bf;
+  --pill-active-fg: #042f2e;
+  --header-subtle: rgb(31 28 26 / 0.96);
+  --overlay: rgb(0 0 0 / 0.62);
+  --gradient-from: #292524;
+  --gradient-to: #1c1917;
+  --chart-grid: #44403c;
+  --error-bg: #450a0a;
+  --error-border: #7f1d1d;
+  --error-text: #fecaca;
+  --warn-bg: #451a03;
+  --warn-border: #92400e;
+  --warn-text: #fde68a;
+  --success-bg: #042f2e;
+  --success-border: #115e59;
+  --success-text: #99f6e4;
+  --balance-get: #5eead4;
+  --balance-get-bg: #134e4a;
+  --balance-get-border: #0f766e;
+  --balance-pay: #fcd34d;
+  --balance-pay-bg: #78350f;
+  --balance-pay-border: #b45309;
+  --highlight-bg: #78350f;
+  --settlement: #5eead4;
+  --violet-bg: #4c1d95;
+  --violet-text: #ddd6fe;
+  --indigo-bg: #312e81;
+  --indigo-text: #c7d2fe;
+  --stripe: rgb(168 162 158 / 0.14);
 }
 
 @theme inline {
@@ -14,8 +91,41 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-card: var(--card);
   --color-border: var(--border);
+  --color-muted-surface: var(--muted-surface);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-input: var(--input);
+  --color-pill-active: var(--pill-active);
+  --color-pill-active-fg: var(--pill-active-fg);
+  --color-header-subtle: var(--header-subtle);
+  --color-overlay: var(--overlay);
+  --color-gradient-from: var(--gradient-from);
+  --color-gradient-to: var(--gradient-to);
+  --color-chart-grid: var(--chart-grid);
+  --color-error-bg: var(--error-bg);
+  --color-error-border: var(--error-border);
+  --color-error-text: var(--error-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-border: var(--warn-border);
+  --color-warn-text: var(--warn-text);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-text: var(--success-text);
+  --color-balance-get: var(--balance-get);
+  --color-balance-get-bg: var(--balance-get-bg);
+  --color-balance-get-border: var(--balance-get-border);
+  --color-balance-pay: var(--balance-pay);
+  --color-balance-pay-bg: var(--balance-pay-bg);
+  --color-balance-pay-border: var(--balance-pay-border);
+  --color-highlight-bg: var(--highlight-bg);
+  --color-settlement: var(--settlement);
+  --color-violet-bg: var(--violet-bg);
+  --color-violet-text: var(--violet-text);
+  --color-indigo-bg: var(--indigo-bg);
+  --color-indigo-text: var(--indigo-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -59,6 +169,23 @@ body {
   ::before {
     border-color: var(--border);
   }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    background-color: var(--input);
+    color: var(--foreground);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+  }
+
+  select option {
+    background-color: var(--card);
+    color: var(--foreground);
+  }
 }
 
 h1,
@@ -77,7 +204,12 @@ h3 {
 }
 
 .shimmer {
-  background: linear-gradient(90deg, #e7e5e4 0%, #f5f5f4 45%, #e7e5e4 90%);
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    var(--muted-surface) 45%,
+    var(--border) 90%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -85,7 +217,7 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: none;
-    background: #e7e5e4;
+    background: var(--border);
   }
 }
 
@@ -94,7 +226,18 @@ h3 {
     -45deg,
     transparent,
     transparent 3px,
-    rgb(120 113 108 / 0.08) 3px,
-    rgb(120 113 108 / 0.08) 6px
+    var(--stripe) 3px,
+    var(--stripe) 6px
   );
+}
+
+/* Recharts tooltip inherits theme when using default cursor */
+.recharts-default-tooltip {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+.recharts-tooltip-label {
+  color: var(--foreground) !important;
 }

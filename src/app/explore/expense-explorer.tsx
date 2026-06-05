@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
+import { ExpenseDetailPanel } from "@/components/expense-detail-panel";
 import { ExpenseTableSkeleton } from "@/components/expense-table-skeleton";
 import {
   ExpenseListItemRow,
@@ -201,17 +202,40 @@ export function ExpenseExplorer() {
     return (await res.json()) as SummaryResponse;
   }, [filters]);
 
+  const expenseIds = useMemo(() => rows.map((r) => r.id), [rows]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+      const tag = document.activeElement?.tagName;
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      if (e.key === "/" && !inField) {
         e.preventDefault();
         searchRef.current?.focus();
+        return;
       }
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+      if (inField || expenseIds.length === 0) return;
+
+      const idx = selectedId != null ? expenseIds.indexOf(selectedId) : -1;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = idx < expenseIds.length - 1 ? idx + 1 : 0;
+        setSelectedId(expenseIds[next] ?? null);
+      }
+      if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = idx > 0 ? idx - 1 : expenseIds.length - 1;
+        setSelectedId(expenseIds[prev] ?? null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [expenseIds, selectedId]);
 
   const listQueryKey = listParams(1).toString();
   const summaryQueryKey = filtersToSearchParams(filters).toString();
@@ -322,8 +346,8 @@ export function ExpenseExplorer() {
 
   const count = summary?.count ?? total;
 
-  return (
-    <div className="flex min-h-0 flex-col gap-2">
+  const listColumn = (
+    <>
       <div className="shrink-0 space-y-2">
         <div className="border-border bg-card overflow-hidden rounded-lg border">
           <ExploreSavedViews
@@ -397,7 +421,7 @@ export function ExpenseExplorer() {
                       order: o as "asc" | "desc",
                     });
                   }}
-                  className="border-border text-foreground rounded border bg-white px-2 py-1 text-xs"
+                  className="border-border text-foreground bg-card rounded border px-2 py-1 text-xs"
                 >
                   <option value="date:desc">Newest</option>
                   <option value="date:asc">Oldest</option>
@@ -414,7 +438,7 @@ export function ExpenseExplorer() {
                   key={chip.key}
                   type="button"
                   onClick={() => handleClearFilter(chip.key)}
-                  className="border-border rounded bg-stone-100 px-1.5 py-0.5 hover:bg-stone-200"
+                  className="border-border bg-muted-surface hover:bg-hover rounded px-1.5 py-0.5"
                 >
                   {chip.label} ×
                 </button>
@@ -434,7 +458,7 @@ export function ExpenseExplorer() {
         )}
 
         {error && (
-          <p className="rounded-md bg-red-50 px-2 py-1 text-xs text-red-800">
+          <p className="bg-error-bg text-error-text rounded-md px-2 py-1 text-xs">
             {error}
           </p>
         )}
@@ -482,6 +506,7 @@ export function ExpenseExplorer() {
                         <ExpenseListItemRow
                           expense={section.expense}
                           searchQuery={filters.q ?? ""}
+                          selected={selectedId === section.expense.id}
                           onSelect={() => setSelectedId(section.expense.id)}
                         />
                       ) : null}
@@ -493,6 +518,22 @@ export function ExpenseExplorer() {
           </div>
         )
       )}
+    </>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start lg:gap-4">
+      <div className="flex min-h-0 min-w-0 flex-col gap-2">{listColumn}</div>
+
+      <div className="sticky top-20 hidden min-h-0 lg:block">
+        <ExpenseDetailPanel
+          expense={detail ?? null}
+          loading={detailLoading}
+          onClose={() => setSelectedId(null)}
+          variant="inline"
+          selected={selectedId != null}
+        />
+      </div>
 
       <ExpenseDetailDrawer
         expense={detail ?? null}

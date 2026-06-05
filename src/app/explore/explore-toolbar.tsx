@@ -4,6 +4,28 @@ import type { ExpenseFilters } from "@/lib/expenses/filters";
 
 type DatePreset = "all" | "thisMonth" | "last30" | "thisYear";
 
+type ActivityPreset = "all" | "expenses" | "settlements";
+
+const ACTIVITY_PRESETS: { id: ActivityPreset; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "expenses", label: "Expenses" },
+  { id: "settlements", label: "Settlements" },
+];
+
+function detectActivityPreset(filters: ExpenseFilters): ActivityPreset {
+  if (filters.payment === true) return "settlements";
+  if (filters.payment === false) return "expenses";
+  return "all";
+}
+
+function activityPresetPatch(
+  preset: ActivityPreset,
+): Pick<ExpenseFilters, "payment"> {
+  if (preset === "settlements") return { payment: true };
+  if (preset === "expenses") return { payment: false };
+  return { payment: undefined };
+}
+
 const PRESETS: { id: DatePreset; label: string }[] = [
   { id: "all", label: "All time" },
   { id: "thisMonth", label: "This month" },
@@ -107,6 +129,7 @@ export function ExploreToolbar({
   visibleGroupIds,
 }: Props) {
   const activePreset = detectPreset(filters);
+  const activeActivity = detectActivityPreset(filters);
   const extraFilterCount = countExtraFilters(filters, visibleGroupIds);
 
   return (
@@ -139,7 +162,7 @@ export function ExploreToolbar({
           <button
             type="button"
             onClick={() => onSearchChange("")}
-            className="text-muted hover:text-foreground absolute top-1/2 right-2.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md hover:bg-stone-100"
+            className="text-muted hover:text-foreground hover:bg-hover absolute top-1/2 right-2.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md"
             aria-label="Clear search"
           >
             ×
@@ -147,9 +170,33 @@ export function ExploreToolbar({
         )}
       </div>
 
+      <div
+        className="-mx-1 flex scrollbar-none items-center gap-1 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+        role="group"
+        aria-label="Activity type"
+      >
+        {ACTIVITY_PRESETS.map((p) => {
+          const isActive = activeActivity === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onChange(activityPresetPatch(p.id))}
+              className={
+                isActive
+                  ? "bg-accent text-accent-foreground shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium md:py-1"
+                  : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium md:py-1"
+              }
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div
-          className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+          className="-mx-1 flex scrollbar-none items-center gap-1 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
           role="group"
           aria-label="Date range"
         >
@@ -165,8 +212,8 @@ export function ExploreToolbar({
                 onClick={() => onChange(datePresetRange(p.id))}
                 className={
                   isActive
-                    ? "shrink-0 rounded-md bg-stone-800 px-2.5 py-1.5 text-xs font-medium text-white md:py-1"
-                    : "border-border shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50 md:py-1"
+                    ? "bg-pill-active text-pill-active-fg shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium md:py-1"
+                    : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium md:py-1"
                 }
               >
                 {p.label}
@@ -183,12 +230,12 @@ export function ExploreToolbar({
             className={
               filtersOpen || extraFilterCount > 0
                 ? "border-accent text-accent flex-1 rounded-md border px-2.5 py-1.5 text-xs font-medium md:flex-none md:py-1"
-                : "border-border flex-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-stone-50 md:flex-none md:py-1"
+                : "border-border hover:bg-hover flex-1 rounded-md border px-2.5 py-1.5 text-xs font-medium md:flex-none md:py-1"
             }
           >
             {filtersOpen ? "Hide filters" : "Filters"}
             {!filtersOpen && extraFilterCount > 0 && (
-              <span className="bg-accent ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white">
+              <span className="bg-accent text-accent-foreground ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
                 {extraFilterCount}
               </span>
             )}

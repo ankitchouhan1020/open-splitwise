@@ -70,8 +70,8 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-2">
               <strong>Delete synced data</strong> (Privacy &amp; data section,
-              while connected) removes all cached rows for your Splitwise account
-              from PostgreSQL. Your session stays active unless you also
+              while connected) removes all cached rows for your Splitwise
+              account from PostgreSQL. Your session stays active unless you also
               disconnect.
             </p>
           </section>

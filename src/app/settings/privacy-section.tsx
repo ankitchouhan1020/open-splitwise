@@ -14,8 +14,8 @@ export function PrivacySection({ canDeleteSyncedData = false }: Props) {
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted max-w-md text-sm leading-relaxed">
-          OAuth tokens live in an encrypted session cookie. Synced expenses
-          live in Postgres and stay there when you disconnect — use{" "}
+          OAuth tokens live in an encrypted session cookie. Synced expenses live
+          in Postgres and stay there when you disconnect — use{" "}
           <strong>Delete synced data</strong> to wipe your cached copy from this
           server.
         </p>
@@ -23,7 +23,7 @@ export function PrivacySection({ canDeleteSyncedData = false }: Props) {
           {canDeleteSyncedData && <DeleteSyncedDataButton />}
           <Link
             href="/privacy"
-            className="border-border text-foreground rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-stone-50"
+            className="border-border text-foreground hover:bg-hover rounded-lg border px-3 py-1.5 text-sm font-medium"
           >
             Read privacy policy
           </Link>

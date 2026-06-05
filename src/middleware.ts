@@ -31,7 +31,12 @@ const FAKE_DATA_WRITE_ALLOWED = new Set([
   "/api/fake-data/toggle",
 ]);
 
-const PROTECTED_PAGE_PREFIXES = ["/explore", "/insights"];
+const PROTECTED_PAGE_PREFIXES = [
+  "/explore",
+  "/insights",
+  "/friends",
+  "/groups",
+];
 
 function isPublicApi(pathname: string): boolean {
   return PUBLIC_API_PATHS.has(pathname);
@@ -139,5 +144,8 @@ export const config = {
     "/explore/:path*",
     "/insights",
     "/insights/:path*",
+    "/friends",
+    "/groups",
+    "/groups/:path*",
   ],
 };

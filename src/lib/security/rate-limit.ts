@@ -27,7 +27,10 @@ export const AUTHENTICATED_READ_RULE: RateLimitRule = {
 };
 
 function trustProxyIpHeaders(): boolean {
-  if (process.env.TRUST_PROXY_IP === "true" || process.env.TRUST_PROXY_IP === "1") {
+  if (
+    process.env.TRUST_PROXY_IP === "true" ||
+    process.env.TRUST_PROXY_IP === "1"
+  ) {
     return true;
   }
   return process.env.NODE_ENV !== "production";

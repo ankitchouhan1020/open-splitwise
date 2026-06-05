@@ -32,9 +32,9 @@ describe("rate limiting", () => {
       splitwiseUserId: 2,
     });
     expect(keyA).not.toBe(keyB);
-    expect(
-      checkRateLimit(keyA, AUTHENTICATED_READ_RULE, 1_000).allowed,
-    ).toBe(true);
+    expect(checkRateLimit(keyA, AUTHENTICATED_READ_RULE, 1_000).allowed).toBe(
+      true,
+    );
   });
 });
 
@@ -65,7 +65,9 @@ describe("client IP extraction", () => {
 
   it("trusts proxy headers when TRUST_PROXY_IP is set", () => {
     process.env.TRUST_PROXY_IP = "true";
-    const headers = new Headers({ "x-forwarded-for": "198.51.100.1, 10.0.0.1" });
+    const headers = new Headers({
+      "x-forwarded-for": "198.51.100.1, 10.0.0.1",
+    });
     expect(clientIpFromHeaders(headers)).toBe("198.51.100.1");
   });
 });

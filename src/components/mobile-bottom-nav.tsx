@@ -2,7 +2,7 @@
 
 import { useAddExpenseDialog } from "@/components/add-expense-provider";
 import { NavIconAdd, NavIconForHref } from "@/components/nav-icons";
-import { NAV_LINKS, isNavActive } from "@/lib/nav";
+import { MOBILE_NAV_LINKS, isNavActive } from "@/lib/nav";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -32,7 +32,7 @@ function NavTab({
       aria-current={active ? "page" : undefined}
     >
       <NavIconForHref
-        href={href as "/" | "/explore" | "/insights" | "/settings"}
+        href={href as "/" | "/friends" | "/groups" | "/insights"}
         className="h-6 w-6 shrink-0"
       />
       <span className="truncate">{label}</span>
@@ -50,7 +50,7 @@ export function MobileBottomNav({
 
   if (!connected) return null;
 
-  const [home, explore, insights, settings] = NAV_LINKS;
+  const [home, friends, groups, insights] = MOBILE_NAV_LINKS;
 
   return (
     <nav
@@ -65,9 +65,9 @@ export function MobileBottomNav({
           active={isNavActive(pathname, home.href)}
         />
         <NavTab
-          href={explore.href}
-          label={explore.label}
-          active={isNavActive(pathname, explore.href)}
+          href={friends.href}
+          label={friends.label}
+          active={isNavActive(pathname, friends.href)}
         />
 
         {oauthConnected && !fakeDataOn ? (
@@ -77,7 +77,7 @@ export function MobileBottomNav({
             aria-label="Add expense"
             className="text-accent -mt-3 flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 px-1 pb-2"
           >
-            <span className="bg-accent flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md">
+            <span className="bg-accent text-accent-foreground flex h-12 w-12 items-center justify-center rounded-full shadow-md">
               <NavIconAdd className="h-6 w-6" />
             </span>
             <span className="text-[11px] font-semibold">Add</span>
@@ -87,7 +87,7 @@ export function MobileBottomNav({
             className="text-muted -mt-3 flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 px-1 pb-2"
             aria-hidden
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-stone-300 bg-stone-50">
+            <span className="border-border bg-muted-surface flex h-12 w-12 items-center justify-center rounded-full border border-dashed">
               <NavIconAdd className="h-6 w-6 opacity-30" />
             </span>
             <span className="text-[11px] font-medium">
@@ -97,14 +97,14 @@ export function MobileBottomNav({
         )}
 
         <NavTab
+          href={groups.href}
+          label={groups.label}
+          active={isNavActive(pathname, groups.href)}
+        />
+        <NavTab
           href={insights.href}
           label={insights.shortLabel ?? insights.label}
           active={isNavActive(pathname, insights.href)}
-        />
-        <NavTab
-          href={settings.href}
-          label={settings.label}
-          active={isNavActive(pathname, settings.href)}
         />
       </div>
     </nav>

@@ -56,16 +56,10 @@ export async function tryAcquireExpenseSync(
     expenseMemory.add(accountUserId);
     return true;
   }
-  return tryAcquireAdvisory(
-    accountUserId,
-    EXPENSE_LOCK_CLASS,
-    expenseHolders,
-  );
+  return tryAcquireAdvisory(accountUserId, EXPENSE_LOCK_CLASS, expenseHolders);
 }
 
-export async function releaseExpenseSync(
-  accountUserId: number,
-): Promise<void> {
+export async function releaseExpenseSync(accountUserId: number): Promise<void> {
   if (!isDatabaseConfigured()) {
     expenseMemory.delete(accountUserId);
     return;

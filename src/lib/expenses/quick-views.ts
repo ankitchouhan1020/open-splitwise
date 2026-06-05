@@ -1,5 +1,8 @@
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
-import { filtersToSearchParams, type ExpenseFilters } from "@/lib/expenses/filters";
+import {
+  filtersToSearchParams,
+  type ExpenseFilters,
+} from "@/lib/expenses/filters";
 
 export type QuickView = {
   id: string;
@@ -26,9 +29,7 @@ function truncateLabel(text: string, max = 22): string {
 }
 
 /** Contextual Explore shortcuts for the home header — not duplicating main nav. */
-export function buildDashboardQuickViews(
-  data: DashboardSummary,
-): QuickView[] {
+export function buildDashboardQuickViews(data: DashboardSummary): QuickView[] {
   const views: QuickView[] = [];
   const monthBase: ExpenseFilters = {
     dateFrom: data.thisMonth.dateFrom,

@@ -2,7 +2,11 @@
 
 import { AddExpenseButton } from "@/components/add-expense-dialog";
 import { FakeDataToggle } from "@/components/fake-data-toggle";
-import { NavIconAdd, NavIconSync } from "@/components/nav-icons";
+import {
+  NavIconAdd,
+  NavIconSettings,
+  NavIconSync,
+} from "@/components/nav-icons";
 import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { useSyncStatus } from "@/components/sync-status-provider";
 import Link from "next/link";
@@ -17,9 +21,9 @@ type Props = {
 const iconBtn =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg disabled:opacity-50";
 const btnPrimary =
-  "bg-accent inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-white hover:opacity-90 disabled:opacity-50";
+  "bg-accent inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-accent-foreground hover:opacity-90 disabled:opacity-50";
 const btnSecondary =
-  "border-border text-foreground inline-flex shrink-0 items-center justify-center rounded-lg border bg-white font-medium hover:bg-stone-50 disabled:opacity-50";
+  "border-border text-foreground inline-flex shrink-0 items-center justify-center rounded-lg border bg-card font-medium hover:bg-hover disabled:opacity-50";
 
 export function AppNavActions({
   connected,
@@ -60,7 +64,7 @@ export function AppNavActions({
           }
           className={
             status?.expenses?.status === "error"
-              ? `${btnSecondary} ${iconBtn} border-red-300 text-red-800 hover:bg-red-50 md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
+              ? `${btnSecondary} ${iconBtn} text-error-text hover:bg-error-bg border-red-300 md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
               : `${btnSecondary} ${iconBtn} md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
           }
         >
@@ -88,6 +92,14 @@ export function AppNavActions({
           Add expense
         </AddExpenseButton>
       )}
+
+      <Link
+        href="/settings"
+        aria-label="Settings"
+        className={`${btnSecondary} ${iconBtn} md:hidden`}
+      >
+        <NavIconSettings className="h-[17px] w-[17px]" />
+      </Link>
     </div>
   );
 }

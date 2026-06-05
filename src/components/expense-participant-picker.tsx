@@ -5,7 +5,7 @@ import { useEffect, useMemo } from "react";
 
 const labelClass = "text-foreground text-sm font-medium";
 const selectClass =
-  "border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2";
+  "border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border bg-card px-3 py-2.5 text-sm outline-none focus:ring-2";
 
 type Props = {
   groupId: string;
@@ -61,7 +61,7 @@ export function ExpenseParticipantPicker({
       <div className="space-y-3">
         <div className="space-y-2">
           <span className={labelClass}>Paid by</span>
-          <div className="border-border h-10 animate-pulse rounded-lg border bg-stone-100" />
+          <div className="border-border bg-muted-surface h-10 animate-pulse rounded-lg border" />
         </div>
         <div className="space-y-2">
           <span className={labelClass}>Split equally</span>
@@ -69,7 +69,7 @@ export function ExpenseParticipantPicker({
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="border-border h-7 w-20 animate-pulse rounded-md border bg-stone-100"
+                className="border-border bg-muted-surface h-7 w-20 animate-pulse rounded-md border"
               />
             ))}
           </div>
@@ -166,8 +166,8 @@ export function ExpenseParticipantPicker({
                 onClick={() => toggleMember(m.id)}
                 className={
                   active
-                    ? "rounded-md bg-stone-800 px-2.5 py-1 text-xs font-medium text-white"
-                    : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                    ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
+                    : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
                 }
               >
                 {m.name}

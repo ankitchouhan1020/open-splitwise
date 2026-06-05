@@ -5,7 +5,11 @@ import {
   resolveSplitwiseRedirectUri,
 } from "@/lib/splitwise/redirect-uri";
 
-export { getSuggestedRedirectUri, resolveAppUrl, resolvePublicAppUrl } from "@/lib/app-url";
+export {
+  getSuggestedRedirectUri,
+  resolveAppUrl,
+  resolvePublicAppUrl,
+} from "@/lib/app-url";
 
 export type EnvVarKey =
   | "SESSION_SECRET"

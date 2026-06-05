@@ -179,4 +179,4 @@ export function SyncPanel({ dbConfigured }: Props) {
 }
 
 const btnSecondary =
-  "border-border text-foreground rounded-lg border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50 disabled:opacity-50";
+  "border-border text-foreground rounded-lg border bg-card px-2.5 py-1 text-xs font-medium hover:bg-hover disabled:opacity-50";

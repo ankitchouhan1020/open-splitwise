@@ -37,10 +37,10 @@ export function StatusBadge({
   children: React.ReactNode;
 }) {
   const styles = {
-    ok: "bg-teal-100 text-teal-900",
-    warn: "bg-amber-100 text-amber-900",
-    error: "bg-red-100 text-red-900",
-    neutral: "bg-stone-100 text-stone-700",
+    ok: "bg-balance-get-bg text-success-text",
+    warn: "bg-balance-pay-bg text-warn-text",
+    error: "bg-error-bg text-error-text",
+    neutral: "bg-muted-surface text-foreground",
   };
   return (
     <span
@@ -61,7 +61,7 @@ export function SettingsStat({
   sub?: React.ReactNode;
 }) {
   return (
-    <div className="border-border rounded-md border bg-stone-50/60 px-3 py-2">
+    <div className="border-border bg-muted-surface rounded-md border px-3 py-2">
       <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
         {label}
       </p>
@@ -81,9 +81,9 @@ export function SettingsAlert({
   children: React.ReactNode;
 }) {
   const styles = {
-    success: "bg-teal-50 text-teal-900 border-teal-200",
-    error: "bg-red-50 text-red-900 border-red-200",
-    info: "bg-stone-50 text-stone-800 border-stone-200",
+    success: "bg-success-bg text-success-text border-success-border",
+    error: "bg-error-bg text-error-text border-error-border",
+    info: "bg-muted-surface text-foreground border-border",
   };
   return (
     <p

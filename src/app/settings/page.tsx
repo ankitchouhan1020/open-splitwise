@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { ConnectionPanel } from "@/app/settings/connection-panel";
 import { PrivacySection } from "@/app/settings/privacy-section";
 import { SettingsAlert } from "@/app/settings/settings-ui";
+import { ThemeSection } from "@/app/settings/theme-section";
 import { SyncPanel } from "@/app/settings/sync-panel";
 import { SystemPanel } from "@/app/settings/system-panel";
 import { getConnectedUser } from "@/lib/auth";
@@ -73,6 +74,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             error={params.connected ? null : (params.error ?? null)}
             justConnected={params.connected === "1"}
           />
+
+          <ThemeSection />
 
           {!fakeDataOn && (user || setup.dbConfigured) && (
             <SyncPanel dbConfigured={setup.dbConfigured} />

@@ -105,8 +105,8 @@ export function ExpenseGroupPicker({
                   onClick={() => toggleTopGroup({ id: g.id, name: g.name })}
                   className={
                     active
-                      ? "rounded-md bg-teal-700 px-2.5 py-1 text-xs font-medium text-white"
-                      : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                      ? "bg-accent text-accent-foreground rounded-md px-2.5 py-1 text-xs font-medium"
+                      : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
                   }
                 >
                   {g.name}
@@ -140,7 +140,7 @@ export function ExpenseGroupPicker({
               <li key={g.id}>
                 <button
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm hover:bg-stone-50"
+                  className="hover:bg-hover flex w-full px-3 py-2 text-left text-sm"
                   onClick={() => pickGroup(g)}
                 >
                   {g.name}

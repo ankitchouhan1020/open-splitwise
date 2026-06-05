@@ -40,7 +40,9 @@ export function AddExpenseProvider({ children }: { children: ReactNode }) {
 export function useAddExpenseDialog() {
   const ctx = useContext(AddExpenseContext);
   if (!ctx) {
-    throw new Error("useAddExpenseDialog must be used within AddExpenseProvider");
+    throw new Error(
+      "useAddExpenseDialog must be used within AddExpenseProvider",
+    );
   }
   return ctx;
 }

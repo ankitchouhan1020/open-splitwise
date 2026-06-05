@@ -26,7 +26,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     <button
       type="button"
       onClick={() => void copy()}
-      className="border-border text-muted hover:text-foreground shrink-0 rounded border bg-white px-2 py-0.5 text-[11px] font-medium hover:bg-stone-50"
+      className="border-border text-muted hover:text-foreground bg-card hover:bg-hover shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium"
     >
       {copied ? "Copied" : label}
     </button>
@@ -100,7 +100,7 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                   <p className="text-muted text-xs leading-relaxed">
                     In your Splitwise app, set the callback URL to exactly:
                   </p>
-                  <div className="border-border flex flex-wrap items-center justify-between gap-2 rounded-md border bg-stone-50/80 px-2 py-1.5">
+                  <div className="border-border bg-muted-surface flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-1.5">
                     <code className="text-foreground text-xs break-all">
                       {setup.redirectUri}
                     </code>
@@ -116,7 +116,7 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                     </p>
                   )}
                   {setup.redirectUriMismatch && (
-                    <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+                    <p className="border-warn-border bg-warn-bg text-warn-text rounded-md border px-2 py-1.5 text-xs">
                       Your <code>SPLITWISE_REDIRECT_URI</code> (
                       {setup.redirectUri}) differs from this instance&apos;s URL
                       ({setup.suggestedRedirectUri}). Splitwise, your env, and
@@ -140,7 +140,9 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                       >
                         <span
                           className={
-                            v.configured ? "text-teal-700" : "text-amber-700"
+                            v.configured
+                              ? "text-balance-get"
+                              : "text-balance-pay"
                           }
                           aria-hidden
                         >
@@ -153,7 +155,7 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                       </li>
                     ))}
                   </ul>
-                  <div className="border-border rounded-md border bg-stone-950/5">
+                  <div className="border-border bg-muted-surface/40 rounded-md border">
                     <div className="border-border flex items-center justify-between border-b px-2 py-1">
                       <span className="text-muted text-[11px] font-medium">
                         Suggested .env.local (no live secrets)
@@ -172,7 +174,7 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                     After setting <code>DATABASE_URL</code>, run migrations and
                     restart the server:
                   </p>
-                  <div className="border-border flex flex-wrap items-center justify-between gap-2 rounded-md border bg-stone-50/80 px-2 py-1.5">
+                  <div className="border-border bg-muted-surface flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-1.5">
                     <code className="text-foreground text-xs">
                       pnpm db:migrate
                     </code>
@@ -218,8 +220,8 @@ function StepMarker({ done, n }: { done: boolean; n: number }) {
     <span
       className={
         done
-          ? "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-[11px] font-semibold text-teal-800"
-          : "border-border mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-white text-[11px] font-semibold text-stone-500"
+          ? "bg-balance-get-bg text-balance-get mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+          : "border-border bg-card text-muted mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold"
       }
       aria-hidden
     >
