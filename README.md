@@ -1,4 +1,4 @@
-# open-splitwise
+# Open Splitwise
 
 I use [Splitwise](https://splitwise.com) constantly — trips, rent, dinners, that one friend who always forgets to log the Ubers. Splitwise is excellent at *splitting*. It is less excellent at *finding that dinner from March 2019*, exporting your share across groups, or charting where your money went over the years.
 
