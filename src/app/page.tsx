@@ -8,7 +8,7 @@ import Link from "next/link";
 const HIGHLIGHTS = [
   "Search and filter every synced expense",
   "See your share and live balances",
-  "Chart spending without Splitwise Pro",
+  "Chart spending from your synced data",
   "Self-hosted — your data, your server",
 ] as const;
 

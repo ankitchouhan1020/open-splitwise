@@ -201,9 +201,8 @@ openssl rand -base64 32
 
 **2a. Create the project**
 
-1. Use **[Deploy on Railway](../README.md#deploy-to-railway)**, or [Railway](https://railway.com) → **New Project** → deploy from this GitHub repo.
-2. Add **PostgreSQL** to the project (Railway plugin).
-3. Name the app service `open-splitwise` (or note the name you use).
+1. Deploy the app on Railway (see [README → Hosting](../README.md#hosting)). Name the service `open-splitwise`, then continue with step 2b below.
+2. If you use **only** a Cloudflare hostname (no `*.up.railway.app` domain), set `APP_URL` and `SPLITWISE_REDIRECT_URI` to that hostname in step 2b instead of a Railway URL.
 
 **2b. Set environment variables** on the **open-splitwise** service:
 
