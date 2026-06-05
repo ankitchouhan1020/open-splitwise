@@ -91,15 +91,15 @@ Deploy using Railway's built-in `*.up.railway.app` HTTPS domain. A Cloudflare tu
 
 On the **app** service → **Variables**. Set these **before** the first successful deploy; the application will not start without them:
 
-| Variable | Value |
-| -------- | ----- |
-| `APP_URL` | Your Railway domain (no trailing slash) |
-| `NEXT_PUBLIC_APP_URL` | Same as `APP_URL` |
-| `SPLITWISE_REDIRECT_URI` | `{APP_URL}/api/auth/splitwise/callback` |
-| `SPLITWISE_CLIENT_ID` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps) |
-| `SPLITWISE_CLIENT_SECRET` | From Splitwise |
-| `SESSION_SECRET` | Output of `openssl rand -base64 32` |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| Variable                  | Value                                                               |
+| ------------------------- | ------------------------------------------------------------------- |
+| `APP_URL`                 | Your Railway domain (no trailing slash)                             |
+| `NEXT_PUBLIC_APP_URL`     | Same as `APP_URL`                                                   |
+| `SPLITWISE_REDIRECT_URI`  | `{APP_URL}/api/auth/splitwise/callback`                             |
+| `SPLITWISE_CLIENT_ID`     | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps) |
+| `SPLITWISE_CLIENT_SECRET` | From Splitwise                                                      |
+| `SESSION_SECRET`          | Output of `openssl rand -base64 32`                                 |
+| `DATABASE_URL`            | `${{Postgres.DATABASE_URL}}`                                        |
 
 Do **not** set `PORT` — Railway injects the listen port automatically. Do **not** set `DEMO_MODE` in production.
 
@@ -118,11 +118,11 @@ Do **not** set `PORT` — Railway injects the listen port automatically. Do **no
 
 **Troubleshooting**
 
-| Symptom | Fix |
-| ------- | --- |
+| Symptom                    | Fix                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Application fails to start | Verify **Variables**: `SESSION_SECRET` (32+ characters), `APP_URL`, and `SPLITWISE_REDIRECT_URI` are set |
-| OAuth redirect mismatch | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must share the same origin |
-| Database connection errors | Use `${{Postgres.DATABASE_URL}}` on the app service (not `DATABASE_PUBLIC_URL`) |
+| OAuth redirect mismatch    | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must share the same origin                        |
+| Database connection errors | Use `${{Postgres.DATABASE_URL}}` on the app service (not `DATABASE_PUBLIC_URL`)                          |
 
 ### Cloudflare Tunnel (optional)
 
