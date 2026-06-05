@@ -1,6 +1,8 @@
 # Cloudflare Tunnel setup guide
 
-Expose open-splitwise over HTTPS **without opening inbound ports**. Traffic flows outbound from `cloudflared` to Cloudflare's edge, then to your app on a private network.
+> **Just want a working deploy?** Use Railway's built-in domain — no tunnel required. See [README → Hosting → Railway](../README.md#railway).
+
+Expose open-splitwise over HTTPS **without opening inbound ports**. Traffic flows outbound from `cloudflared` to Cloudflare's edge, then to your app on a private network. Use this when you want a custom domain on Cloudflare **without** a public `*.up.railway.app` or Docker port.
 
 Pick **Railway** (managed hosting) or **Docker Compose** (self-hosted). Both paths share the same Cloudflare tunnel and OAuth steps at the end.
 

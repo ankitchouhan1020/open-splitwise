@@ -1,8 +1,8 @@
 # Open Splitwise
 
-I use [Splitwise](https://splitwise.com) constantly — trips, rent, dinners, that one friend who always forgets to log the Ubers. Splitwise is excellent at *splitting*. It is less excellent at *finding that dinner from March 2019*, exporting your share across groups, or charting where your money went over the years.
+[Splitwise](https://splitwise.com) handles expense splitting well, but offers limited search, export, and analysis across groups and time periods.
 
-Splitwise has an API. Your expenses are already there. This project pulls them into **your** Postgres database so you can search, filter, export, and chart them from a UI you host yourself. You still add expenses and settle up in Splitwise. This is the read-heavy companion — the spreadsheet brain on top of the social ledger.
+This project syncs your Splitwise expenses into a **self-hosted** Postgres database. You can search, filter, export, and visualize them in a web UI you control. Expense entry and settlement remain in Splitwise; this application is a read-focused layer on top of your existing data.
 
 ![Home dashboard with balances, recent activity, and spending breakdown](docs/images/open-splitwise-home.png)
 
@@ -16,11 +16,11 @@ Splitwise has an API. Your expenses are already there. This project pulls them i
 - OAuth connect — token never leaves the server
 - One deployment, multiple Splitwise accounts, data isolated per user
 
-Not a Splitwise replacement. A lens over data you already have.
+This is not a Splitwise replacement. It provides query and analysis over data you already have.
 
-## Try it in two minutes
+## Quick start (local demo)
 
-No Splitwise account required. Guest demo serves fictional data so you can click around before wiring OAuth.
+No Splitwise account is required. Enable guest demo mode to explore the UI with sample data before configuring OAuth.
 
 ```bash
 git clone https://github.com/ankitchouhan1020/open-splitwise.git
@@ -40,29 +40,31 @@ Enable the guest demo:
 echo "DEMO_MODE=true" >> .env.local
 ```
 
-Run it:
+Start the development server:
 
 ```bash
 pnpm install
 pnpm local
 ```
 
-Open **http://localhost:3000** → **Try demo** → poke around `/explore` and `/insights`.
+Open **http://localhost:3000**, select **Try demo**, and review `/explore` and `/insights`.
 
-That is the whole pitch. If the UI feels useful, connect your real account next.
+To use your own data, configure Splitwise OAuth as described below.
 
-## Connect for real
+## Connect Splitwise (local)
 
 1. Create an OAuth app at [secure.splitwise.com/apps](https://secure.splitwise.com/apps)
 2. Set redirect URI to `http://localhost:3000/api/auth/splitwise/callback`
 3. Add `SPLITWISE_CLIENT_ID` and `SPLITWISE_CLIENT_SECRET` to `.env.local`
 4. Restart → **Connect Splitwise** → **Sync**
 
-Already connected? The **mask icon** in the header swaps your real data for sample fixtures — handy for screenshots or demos without logging out.
+When connected, the **mask icon** in the header toggles between your synced data and sample fixtures, useful for demos or screenshots without disconnecting.
 
 ## Hosting
 
-**Docker** — app + Postgres, migrations on start:
+### Docker
+
+Runs the application and Postgres; migrations execute on container start:
 
 ```bash
 cp .env.example .env
@@ -70,13 +72,65 @@ cp .env.example .env
 docker compose up --build
 ```
 
-**Railway** — Dockerfile + [`railway.toml`](railway.toml). Connect the GitHub repo, add Postgres, set env vars **before** the first deploy (the app refuses to boot without them). Needs `PORT=3000` and `HOSTNAME=::` — Railway defaults to 8080.
+### Railway
 
-**Cloudflare Tunnel** — hide Railway/Docker behind your own hostname: [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md)
+Deploy using Railway's built-in `*.up.railway.app` HTTPS domain. A Cloudflare tunnel is not required for this setup.
+
+**1. Create the project**
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → select this repository.
+2. Railway builds from the root [`Dockerfile`](Dockerfile) ([`railway.toml`](railway.toml) sets the health check).
+3. In the same project: **+ New** → **Database** → **PostgreSQL**.
+
+**2. Generate a public URL**
+
+1. Open the app service → **Settings** → **Networking**.
+2. **Generate Domain** and copy the URL (e.g. `https://open-splitwise-production-xxxx.up.railway.app`).
+
+**3. Set environment variables**
+
+On the **app** service → **Variables**. Set these **before** the first successful deploy; the application will not start without them:
+
+| Variable | Value |
+| -------- | ----- |
+| `APP_URL` | Your Railway domain (no trailing slash) |
+| `NEXT_PUBLIC_APP_URL` | Same as `APP_URL` |
+| `SPLITWISE_REDIRECT_URI` | `{APP_URL}/api/auth/splitwise/callback` |
+| `SPLITWISE_CLIENT_ID` | From [secure.splitwise.com/apps](https://secure.splitwise.com/apps) |
+| `SPLITWISE_CLIENT_SECRET` | From Splitwise |
+| `SESSION_SECRET` | Output of `openssl rand -base64 32` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+
+Do **not** set `PORT` — Railway injects the listen port automatically. Do **not** set `DEMO_MODE` in production.
+
+**4. Splitwise OAuth**
+
+1. Create an OAuth app at [secure.splitwise.com/apps](https://secure.splitwise.com/apps).
+2. Add the **exact** redirect URI from the table above (must match `SPLITWISE_REDIRECT_URI` character-for-character).
+
+**5. Deploy and verify**
+
+1. Deploy (or redeploy after variables are set). Migrations run automatically on start.
+2. Wait for the health check: `GET /api/health` → `{ "ok": true }`.
+3. Open your Railway URL → **Settings** → **Connect Splitwise** → **Sync**.
+
+**Custom domain (optional)** — Railway **Networking** → add your domain, then update `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SPLITWISE_REDIRECT_URI`, and the Splitwise app redirect URI to match.
+
+**Troubleshooting**
+
+| Symptom | Fix |
+| ------- | --- |
+| Application fails to start | Verify **Variables**: `SESSION_SECRET` (32+ characters), `APP_URL`, and `SPLITWISE_REDIRECT_URI` are set |
+| OAuth redirect mismatch | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must share the same origin |
+| Database connection errors | Use `${{Postgres.DATABASE_URL}}` on the app service (not `DATABASE_PUBLIC_URL`) |
+
+### Cloudflare Tunnel (optional)
+
+For a custom hostname without public inbound ports, see [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md). That configuration requires `PORT=3000` on Railway because the tunnel origin targets port 3000.
 
 Env reference: [`.env.example`](.env.example)
 
-## Hacking on it
+## Development
 
 Next.js 15 App Router, Drizzle, iron-session, Splitwise API v3.0.
 
@@ -99,4 +153,4 @@ Health: `GET /api/health` → `{ "ok": true }`
 
 ## License
 
-Add a license when you are ready to publish.
+[MIT](LICENSE)

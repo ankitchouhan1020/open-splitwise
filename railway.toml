@@ -1,6 +1,6 @@
 # Railway config-as-code — https://docs.railway.com/config-as-code
-# Railway config-as-code — README → "Deploy to Railway"
-# Also set on the app service: PORT=3000, HOSTNAME=:: (tunnel origin uses :3000)
+# Deploy steps: README → Hosting → Railway
+# PORT=3000 + HOSTNAME=:: only when using Cloudflare Tunnel (docs/cloudflare-tunnel.md)
 
 [build]
 builder = "DOCKERFILE"
