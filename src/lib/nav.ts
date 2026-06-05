@@ -11,7 +11,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/settings", label: "Settings" },
 ];
 
-/** Bottom nav on mobile (Settings lives in header). */
+/** @deprecated Mobile bottom nav defines its own tab list. */
 export const MOBILE_NAV_LINKS: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/explore", label: "Explore" },

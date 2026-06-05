@@ -2,11 +2,7 @@
 
 import { AddExpenseButton } from "@/components/add-expense-drawer";
 import { FakeDataToggle } from "@/components/fake-data-toggle";
-import {
-  NavIconAdd,
-  NavIconSettings,
-  NavIconSync,
-} from "@/components/nav-icons";
+import { NavIconAdd, NavIconSync } from "@/components/nav-icons";
 import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { useSyncStatus } from "@/components/sync-status-provider";
 import Link from "next/link";
@@ -92,14 +88,6 @@ export function AppNavActions({
           Add expense
         </AddExpenseButton>
       )}
-
-      <Link
-        href="/settings"
-        aria-label="Settings"
-        className={`${btnSecondary} ${iconBtn} md:hidden`}
-      >
-        <NavIconSettings className="h-[17px] w-[17px]" />
-      </Link>
     </div>
   );
 }

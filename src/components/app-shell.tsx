@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/toast-provider";
 import { AddExpenseProvider } from "@/components/add-expense-provider";
 import { FakeDataBanner } from "@/components/fake-data-banner";
+import { MobileAddFab } from "@/components/mobile-add-fab";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SyncStatusBanner } from "@/components/sync-status-banner";
 import { SyncStatusProvider } from "@/components/sync-status-provider";
@@ -52,10 +53,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 dbConfigured={dbConfigured}
               />
               <main className="app-main flex-1">{children}</main>
-              <MobileBottomNav
-                connected={connected}
-                fakeDataOn={fakeDataOn}
-                oauthConnected={oauthConnected}
+              <MobileBottomNav connected={connected} />
+              <MobileAddFab
+                visible={connected && oauthConnected && !fakeDataOn}
               />
             </div>
           </SyncStatusProvider>
