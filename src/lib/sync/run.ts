@@ -22,14 +22,14 @@ export async function assertSyncCanStart(
 
   if (
     (scope === "all" || scope === "metadata") &&
-    isMetadataSyncInProgress(accountUserId)
+    (await isMetadataSyncInProgress(accountUserId))
   ) {
     throw new SyncAlreadyInProgressError("Metadata sync already in progress");
   }
 
   if (
     (scope === "all" || scope === "expenses") &&
-    isExpenseSyncInProgress(accountUserId)
+    (await isExpenseSyncInProgress(accountUserId))
   ) {
     throw new SyncAlreadyInProgressError("Expense sync already in progress");
   }

@@ -30,5 +30,6 @@ export type ExpenseDetail = ExpenseListItem & {
     owedShare: string;
     netBalance: string | null;
   }>;
-  raw: unknown;
+  /** Server-only Splitwise payload; omitted from API responses in production. */
+  raw?: unknown;
 };

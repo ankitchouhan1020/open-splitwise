@@ -1,10 +1,19 @@
 import type { ExpenseListItem } from "@/lib/expenses/types";
 
-function escapeCsv(value: string): string {
-  if (value.includes('"') || value.includes(",") || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+function sanitizeCsvCell(value: string): string {
+  const trimmed = value.trimStart();
+  if (/^[=+\-@]/.test(trimmed)) {
+    return `'${value}`;
   }
   return value;
+}
+
+function escapeCsv(value: string): string {
+  const safe = sanitizeCsvCell(value);
+  if (safe.includes('"') || safe.includes(",") || safe.includes("\n")) {
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+  return safe;
 }
 
 export function expensesToCsv(rows: ExpenseListItem[]): string {

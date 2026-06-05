@@ -428,7 +428,7 @@ export async function listExpenses(filters: ExpenseFilters = {}): Promise<{
 
 export async function listAllExpensesForExport(
   filters: ExpenseFilters = {},
-  limit = 50_000,
+  limit = 20_000,
 ): Promise<ExpenseListItem[]> {
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) return [];
@@ -505,7 +505,6 @@ export async function getExpenseDetail(
         nameMap.get(s.splitwiseUserId) ??
         formatParticipantName(undefined, undefined, s.splitwiseUserId),
     })),
-    raw: row.raw,
   };
 }
 

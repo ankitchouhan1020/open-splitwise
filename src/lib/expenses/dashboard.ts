@@ -394,7 +394,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary | null> {
       expenseCount: sync.expenseCount,
       error: sync.error,
       inProgress: isSyncActive({
-        lockHeld: isAnySyncInProgress(owner.id),
+        lockHeld: await isAnySyncInProgress(owner.id),
         expensesStatus: sync.status,
         progress: sync.progress,
       }),

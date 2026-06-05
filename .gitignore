@@ -1,11 +1,3 @@
-# Ralph / agent workflow (local; not shipped with the app)
-tasks/
-skills/
-scripts/ralph/prd.json
-scripts/ralph/progress.txt
-scripts/ralph/.last-branch
-scripts/ralph/archive/
-
 # OS
 .DS_Store
 Thumbs.db

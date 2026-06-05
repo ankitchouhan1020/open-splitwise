@@ -42,7 +42,7 @@ export async function GET() {
     configured: true,
     connected: true,
     inProgress: isSyncActive({
-      lockHeld: isAnySyncInProgress(owner.id),
+      lockHeld: await isAnySyncInProgress(owner.id),
       expensesStatus: expenses.status,
       progress: expenses.progress,
     }),

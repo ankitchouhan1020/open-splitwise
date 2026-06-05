@@ -1,9 +1,15 @@
+import { demoCurrentUser } from "@/lib/demo/handlers";
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { getAccessToken } from "@/lib/auth";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import { SplitwiseApiError, SplitwiseAuthError } from "@/lib/splitwise/errors";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  if (await isFakeDataRequest()) {
+    return NextResponse.json({ user: demoCurrentUser() });
+  }
+
   const token = await getAccessToken();
   if (!token) {
     return NextResponse.json({ error: "not_connected" }, { status: 401 });

@@ -3,10 +3,6 @@ node_modules
 .git
 .env
 .env.local
-scripts/ralph/prd.json
-scripts/ralph/progress.txt
-tasks
-skills
 *.md
 !README.md
 !docs/**

@@ -1,3 +1,4 @@
+# Local Docker stack — not for public internet. Use docker-compose.tunnel.yml for production.
 services:
   postgres:
     image: postgres:16-alpine
@@ -27,7 +28,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://open_splitwise:open_splitwise@postgres:5432/open_splitwise
-      SESSION_SECRET: ${SESSION_SECRET:-local-dev-only-change-me-32chars-min}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       APP_URL: ${APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       SPLITWISE_CLIENT_ID: ${SPLITWISE_CLIENT_ID:-}

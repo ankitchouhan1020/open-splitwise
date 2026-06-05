@@ -10,7 +10,7 @@ export { isStaleSyncState } from "@/lib/sync/stale-sync";
 export async function reconcileStaleSyncState(
   accountUserId: number,
 ): Promise<boolean> {
-  if (isAnySyncInProgress(accountUserId)) return false;
+  if (await isAnySyncInProgress(accountUserId)) return false;
 
   const db = getDb();
   const [state] = await db

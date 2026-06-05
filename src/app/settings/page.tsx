@@ -8,7 +8,12 @@ import { getConnectedUser } from "@/lib/auth";
 import { getSetupStatus } from "@/lib/setup/status";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { sessionIsGuestDemo } from "@/lib/demo/session";
-import { getAppSession, sessionShowsFakeData } from "@/lib/session";
+import { shouldExposeSetupDetails } from "@/lib/security/production";
+import {
+  getAppSession,
+  sessionIsActive,
+  sessionShowsFakeData,
+} from "@/lib/session";
 import { connection } from "next/server";
 import { headers } from "next/headers";
 
@@ -30,6 +35,11 @@ export default async function SettingsPage({ searchParams }: PageProps) {
   const guestDemo = sessionIsGuestDemo(session);
   const headerList = await headers();
   const setup = getSetupStatus(requestOriginFromHeaders(headerList));
+  const showSetupDetails = shouldExposeSetupDetails({
+    sessionActive: sessionIsActive(session),
+    oauthConfigured: setup.oauthConfigured,
+    dbConfigured: setup.dbConfigured,
+  });
 
   return (
     <AppShell>
@@ -46,7 +56,9 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
         {params.error && !params.connected && (
           <div className="mb-4">
-            <SettingsAlert tone="error">{params.error}</SettingsAlert>
+            <SettingsAlert tone="error">
+              {oauthErrorMessage(params.error)}
+            </SettingsAlert>
           </div>
         )}
 
@@ -55,6 +67,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             connected={!!user}
             user={user}
             setup={setup}
+            showSetupDetails={showSetupDetails}
             fakeDataOn={fakeDataOn}
             guestDemo={guestDemo}
             error={params.connected ? null : (params.error ?? null)}
@@ -65,7 +78,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             <SyncPanel dbConfigured={setup.dbConfigured} />
           )}
 
-          <SystemPanel setup={setup} />
+          {showSetupDetails && <SystemPanel setup={setup} />}
 
           <PrivacySection
             canDeleteSyncedData={
@@ -76,4 +89,16 @@ export default async function SettingsPage({ searchParams }: PageProps) {
       </div>
     </AppShell>
   );
+}
+
+function oauthErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    invalid_state: "OAuth session expired or invalid. Try connecting again.",
+    missing_code_or_state:
+      "Incomplete sign-in response from Splitwise. Try connecting again.",
+    oauth_failed:
+      "Could not complete Splitwise sign-in. Check server configuration and logs.",
+    connect_required: "Connect Splitwise to use this app.",
+  };
+  return messages[code] ?? "Sign-in failed. Try connecting again.";
 }

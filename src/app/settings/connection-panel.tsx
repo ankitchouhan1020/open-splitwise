@@ -20,6 +20,7 @@ type Props = {
     default_currency: string;
   } | null;
   setup: SetupStatus;
+  showSetupDetails?: boolean;
   fakeDataOn?: boolean;
   guestDemo?: boolean;
   error?: string | null;
@@ -36,6 +37,7 @@ export function ConnectionPanel({
   connected,
   user,
   setup,
+  showSetupDetails = true,
   fakeDataOn = false,
   guestDemo = false,
   error,
@@ -86,7 +88,11 @@ export function ConnectionPanel({
           </SettingsAlert>
         )}
 
-        {error && <SettingsAlert tone="error">{error}</SettingsAlert>}
+        {error && (
+          <SettingsAlert tone="error">
+            {formatConnectionError(error)}
+          </SettingsAlert>
+        )}
 
         {!oauthConfigured ? (
           <SettingsAlert tone="info">
@@ -156,9 +162,10 @@ export function ConnectionPanel({
           </div>
         )}
 
-        {!(oauthConfigured && setup.dbConfigured && connected) && (
-          <SetupGuide setup={setup} connected={connected} />
-        )}
+        {showSetupDetails &&
+          !(oauthConfigured && setup.dbConfigured && connected) && (
+            <SetupGuide setup={setup} connected={connected} />
+          )}
       </div>
     </SettingsSection>
   );
@@ -166,3 +173,14 @@ export function ConnectionPanel({
 
 const btnPrimary =
   "bg-accent shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90";
+
+function formatConnectionError(code: string): string {
+  const messages: Record<string, string> = {
+    invalid_state: "OAuth session expired or invalid. Try connecting again.",
+    missing_code_or_state:
+      "Incomplete sign-in response from Splitwise. Try connecting again.",
+    oauth_failed:
+      "Could not complete Splitwise sign-in. Check server configuration and logs.",
+  };
+  return messages[code] ?? "Sign-in failed. Try connecting again.";
+}

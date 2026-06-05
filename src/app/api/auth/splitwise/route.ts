@@ -8,13 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   if (!getEnvOptional()) {
-    return NextResponse.json(
-      {
-        error:
-          "Splitwise OAuth is not configured. Set SPLITWISE_CLIENT_ID, SPLITWISE_CLIENT_SECRET, SPLITWISE_REDIRECT_URI, and SESSION_SECRET.",
-      },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
   }
 
   const session = await getAppSession();

@@ -1,10 +1,16 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { upsertConnectedUser } from "@/lib/db/account";
-import { appPathUrl, resolveAppUrl } from "@/lib/app-url";
+import { appPathUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/splitwise/api";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
 import { exchangeCodeForToken } from "@/lib/splitwise/oauth";
-import { getAppSession } from "@/lib/session";
+import {
+  assertSyncCanStart,
+  runSyncJob,
+  SyncAlreadyInProgressError,
+} from "@/lib/sync/run";
+import { getAppSession, rotateAppSession } from "@/lib/session";
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -18,20 +24,27 @@ export async function GET(request: NextRequest) {
   const origin = requestOriginFromHeaders(request.headers);
   const settingsUrl = appPathUrl("/settings", origin);
 
+  const session = await getAppSession();
+
   if (error) {
+    session.oauthState = undefined;
+    await session.save();
     settingsUrl.searchParams.set("error", error);
     return NextResponse.redirect(settingsUrl);
   }
 
   if (!code || !state) {
+    session.oauthState = undefined;
+    await session.save();
     settingsUrl.searchParams.set("error", "missing_code_or_state");
     return NextResponse.redirect(settingsUrl);
   }
 
-  const session = await getAppSession();
   const expectedState = session.oauthState;
 
   if (!expectedState || expectedState !== state) {
+    session.oauthState = undefined;
+    await session.save();
     settingsUrl.searchParams.set("error", "invalid_state");
     return NextResponse.redirect(settingsUrl);
   }
@@ -40,36 +53,42 @@ export async function GET(request: NextRequest) {
     const token = await exchangeCodeForToken(code, origin);
     const { user } = await getCurrentUser(token.access_token);
 
-    session.accessToken = token.access_token;
-    session.splitwiseUserId = user.id;
-    session.oauthState = undefined;
-    await session.save();
+    await rotateAppSession({
+      accessToken: token.access_token,
+      splitwiseUserId: user.id,
+    });
 
     if (isDatabaseConfigured()) {
-      await upsertConnectedUser({
+      const account = await upsertConnectedUser({
         splitwiseId: user.id,
         firstName: user.first_name,
         lastName: user.last_name,
         email: user.email,
         defaultCurrency: user.default_currency,
       });
-      // Background sync — do not block redirect
-      const base = resolveAppUrl(origin);
-      fetch(`${base}/api/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: request.headers.get("cookie") ?? "",
-        },
-        body: JSON.stringify({ scope: "all" }),
-      }).catch(() => {});
+      const scope = "all" as const;
+      const ctx = {
+        accountUserId: account.id,
+        accessToken: token.access_token,
+      };
+      try {
+        await assertSyncCanStart(account.id, scope);
+        after(async () => {
+          await runSyncJob({ scope, ctx });
+        });
+      } catch (err) {
+        if (!(err instanceof SyncAlreadyInProgressError)) {
+          console.error("[oauth] post-connect sync schedule failed:", err);
+        }
+      }
     }
 
     settingsUrl.searchParams.set("connected", "1");
     return NextResponse.redirect(settingsUrl);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "oauth_failed";
-    settingsUrl.searchParams.set("error", message.slice(0, 120));
+  } catch {
+    session.oauthState = undefined;
+    await session.save();
+    settingsUrl.searchParams.set("error", "oauth_failed");
     return NextResponse.redirect(settingsUrl);
   }
 }

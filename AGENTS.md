@@ -1,12 +1,6 @@
 # Agent notes (open-splitwise)
 
-This file is updated by Ralph iterations and human developers with reusable patterns.
-
-## Ralph
-
-- Autonomous loop: `scripts/ralph/ralph.sh`
-- Task list: `scripts/ralph/prd.json` (create via PRD → convert workflow below)
-- Progress log: `scripts/ralph/progress.txt`
+Reusable patterns for contributors and coding agents.
 
 ## Codebase patterns
 

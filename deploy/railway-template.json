@@ -1,0 +1,186 @@
+{
+  "_comment": "Reference spec only — Railway has no JSON paste; use project snapshot or visual Template Composer (docs/railway-template.md).",
+  "name": "Open Splitwise",
+  "code": "open-splitwise",
+  "description": "Self-hosted Splitwise companion with PostgreSQL and Cloudflare Tunnel.",
+  "category": "Other",
+  "serializedConfig": {
+    "services": {
+      "a8f3c2e1-9b4d-4f6a-bc12-8e7d6f5a4b3c": {
+        "icon": "https://devicons.railway.app/i/postgresql.svg",
+        "name": "Postgres",
+        "build": {},
+        "deploy": {
+          "requiredMountPath": "/var/lib/postgresql/data"
+        },
+        "source": {
+          "image": "ghcr.io/railwayapp-templates/postgres-ssl:18"
+        },
+        "variables": {
+          "PGDATA": {
+            "isOptional": false,
+            "description": "Location where the database will be initialized",
+            "defaultValue": "/var/lib/postgresql/data/pgdata"
+          },
+          "PGHOST": {
+            "isOptional": false,
+            "description": "Railway Private Domain Name.",
+            "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}"
+          },
+          "PGPORT": {
+            "isOptional": false,
+            "description": "Port to connect to Postgres.",
+            "defaultValue": "5432"
+          },
+          "PGUSER": {
+            "isOptional": false,
+            "description": "Required variable for Data panel",
+            "defaultValue": "${{ POSTGRES_USER }}"
+          },
+          "PGDATABASE": {
+            "isOptional": false,
+            "description": "Required variable for the data panel.",
+            "defaultValue": "${{POSTGRES_DB}}"
+          },
+          "PGPASSWORD": {
+            "isOptional": false,
+            "description": "Required variable for Data panel",
+            "defaultValue": "${{POSTGRES_PASSWORD}}"
+          },
+          "POSTGRES_DB": {
+            "isOptional": false,
+            "description": "Default database created when image is started.",
+            "defaultValue": "railway"
+          },
+          "DATABASE_URL": {
+            "isOptional": false,
+            "description": "URL to connect to Postgres database.",
+            "defaultValue": "postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}"
+          },
+          "POSTGRES_USER": {
+            "isOptional": false,
+            "description": "User to connect to Postgres DB",
+            "defaultValue": "postgres"
+          },
+          "SSL_CERT_DAYS": {
+            "isOptional": true,
+            "description": "SSL certificate expiry in days.",
+            "defaultValue": "820"
+          },
+          "POSTGRES_PASSWORD": {
+            "isOptional": false,
+            "description": "Password to connect to DB",
+            "defaultValue": "${{ secret(32, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\") }}"
+          },
+          "DATABASE_PUBLIC_URL": {
+            "description": "Public URL to connect to Postgres database, used by the Data panel.",
+            "defaultValue": "postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_TCP_PROXY_DOMAIN}}:${{RAILWAY_TCP_PROXY_PORT}}/${{PGDATABASE}}"
+          },
+          "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+            "isOptional": false,
+            "description": "Allow Postgres to cleanly shut down",
+            "defaultValue": "60"
+          }
+        },
+        "networking": {
+          "tcpProxies": {
+            "5432": {}
+          },
+          "serviceDomains": {}
+        },
+        "volumeMounts": {
+          "a8f3c2e1-9b4d-4f6a-bc12-8e7d6f5a4b3c": {
+            "mountPath": "/var/lib/postgresql/data"
+          }
+        }
+      },
+      "b7e2d1c0-8a9f-4e3d-bc21-7f6e5d4c3b2a": {
+        "icon": "https://devicons.railway.app/next",
+        "name": "open-splitwise",
+        "source": {
+          "repo": "ankitchouhan1020/open-splitwise",
+          "branch": null,
+          "rootDirectory": null
+        },
+        "variables": {
+          "DATABASE_URL": {
+            "isOptional": false,
+            "description": "Postgres connection over the private network.",
+            "defaultValue": "${{Postgres.DATABASE_URL}}"
+          },
+          "SESSION_SECRET": {
+            "isOptional": false,
+            "description": "Cookie encryption key (32+ chars). Auto-generated unless you replace it.",
+            "defaultValue": "${{secret(43, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\")}}"
+          },
+          "NODE_ENV": {
+            "isOptional": false,
+            "description": "",
+            "defaultValue": "production"
+          },
+          "PORT": {
+            "isOptional": false,
+            "description": "Listen port (Dockerfile, health check, and tunnel origin).",
+            "defaultValue": "3000"
+          },
+          "HOSTNAME": {
+            "isOptional": false,
+            "description": "Bind address (:: works with Railway networking and Cloudflare tunnels).",
+            "defaultValue": "::"
+          },
+          "APP_URL": {
+            "isOptional": false,
+            "description": "Public app URL. Defaults to the Railway domain; override when using Cloudflare Tunnel.",
+            "defaultValue": "https://${{RAILWAY_PUBLIC_DOMAIN}}"
+          },
+          "NEXT_PUBLIC_APP_URL": {
+            "isOptional": true,
+            "description": "Optional build-time URL; APP_URL is preferred at runtime.",
+            "defaultValue": "https://${{RAILWAY_PUBLIC_DOMAIN}}"
+          },
+          "SPLITWISE_REDIRECT_URI": {
+            "isOptional": false,
+            "description": "OAuth callback — must match your Splitwise app settings exactly.",
+            "defaultValue": "https://${{RAILWAY_PUBLIC_DOMAIN}}/api/auth/splitwise/callback"
+          },
+          "SPLITWISE_CLIENT_ID": {
+            "isOptional": false,
+            "description": "From https://secure.splitwise.com/apps",
+            "defaultValue": ""
+          },
+          "SPLITWISE_CLIENT_SECRET": {
+            "isOptional": false,
+            "description": "From https://secure.splitwise.com/apps",
+            "defaultValue": ""
+          }
+        },
+        "networking": {
+          "serviceDomains": {
+            "<hasDomain>:3000": {
+              "port": 3000
+            }
+          }
+        }
+      },
+      "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f": {
+        "icon": "https://devicons.railway.app/cloudflare",
+        "name": "cloudflared",
+        "source": {
+          "repo": "ankitchouhan1020/open-splitwise",
+          "branch": null,
+          "rootDirectory": "deploy/cloudflared"
+        },
+        "variables": {
+          "TUNNEL_TOKEN": {
+            "isOptional": false,
+            "description": "Cloudflare Tunnel token — Zero Trust → Networks → Tunnels → Configure → Install connector",
+            "defaultValue": ""
+          }
+        },
+        "networking": {
+          "serviceDomains": {}
+        }
+      }
+    }
+  }
+}

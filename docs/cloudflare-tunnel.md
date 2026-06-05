@@ -201,7 +201,7 @@ openssl rand -base64 32
 
 **2a. Create the project**
 
-1. [Railway](https://railway.com) → **New Project** → deploy from this GitHub repo (or use the CLI).
+1. Use **[Deploy on Railway](../README.md#deploy-to-railway)** (full template: app + Postgres), or [Railway](https://railway.com) → **New Project** → deploy from this GitHub repo.
 2. Add **PostgreSQL** to the project (Railway plugin).
 3. Name the app service `open-splitwise` (or note the name you use).
 
@@ -279,23 +279,37 @@ For local dev **without** a tunnel, use `docker compose up -d` instead.
 
 ## Step 3 — Run cloudflared
 
-### Option A: Railway
+### Option A: Railway (GitHub repo — recommended)
 
-1. In the same Railway project: **New** → **Empty Service** → name it `cloudflared`.
-2. From your machine ([Railway CLI](https://docs.railway.com/guides/cli) installed and linked):
+Connects `deploy/cloudflared` from this repo. Required for the [Railway template](../docs/railway-template.md) and for **Generate Template** snapshots (CLI `railway up` uploads cannot be templated).
 
-   ```bash
-   railway link                    # select your project
-   railway service cloudflared     # switch to the cloudflared service
-   railway up deploy/cloudflared --path-as-root
-   railway variables set TUNNEL_TOKEN="<paste-token-from-step-1>"
-   ```
+1. In the same Railway project: **New** → **GitHub Repo** → `ankitchouhan1020/open-splitwise`
+2. Name the service `cloudflared`. Set **Root Directory** to `deploy/cloudflared`.
+3. **Variables** → `TUNNEL_TOKEN` = token from step 1.
+4. Wait for deploy. Logs should show `Registered tunnel connection` and connectivity pre-checks **PASS**.
 
-   > Run `railway up` from the **repo root** with `--path-as-root`. Do **not** `cd deploy/cloudflared && railway up` — that uploads the whole Next.js app to the wrong service.
+Or via CLI after `railway link`:
 
-3. Wait for deploy. In **cloudflared** logs you should see `Registered tunnel connection` and connectivity pre-checks **PASS**.
+```bash
+railway add --repo ankitchouhan1020/open-splitwise --service cloudflared
+# set Root Directory deploy/cloudflared in the service Settings if the CLI did not
+railway variable set TUNNEL_TOKEN="<paste-token-from-step-1>" --service cloudflared
+```
 
 **Do not** run `railway domain` on the cloudflared service — that creates an unwanted public `*.up.railway.app` URL.
+
+### Option A2: Railway (CLI upload)
+
+One-off deploy only; cannot be included in a Railway template snapshot.
+
+```bash
+railway link
+railway service cloudflared
+railway up deploy/cloudflared --path-as-root
+railway variable set TUNNEL_TOKEN="<paste-token-from-step-1>" --service cloudflared
+```
+
+> Run `railway up` from the **repo root** with `--path-as-root`. Do **not** `cd deploy/cloudflared && railway up`.
 
 ---
 

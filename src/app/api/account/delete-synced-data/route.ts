@@ -1,8 +1,5 @@
 import { isDatabaseConfigured } from "@/lib/db";
-import {
-  clearAccountData,
-  getAuthenticatedAccount,
-} from "@/lib/db/account";
+import { clearAccountData, getAuthenticatedAccount } from "@/lib/db/account";
 import { NextResponse } from "next/server";
 
 /** Removes synced Postgres rows for the current Splitwise user; does not clear the session. */

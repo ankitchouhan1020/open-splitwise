@@ -64,7 +64,7 @@ export async function syncMetadata(ctx: SyncRunContext): Promise<{
 
   await reconcileStaleSyncState(accountUserId);
 
-  if (!tryAcquireMetadataSync(accountUserId)) {
+  if (!(await tryAcquireMetadataSync(accountUserId))) {
     throw new Error("Metadata sync already in progress");
   }
 
@@ -166,6 +166,6 @@ export async function syncMetadata(ctx: SyncRunContext): Promise<{
     };
   } finally {
     await clearSyncProgress(accountUserId).catch(() => undefined);
-    releaseMetadataSync(accountUserId);
+    await releaseMetadataSync(accountUserId);
   }
 }

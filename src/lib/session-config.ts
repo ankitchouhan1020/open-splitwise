@@ -10,6 +10,9 @@ export type AppSession = {
 
 export const SESSION_COOKIE = "open_splitwise_session";
 
+/** Encrypted session lifetime (7 days). */
+const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7;
+
 export function getIronSessionOptions(): SessionOptions {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
@@ -23,6 +26,7 @@ export function getIronSessionOptions(): SessionOptions {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
+      maxAge: SESSION_MAX_AGE_SEC,
     },
   };
 }

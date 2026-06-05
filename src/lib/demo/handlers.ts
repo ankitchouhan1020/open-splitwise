@@ -11,7 +11,8 @@ import {
   getDemoExpenseDetail,
   getDemoExpenses,
 } from "@/lib/demo/fixtures";
-import { DEMO_USER } from "@/lib/demo/user";
+import type { GroupMember } from "@/lib/groups/members";
+import { DEMO_OWNER_SPLITWISE_ID, DEMO_USER } from "@/lib/demo/user";
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -138,6 +139,41 @@ export function demoExpenseDetail(
 ): ExpenseDetail | null {
   return getDemoExpenseDetail(expenseId, now);
 }
+
+export function demoExpensesForExport(
+  filters: ExpenseFilters = {},
+  now = new Date(),
+) {
+  return filterDemoExpenses(filters, now);
+}
+
+export function demoCurrentUser() {
+  return DEMO_USER;
+}
+
+const DEMO_GROUP_MEMBER_MAP: Record<number, GroupMember[]> = {
+  1001: [
+    { id: DEMO_OWNER_SPLITWISE_ID, name: "Alex Morgan" },
+    { id: 3001, name: "Jordan Lee" },
+    { id: 3002, name: "Sam Patel" },
+  ],
+  1002: [
+    { id: DEMO_OWNER_SPLITWISE_ID, name: "Alex Morgan" },
+    { id: 3002, name: "Sam Patel" },
+    { id: 3003, name: "Taylor Kim" },
+  ],
+  1003: [
+    { id: DEMO_OWNER_SPLITWISE_ID, name: "Alex Morgan" },
+    { id: 3001, name: "Jordan Lee" },
+    { id: 3003, name: "Taylor Kim" },
+  ],
+};
+
+export function demoGroupMembers(groupId: number): GroupMember[] | null {
+  return DEMO_GROUP_MEMBER_MAP[groupId] ?? null;
+}
+
+export const demoCurrentUserId = DEMO_OWNER_SPLITWISE_ID;
 
 export function demoFilterOptions() {
   return {
