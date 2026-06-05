@@ -9,3 +9,4 @@ tasks
 skills
 *.md
 !README.md
+!docs/**

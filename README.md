@@ -39,14 +39,9 @@ Connect in **Settings** → **Sync now** to pull expenses.
 
 **Sample data toggle:** When connected, use the **mask icon** in the header to swap real expenses for fictional sample data (stays logged in). Set `DEMO_MODE=true` to also show a **Try demo** button for guests without Splitwise.
 
-**Security:** All `/api/*` routes except health, OAuth, and demo start require a valid Splitwise session cookie (or an active demo session). `/explore` and `/insights` redirect to Settings if not connected. Cloudflare Access is optional extra perimeter, not required.
+**Security:** All `/api/*` routes except health, OAuth, and demo start require a valid Splitwise session cookie (or an active demo session). `/explore` and `/insights` redirect to Settings if not connected.
 
-**Cloudflare Access:** If you protect `split.example.com` with Access, add a **Bypass** policy (higher priority than Allow) for:
-
-- `/api/auth/splitwise`
-- `/api/auth/splitwise/callback`
-
-Splitwise redirects the browser to the callback without an Access JWT; blocking these paths breaks OAuth even when `SPLITWISE_REDIRECT_URI` is correct.
+**Cloudflare Tunnel:** Step-by-step guide (includes network & security flowcharts): [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md).
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm test
@@ -59,9 +54,16 @@ pnpm typecheck && pnpm lint && pnpm test
 | Target      | How                                                                                  |
 | ----------- | ------------------------------------------------------------------------------------ |
 | **Docker**  | `docker compose up --build` — app + Postgres, migrations on start                    |
+| **Docker + Cloudflare Tunnel** | No public ports — see [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) |
 | **Railway** | Connect repo, add Postgres plugin, set env vars — see [`railway.toml`](railway.toml) |
+| **Railway + Tunnel** | Follow [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) (steps 1–8) |
 
-On Railway, set `APP_URL` and `SPLITWISE_REDIRECT_URI` to your public `*.up.railway.app` URL (same host, redirect includes `/api/auth/splitwise/callback`). Redeploy after changing env vars.
+With a tunnel, set `APP_URL` and `SPLITWISE_REDIRECT_URI` to your Cloudflare hostname (e.g. `https://split.example.com`) and remove Railway public domains so traffic only enters via the tunnel.
+
+```bash
+# Self-hosted with tunnel (set TUNNEL_TOKEN in .env first)
+docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d --build
+```
 
 ---
 

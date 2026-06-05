@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
+    "cloudflare:access-oauth-bypass": "node scripts/cloudflare-access-oauth-bypass.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

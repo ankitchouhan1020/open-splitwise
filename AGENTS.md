@@ -27,3 +27,5 @@ This file is updated by Ralph iterations and human developers with reusable patt
 - Insights: `src/lib/expenses/insights.ts`, UI at `/insights`, API `GET /api/insights`
 - Home dashboard: `src/lib/expenses/dashboard.ts`, `GET /api/dashboard`, UI `src/app/home-dashboard.tsx`
 - Layout shell: use `AppShell` from `src/components/app-shell.tsx` (nav + sync banner) on all main pages
+- Cloudflare Access + OAuth: `pnpm cloudflare:access-oauth-bypass` (`scripts/cloudflare-access-oauth-bypass.mjs`); docs in `docs/cloudflare-tunnel.md`
+- Cloudflare Tunnel: `docker-compose.tunnel.yml` overlay + `docs/cloudflare-tunnel.md`; Railway sidecar in `deploy/cloudflared/`

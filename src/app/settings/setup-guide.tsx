@@ -124,10 +124,9 @@ export function SetupGuide({ setup, connected, defaultOpen }: Props) {
                     </p>
                   )}
                   <p className="text-muted text-xs leading-relaxed">
-                    Using Cloudflare Access? Add a <strong>Bypass</strong>{" "}
-                    policy for <code>/api/auth/splitwise</code> and{" "}
-                    <code>/api/auth/splitwise/callback</code> so Splitwise can
-                    complete OAuth.
+                    Using Cloudflare Access? Run{" "}
+                    <code>pnpm cloudflare:access-oauth-bypass</code> (or see
+                    docs/cloudflare-tunnel.md) so OAuth paths bypass Access.
                   </p>
                 </div>
               )}
