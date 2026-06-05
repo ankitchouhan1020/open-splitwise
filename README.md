@@ -41,7 +41,7 @@ Connect in **Settings** → **Sync now** to pull expenses.
 
 **Security:** All `/api/*` routes except health, OAuth, and demo start require a valid Splitwise session cookie (or an active demo session). `/explore` and `/insights` redirect to Settings if not connected.
 
-**Cloudflare Tunnel:** Step-by-step guide (includes network & security flowcharts): [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md).
+**Cloudflare Tunnel:** Step-by-step Railway + Cloudflare guide with platform, setup, and security flowcharts: [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md).
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm test

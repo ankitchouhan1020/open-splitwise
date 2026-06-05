@@ -4,6 +4,87 @@ Expose open-splitwise over HTTPS **without opening inbound ports**. Traffic flow
 
 Pick **Railway** (managed hosting) or **Docker Compose** (self-hosted). Both paths share the same Cloudflare tunnel and OAuth steps at the end.
 
+## Railway + Cloudflare setup (diagrams)
+
+### Platform layout
+
+What runs where after setup. Nothing on Railway has a **public HTTP domain**; only Cloudflare faces the internet.
+
+```mermaid
+flowchart TB
+  subgraph cf["Cloudflare (public edge)"]
+    direction TB
+    DNS["DNS\nsplit.example.com"]
+    SSL["TLS Full"]
+    subgraph access["Access applications"]
+      A1["Main app\nsplit.example.com/*\n→ Allow policy"]
+      A2["OAuth start\n/api/auth/splitwise*\n→ Bypass"]
+      A3["OAuth callback\n/api/auth/splitwise/callback\n→ Bypass"]
+    end
+    TH["Tunnel public hostname\nHTTP → open-splitwise.railway.internal:3000"]
+    DNS --> SSL --> access --> TH
+  end
+
+  subgraph rw["Railway project (private network)"]
+    direction TB
+    subgraph svc["Services — no *.up.railway.app domains"]
+      CFd["cloudflared service\nTUNNEL_TOKEN\noutbound QUIC only"]
+      App["open-splitwise service\nPORT=3000, HOSTNAME=::\nAPP_URL, OAuth vars"]
+      PG[("Postgres service\npostgres.railway.internal:5432\nno TCP proxy")]
+    end
+    CFd -->|"HTTP private"| App
+    App -->|"DATABASE_URL internal"| PG
+  end
+
+  subgraph ext["External"]
+    User["You / browser"]
+    SW["Splitwise OAuth"]
+  end
+
+  User -->|"HTTPS"| DNS
+  SW -->|"callback HTTPS"| DNS
+  TH <-->|"tunnel"| CFd
+
+  style A2 fill:#e8f5e9
+  style A3 fill:#e8f5e9
+  style PG fill:#fff3e0
+```
+
+| Component | Public? | Role |
+| --------- | ------- | ---- |
+| Cloudflare DNS + tunnel | Yes | HTTPS entry; hides Railway IPs |
+| `cloudflared` (Railway) | No inbound | Maintains outbound tunnel to Cloudflare |
+| `open-splitwise` (Railway) | No | Next.js app; reachable only via `*.railway.internal` |
+| Postgres (Railway) | **No** — disable TCP proxy | Data store; `DATABASE_URL` only, never `DATABASE_PUBLIC_URL` |
+
+### Setup sequence
+
+Follow these steps in order for **Railway + Cloudflare** (maps to sections below).
+
+```mermaid
+flowchart TD
+  Start([Before you start\nDomain on CF DNS, SSL Full, Splitwise app])
+  S1["Step 1 — Cloudflare\nCreate tunnel, copy TUNNEL_TOKEN"]
+  S2["Step 2 — Railway\nDeploy open-splitwise + Postgres\nPORT=3000, HOSTNAME=::\nDATABASE_URL private only\nDisable Postgres TCP proxy"]
+  S3["Step 3 — Railway\nDeploy cloudflared service\nrailway up deploy/cloudflared --path-as-root"]
+  S4["Step 4 — Cloudflare\nTunnel public hostname\nHTTP → *.railway.internal:3000"]
+  S5["Step 5 — Railway\nRemove public domains\nfrom app + cloudflared"]
+  S6{"Step 6 — Access\noptional login gate?"}
+  S6b["Step 6b — pnpm cloudflare:access-oauth-bypass\nBypass OAuth paths"]
+  S7["Step 7 — Splitwise\nRedirect URI = /api/auth/splitwise/callback"]
+  S8["Step 8 — Verify\n/config → JSON, Connect OAuth"]
+
+  Start --> S1 --> S2 --> S3 --> S4 --> S5 --> S6
+  S6 -->|yes| S6b --> S7
+  S6 -->|no| S7
+  S7 --> S8 --> Done([Live])
+
+  S4 -.->|"502? port mismatch"| FixPort["Set PORT=3000 on app\nor change tunnel to :8080"]
+  FixPort -.-> S4
+```
+
+---
+
 ## Network & security overview
 
 ### Request path (production with tunnel + Access)
