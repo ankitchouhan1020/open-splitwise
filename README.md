@@ -4,8 +4,6 @@
 
 This project syncs your Splitwise expenses into a **self-hosted** Postgres database. You can search, filter, export, and visualize them in a web UI you control. Expense entry and settlement remain in Splitwise; this application is a read-focused layer on top of your existing data.
 
-![Home dashboard with balances, recent activity, and spending breakdown](docs/images/open-splitwise-home.png)
-
 ## The goal
 
 **You own a queryable copy of your Splitwise data.**
