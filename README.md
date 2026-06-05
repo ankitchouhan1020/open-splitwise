@@ -41,6 +41,10 @@ Connect in **Settings** → **Sync now** to pull expenses.
 
 **Security:** All `/api/*` routes except health, OAuth, and demo start require a valid Splitwise session cookie (or an active demo session). `/explore` and `/insights` redirect to Settings if not connected.
 
+**Multi-tenant:** several Splitwise accounts can share one deployment; data is isolated per `splitwiseUserId` / `account_user_id` (see `src/lib/db/account.ts`). Per-tenant sync locks in `src/lib/sync/lock.ts`.
+
+**Disconnect vs data:** **Disconnect** clears only the session cookie. Synced Postgres rows stay until you use **Delete synced data** in Settings → Privacy & data (or `POST /api/account/delete-synced-data`). Reconnecting restores access to cached data.
+
 **Cloudflare Tunnel:** Step-by-step Railway + Cloudflare guide with platform, setup, and security flowcharts: [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md).
 
 ```bash
@@ -149,7 +153,7 @@ flowchart LR
 | Expense detail         | `GET /api/expenses/[id]`                     |
 | CSV export             | `GET /api/expenses/export`                   |
 | Splitwise deep links   | `src/lib/splitwise/urls.ts`                  |
-| DB account scope       | `src/lib/db/account.ts` (`is_account_owner`) |
+| DB tenant scope        | `src/lib/db/account.ts` (`account_user_id` per Splitwise user) |
 
 ---
 

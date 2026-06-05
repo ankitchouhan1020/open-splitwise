@@ -1,34 +1,39 @@
-let expenseSyncInProgress = false;
-let metadataSyncInProgress = false;
+/** Per-tenant in-memory sync locks (multiple Splitwise users per deployment). */
 
-export function tryAcquireExpenseSync(): boolean {
-  if (expenseSyncInProgress) return false;
-  expenseSyncInProgress = true;
+const expenseSyncInProgress = new Set<number>();
+const metadataSyncInProgress = new Set<number>();
+
+export function tryAcquireExpenseSync(accountUserId: number): boolean {
+  if (expenseSyncInProgress.has(accountUserId)) return false;
+  expenseSyncInProgress.add(accountUserId);
   return true;
 }
 
-export function releaseExpenseSync(): void {
-  expenseSyncInProgress = false;
+export function releaseExpenseSync(accountUserId: number): void {
+  expenseSyncInProgress.delete(accountUserId);
 }
 
-export function tryAcquireMetadataSync(): boolean {
-  if (metadataSyncInProgress) return false;
-  metadataSyncInProgress = true;
+export function tryAcquireMetadataSync(accountUserId: number): boolean {
+  if (metadataSyncInProgress.has(accountUserId)) return false;
+  metadataSyncInProgress.add(accountUserId);
   return true;
 }
 
-export function releaseMetadataSync(): void {
-  metadataSyncInProgress = false;
+export function releaseMetadataSync(accountUserId: number): void {
+  metadataSyncInProgress.delete(accountUserId);
 }
 
-export function isExpenseSyncInProgress(): boolean {
-  return expenseSyncInProgress;
+export function isExpenseSyncInProgress(accountUserId: number): boolean {
+  return expenseSyncInProgress.has(accountUserId);
 }
 
-export function isMetadataSyncInProgress(): boolean {
-  return metadataSyncInProgress;
+export function isMetadataSyncInProgress(accountUserId: number): boolean {
+  return metadataSyncInProgress.has(accountUserId);
 }
 
-export function isAnySyncInProgress(): boolean {
-  return expenseSyncInProgress || metadataSyncInProgress;
+export function isAnySyncInProgress(accountUserId: number): boolean {
+  return (
+    expenseSyncInProgress.has(accountUserId) ||
+    metadataSyncInProgress.has(accountUserId)
+  );
 }

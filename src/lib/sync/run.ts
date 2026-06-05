@@ -20,11 +20,17 @@ export async function assertSyncCanStart(
 ): Promise<void> {
   await reconcileStaleSyncState(accountUserId);
 
-  if ((scope === "all" || scope === "metadata") && isMetadataSyncInProgress()) {
+  if (
+    (scope === "all" || scope === "metadata") &&
+    isMetadataSyncInProgress(accountUserId)
+  ) {
     throw new SyncAlreadyInProgressError("Metadata sync already in progress");
   }
 
-  if ((scope === "all" || scope === "expenses") && isExpenseSyncInProgress()) {
+  if (
+    (scope === "all" || scope === "expenses") &&
+    isExpenseSyncInProgress(accountUserId)
+  ) {
     throw new SyncAlreadyInProgressError("Expense sync already in progress");
   }
 }

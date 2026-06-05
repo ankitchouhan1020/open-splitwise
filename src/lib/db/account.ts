@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getAppSession, sessionHasAccessToken } from "@/lib/session";
 
-export async function upsertAccountOwner(user: {
+/** Upsert the Splitwise user for the current OAuth session (one row per splitwise_id). */
+export async function upsertConnectedUser(user: {
   splitwiseId: number;
   firstName: string;
   lastName: string;
@@ -49,47 +50,44 @@ export async function upsertAccountOwner(user: {
   return created;
 }
 
-/** @deprecated Use getAuthenticatedAccountOwner — does not verify session. */
-export async function getAccountOwner() {
+/** @deprecated Use upsertConnectedUser */
+export const upsertAccountOwner = upsertConnectedUser;
+
+/**
+ * DB user for the current session. Each browser session maps to one Splitwise
+ * account via session.splitwiseUserId; data is isolated by users.id (account_user_id).
+ */
+export async function getAuthenticatedAccount() {
+  const session = await getAppSession();
+  if (!sessionHasAccessToken(session) || !session.splitwiseUserId) {
+    return null;
+  }
+
   const db = getDb();
-  const [owner] = await db
+  const [account] = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.isAccountOwner, true))
+    .where(eq(schema.users.splitwiseId, session.splitwiseUserId))
     .limit(1);
-  return owner ?? null;
+  return account ?? null;
 }
 
-/** Account owner for the current session; null if not connected. */
-export async function getAuthenticatedAccountOwner() {
-  const session = await getAppSession();
-  if (!sessionHasAccessToken(session)) return null;
+/** @deprecated Use getAuthenticatedAccount */
+export const getAuthenticatedAccountOwner = getAuthenticatedAccount;
 
-  const db = getDb();
-  const where = session.splitwiseUserId
-    ? and(
-        eq(schema.users.splitwiseId, session.splitwiseUserId),
-        eq(schema.users.isAccountOwner, true),
-      )
-    : eq(schema.users.isAccountOwner, true);
-
-  const [owner] = await db.select().from(schema.users).where(where).limit(1);
-  return owner ?? null;
-}
-
-/** Removes all synced data for the connected account (used on disconnect). */
+/** Removes all synced data for a Splitwise user (explicit delete in Settings). */
 export async function clearAccountData(accountUserId: number) {
   const db = getDb();
   await db.delete(schema.users).where(eq(schema.users.id, accountUserId));
 }
 
 export async function clearAccountDataBySplitwiseId(splitwiseUserId: number) {
-  const [owner] = await getDb()
+  const [account] = await getDb()
     .select()
     .from(schema.users)
     .where(eq(schema.users.splitwiseId, splitwiseUserId))
     .limit(1);
-  if (owner) {
-    await clearAccountData(owner.id);
+  if (account) {
+    await clearAccountData(account.id);
   }
 }

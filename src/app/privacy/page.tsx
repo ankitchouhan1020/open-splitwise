@@ -49,24 +49,30 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-foreground text-base font-medium">Retention</h2>
             <p className="mt-2">
-              Your session token and cached data are kept while you remain
-              connected. They are not automatically purged on a schedule while
-              the connection is active.
+              Your session token is kept until you disconnect. Synced Postgres
+              data is kept until you explicitly delete it — disconnecting does
+              not remove cached expenses or metadata.
             </p>
           </section>
 
           <section>
             <h2 className="text-foreground text-base font-medium">
-              Deletion on disconnect
+              Disconnect vs delete synced data
             </h2>
             <p className="mt-2">
-              When you disconnect in{" "}
+              <strong>Disconnect</strong> in{" "}
               <Link href="/settings" className="text-accent underline">
                 Settings
-              </Link>
-              , the app destroys your session (removing the access token from
-              the cookie) and, when a database is configured, deletes all synced
-              rows associated with your connected account from PostgreSQL.
+              </Link>{" "}
+              only ends your session (the OAuth token is removed from the
+              cookie). Your synced database rows remain so you can reconnect and
+              continue where you left off.
+            </p>
+            <p className="mt-2">
+              <strong>Delete synced data</strong> (Privacy &amp; data section,
+              while connected) removes all cached rows for your Splitwise account
+              from PostgreSQL. Your session stays active unless you also
+              disconnect.
             </p>
           </section>
 

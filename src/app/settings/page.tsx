@@ -67,7 +67,11 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
           <SystemPanel setup={setup} />
 
-          <PrivacySection />
+          <PrivacySection
+            canDeleteSyncedData={
+              !!user && !guestDemo && setup.dbConfigured && !fakeDataOn
+            }
+          />
         </div>
       </div>
     </AppShell>

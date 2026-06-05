@@ -1,5 +1,5 @@
 import { isDatabaseConfigured } from "@/lib/db";
-import { upsertAccountOwner } from "@/lib/db/account";
+import { upsertConnectedUser } from "@/lib/db/account";
 import { appPathUrl, resolveAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/splitwise/api";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     await session.save();
 
     if (isDatabaseConfigured()) {
-      await upsertAccountOwner({
+      await upsertConnectedUser({
         splitwiseId: user.id,
         firstName: user.first_name,
         lastName: user.last_name,

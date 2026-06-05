@@ -150,7 +150,7 @@ export async function syncExpenses(ctx: SyncRunContext): Promise<ExpenseSyncResu
 
   await reconcileStaleSyncState(accountUserId);
 
-  if (!tryAcquireExpenseSync()) {
+  if (!tryAcquireExpenseSync(accountUserId)) {
     throw new Error("Expense sync already in progress");
   }
 
@@ -252,7 +252,7 @@ export async function syncExpenses(ctx: SyncRunContext): Promise<ExpenseSyncResu
     await clearSyncProgress(accountUserId);
     throw err;
   } finally {
-    releaseExpenseSync();
+    releaseExpenseSync(accountUserId);
   }
 }
 

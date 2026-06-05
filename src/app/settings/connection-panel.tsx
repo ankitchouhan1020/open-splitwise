@@ -48,7 +48,7 @@ export function ConnectionPanel({
   async function disconnect() {
     const message = guestDemo
       ? "Exit demo and return to the home page?"
-      : "Disconnect Splitwise? This clears your session and local synced data.";
+      : "Disconnect Splitwise? This ends your session on this server. Synced data in Postgres is kept until you delete it in Privacy & data.";
     if (!confirm(message)) return;
 
     setDisconnecting(true);

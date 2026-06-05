@@ -21,6 +21,7 @@ const PUBLIC_API_PATHS = new Set([
 const FAKE_DATA_WRITE_ALLOWED = new Set([
   "/api/demo/stop",
   "/api/fake-data/toggle",
+  "/api/account/delete-synced-data",
 ]);
 
 const PROTECTED_PAGE_PREFIXES = ["/explore", "/insights"];

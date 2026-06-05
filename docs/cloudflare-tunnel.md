@@ -141,7 +141,7 @@ flowchart TB
 
   subgraph data["Data"]
     L8["Postgres private only\n*.railway.internal or 127.0.0.1\nno TCP proxy to internet"]
-    L9["Single-tenant — one connected\nSplitwise account per deploy"]
+    L9["Multi-tenant — data isolated per\nSplitwise user (account_user_id)"]
   end
 
   edge --> access
@@ -449,5 +449,5 @@ The script creates (idempotent):
 ## Security notes
 
 - Never commit `TUNNEL_TOKEN`, `CLOUDFLARE_API_TOKEN`, or `SESSION_SECRET`.
-- The tunnel hides your origin IP and avoids port forwarding; it does **not** make the app multi-tenant safe on a public URL.
+- The tunnel hides your origin IP and avoids port forwarding. Multiple Splitwise users can share one deployment; each session only sees its own synced data. Use Cloudflare Access to limit who can open the site at all.
 - Use the **mask icon** (sample data) or `DEMO_MODE` when demoing without showing real expenses.
