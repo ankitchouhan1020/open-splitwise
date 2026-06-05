@@ -1,0 +1,25 @@
+# Cloudflare Tunnel overlay — use with the base compose file.
+#
+#   cp .env.example .env
+#   # set TUNNEL_TOKEN, APP_URL=https://split.example.com, OAuth vars, SESSION_SECRET
+#   docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d --build
+#
+# In Cloudflare Zero Trust → your tunnel → Public hostname:
+#   Type HTTP → URL http://app:3000  (Docker service name, not localhost)
+
+services:
+  postgres:
+    ports: []
+
+  app:
+    ports: []
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN — see docs/cloudflare-tunnel.md}
+    depends_on:
+      app:
+        condition: service_started

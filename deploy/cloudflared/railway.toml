@@ -1,0 +1,9 @@
+# Cloudflare Tunnel sidecar for Railway — deploy as a second service in the same project.
+# See docs/cloudflare-tunnel.md
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"

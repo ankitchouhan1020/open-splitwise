@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+.next/
+out/
+.vercel/
+.turbo/
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# Dependencies / env
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Test / tooling
+coverage/
+.vitest/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE / editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Build output
+dist/
