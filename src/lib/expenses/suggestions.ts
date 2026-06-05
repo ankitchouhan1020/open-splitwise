@@ -1,11 +1,11 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 
 export type ExpenseSuggestions = {
   defaultCurrency: string;
   descriptions: string[];
-  groups: Array<{ id: number; name: string; count: number }>;
+  groups: Array<{ id: number; name: string }>;
   categories: Array<{ id: number; name: string; count: number }>;
 };
 
@@ -33,21 +33,15 @@ export async function getExpenseSuggestions(): Promise<ExpenseSuggestions | null
       .limit(40),
     db
       .select({
-        id: schema.expenses.groupId,
+        id: schema.groups.splitwiseId,
         name: schema.groups.name,
-        count: sql<number>`count(*)::int`,
       })
-      .from(schema.expenses)
-      .leftJoin(
-        schema.groups,
-        and(
-          eq(schema.groups.splitwiseId, schema.expenses.groupId),
-          eq(schema.groups.accountUserId, owner.id),
-        ),
+      .from(schema.groups)
+      .where(eq(schema.groups.accountUserId, owner.id))
+      .orderBy(
+        sql`${schema.groups.updatedAt} desc nulls last`,
+        asc(schema.groups.name),
       )
-      .where(and(baseWhere, sql`${schema.expenses.groupId} > 0`))
-      .groupBy(schema.expenses.groupId, schema.groups.name)
-      .orderBy(sql`count(*) desc`)
       .limit(12),
     db
       .select({
@@ -70,11 +64,10 @@ export async function getExpenseSuggestions(): Promise<ExpenseSuggestions | null
     defaultCurrency: owner.defaultCurrency,
     descriptions: descriptions.map((d) => d.description).filter(Boolean),
     groups: groups
-      .filter((g) => g.id != null && g.id > 0)
+      .filter((g) => g.id > 0)
       .map((g) => ({
-        id: g.id!,
+        id: g.id,
         name: g.name ?? `Group #${g.id}`,
-        count: g.count,
       })),
     categories: categories
       .filter((c) => c.id != null)

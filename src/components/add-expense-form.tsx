@@ -142,8 +142,12 @@ export function AddExpenseForm({
           categoryId: categoryId ? Number(categoryId) : undefined,
           date: date ? new Date(date).toISOString() : undefined,
           details: details || undefined,
-          ...(participantIds.length > 0
-            ? { participantIds, paidByUserId: paidByUserId ?? undefined }
+          ...(participantIds.length > 0 || paidByUserId != null
+            ? {
+                participantIds:
+                  participantIds.length > 0 ? participantIds : undefined,
+                paidByUserId: paidByUserId ?? undefined,
+              }
             : {}),
         }),
       });
@@ -258,16 +262,6 @@ export function AddExpenseForm({
         }}
       />
 
-      {groupId && (
-        <ExpenseParticipantPicker
-          groupId={groupId}
-          selectedIds={participantIds}
-          onSelectedChange={setParticipantIds}
-          paidByUserId={paidByUserId}
-          onPaidByChange={setPaidByUserId}
-        />
-      )}
-
       <div className="grid grid-cols-[1fr_5.5rem] gap-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="expense-cost" className={labelClass}>
@@ -327,6 +321,16 @@ export function AddExpenseForm({
           </div>
         )}
       </div>
+
+      {groupId && (
+        <ExpenseParticipantPicker
+          groupId={groupId}
+          selectedIds={participantIds}
+          onSelectedChange={setParticipantIds}
+          paidByUserId={paidByUserId}
+          onPaidByChange={setPaidByUserId}
+        />
+      )}
 
       {topCategories.length > 0 && (
         <div className="space-y-2">

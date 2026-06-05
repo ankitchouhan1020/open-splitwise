@@ -44,10 +44,18 @@ describe("buildEqualSplitUsersBody", () => {
     expect(body.users__1__user_id).toBe(7);
   });
 
-  it("requires payer to be a participant", () => {
-    expect(() => buildEqualSplitUsersBody(99, [1, 2], "10.00")).toThrow(
-      "payer_must_be_participant",
-    );
+  it("allows payer who is not in the split", () => {
+    expect(buildEqualSplitUsersBody(99, [1, 2], "10.00")).toEqual({
+      users__0__user_id: 99,
+      users__0__paid_share: "10.00",
+      users__0__owed_share: "0.00",
+      users__1__user_id: 1,
+      users__1__paid_share: "0.00",
+      users__1__owed_share: "5.00",
+      users__2__user_id: 2,
+      users__2__paid_share: "0.00",
+      users__2__owed_share: "5.00",
+    });
   });
 });
 

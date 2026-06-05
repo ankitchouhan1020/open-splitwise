@@ -19,7 +19,7 @@ export type FilterOptions = {
 export type ExpenseFormSuggestions = {
   defaultCurrency: string;
   descriptions: string[];
-  groups: Array<{ id: number; name: string; count: number }>;
+  groups: Array<{ id: number; name: string }>;
   categories: Array<{ id: number; name: string; count: number }>;
 };
 

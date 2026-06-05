@@ -4,6 +4,8 @@ import { useGroupMembers } from "@/lib/query/hooks";
 import { useEffect, useMemo } from "react";
 
 const labelClass = "text-foreground text-sm font-medium";
+const selectClass =
+  "border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2";
 
 type Props = {
   groupId: string;
@@ -46,25 +48,25 @@ export function ExpenseParticipantPicker({
     onPaidByChange,
   ]);
 
-  useEffect(() => {
-    if (paidByUserId == null || selectedSet.has(paidByUserId)) return;
-    const fallback = selectedIds[0] ?? currentUserId;
-    if (fallback != null) onPaidByChange(fallback);
-  }, [paidByUserId, selectedSet, selectedIds, currentUserId, onPaidByChange]);
-
   if (!groupId) return null;
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        <span className={labelClass}>Split with</span>
-        <div className="flex flex-wrap gap-1.5">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="border-border h-7 w-20 animate-pulse rounded-md border bg-stone-100"
-            />
-          ))}
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <span className={labelClass}>Paid by</span>
+          <div className="border-border h-10 animate-pulse rounded-lg border bg-stone-100" />
+        </div>
+        <div className="space-y-2">
+          <span className={labelClass}>Split equally</span>
+          <div className="flex flex-wrap gap-1.5">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="border-border h-7 w-20 animate-pulse rounded-md border bg-stone-100"
+              />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -80,7 +82,7 @@ export function ExpenseParticipantPicker({
   }
 
   const allSelected = members.every((m) => selectedSet.has(m.id));
-  const payerOptions = members.filter((m) => selectedSet.has(m.id));
+  const payerIsInSplit = paidByUserId != null && selectedSet.has(paidByUserId);
 
   function toggleMember(id: number) {
     const next = selectedSet.has(id)
@@ -92,9 +94,34 @@ export function ExpenseParticipantPicker({
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="expense-paid-by" className={labelClass}>
+          Paid by
+        </label>
+        <select
+          id="expense-paid-by"
+          value={paidByUserId ?? ""}
+          onChange={(e) => onPaidByChange(Number(e.target.value))}
+          className={selectClass}
+        >
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+              {m.id === currentUserId ? " (you)" : ""}
+            </option>
+          ))}
+        </select>
+        {!payerIsInSplit && paidByUserId != null && (
+          <p className="text-muted text-xs">
+            {members.find((m) => m.id === paidByUserId)?.name ?? "Payer"} paid
+            but is not in this split.
+          </p>
+        )}
+      </div>
+
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={labelClass}>Split with</span>
+          <span className={labelClass}>Split equally</span>
           <div className="flex gap-2 text-xs">
             <button
               type="button"
@@ -125,6 +152,7 @@ export function ExpenseParticipantPicker({
           {members.map((m) => {
             const active = selectedSet.has(m.id);
             const isYou = m.id === currentUserId;
+            const isPayer = m.id === paidByUserId;
             return (
               <button
                 key={m.id}
@@ -138,35 +166,16 @@ export function ExpenseParticipantPicker({
               >
                 {m.name}
                 {isYou ? " (you)" : ""}
+                {isPayer && !isYou ? " · paid" : ""}
               </button>
             );
           })}
         </div>
         {selectedIds.length < members.length && (
           <p className="text-muted text-xs">
-            Splitting equally among {selectedIds.length} of {members.length}{" "}
-            people
+            {selectedIds.length} of {members.length} people owe an equal share
           </p>
         )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="expense-paid-by" className={labelClass}>
-          Paid by
-        </label>
-        <select
-          id="expense-paid-by"
-          value={paidByUserId ?? ""}
-          onChange={(e) => onPaidByChange(Number(e.target.value))}
-          className="border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2"
-        >
-          {payerOptions.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-              {m.id === currentUserId ? " (you)" : ""}
-            </option>
-          ))}
-        </select>
       </div>
     </div>
   );

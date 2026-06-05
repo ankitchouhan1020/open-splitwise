@@ -29,21 +29,27 @@ export function buildEqualSplitUsersBody(
   participantIds: number[],
   cost: string,
 ): Record<string, string | number> {
-  const uniqueIds = [...new Set(participantIds)];
-  if (uniqueIds.length === 0) throw new Error("participants_required");
-  if (!uniqueIds.includes(paidByUserId)) {
-    throw new Error("payer_must_be_participant");
-  }
+  const participants = [...new Set(participantIds)];
+  if (participants.length === 0) throw new Error("participants_required");
 
   const costFormatted = formatCostAmount(cost);
-  const owedShares = equalOwedShares(costFormatted, uniqueIds.length);
-  const body: Record<string, string | number> = {};
+  const owedShares = equalOwedShares(costFormatted, participants.length);
+  const owedByParticipant = new Map<number, string>();
+  participants.forEach((id, index) => {
+    owedByParticipant.set(id, owedShares[index]!);
+  });
 
-  uniqueIds.forEach((userId, index) => {
+  const userIds = participants.includes(paidByUserId)
+    ? participants
+    : [paidByUserId, ...participants];
+
+  const body: Record<string, string | number> = {};
+  userIds.forEach((userId, index) => {
     body[`users__${index}__user_id`] = userId;
     body[`users__${index}__paid_share`] =
       userId === paidByUserId ? costFormatted : "0.00";
-    body[`users__${index}__owed_share`] = owedShares[index]!;
+    body[`users__${index}__owed_share`] =
+      owedByParticipant.get(userId) ?? "0.00";
   });
 
   return body;

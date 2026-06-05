@@ -530,7 +530,10 @@ export async function getFilterOptions(): Promise<{
         })
         .from(schema.groups)
         .where(eq(schema.groups.accountUserId, owner.id))
-        .orderBy(asc(schema.groups.name)),
+        .orderBy(
+          sql`${schema.groups.updatedAt} desc nulls last`,
+          asc(schema.groups.name),
+        ),
       db
         .select({
           id: schema.friends.splitwiseId,

@@ -8,7 +8,7 @@ const inputClass =
 
 type Props = {
   groups: ExpenseFormGroup[];
-  topGroups: Array<{ id: number; name: string; count: number }>;
+  topGroups: Array<{ id: number; name: string }>;
   groupId: string;
   onGroupChange: (groupId: string, groupName: string) => void;
 };
@@ -91,24 +91,29 @@ export function ExpenseGroupPicker({
         )}
       </div>
       {topGroups.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {topGroups.map((g) => {
-            const active = groupId === String(g.id);
-            return (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => toggleTopGroup({ id: g.id, name: g.name })}
-                className={
-                  active
-                    ? "rounded-md bg-teal-700 px-2.5 py-1 text-xs font-medium text-white"
-                    : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
-                }
-              >
-                {g.name}
-              </button>
-            );
-          })}
+        <div className="space-y-1.5">
+          <span className="text-muted text-xs font-medium">
+            Recently updated
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {topGroups.map((g) => {
+              const active = groupId === String(g.id);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => toggleTopGroup({ id: g.id, name: g.name })}
+                  className={
+                    active
+                      ? "rounded-md bg-teal-700 px-2.5 py-1 text-xs font-medium text-white"
+                      : "border-border rounded-md border bg-white px-2.5 py-1 text-xs font-medium hover:bg-stone-50"
+                  }
+                >
+                  {g.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       <div ref={groupRef} className="relative">
