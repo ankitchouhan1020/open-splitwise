@@ -1,3 +1,5 @@
+import { demoExpenseDetail } from "@/lib/demo/handlers";
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { deleteGroupExpense, updateGroupExpense } from "@/lib/expenses/update";
 import { getExpenseDetail } from "@/lib/expenses/queries";
@@ -11,17 +13,25 @@ function parseExpenseId(id: string): number | null {
 }
 
 export async function GET(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const expenseId = parseExpenseId(id);
+  if (expenseId === null) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
+
+  if (await isFakeDataRequest()) {
+    const detail = demoExpenseDetail(expenseId);
+    if (!detail) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+    return NextResponse.json(detail);
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },
       { status: 503 },
     );
-  }
-
-  const { id } = await params;
-  const expenseId = parseExpenseId(id);
-  if (expenseId === null) {
-    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
   }
 
   const detail = await getExpenseDetail(expenseId);

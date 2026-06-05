@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 
 type Props = {
   connected: boolean;
+  oauthConnected: boolean;
+  fakeDataOn?: boolean;
 };
 
 function NavTab({
@@ -38,7 +40,11 @@ function NavTab({
   );
 }
 
-export function MobileBottomNav({ connected }: Props) {
+export function MobileBottomNav({
+  connected,
+  oauthConnected,
+  fakeDataOn = false,
+}: Props) {
   const pathname = usePathname();
   const { openDialog } = useAddExpenseDialog();
 
@@ -64,17 +70,31 @@ export function MobileBottomNav({ connected }: Props) {
           active={isNavActive(pathname, explore.href)}
         />
 
-        <button
-          type="button"
-          onClick={openDialog}
-          aria-label="Add expense"
-          className="text-accent -mt-3 flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 px-1 pb-2"
-        >
-          <span className="bg-accent flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md">
-            <NavIconAdd className="h-6 w-6" />
-          </span>
-          <span className="text-[11px] font-semibold">Add</span>
-        </button>
+        {oauthConnected && !fakeDataOn ? (
+          <button
+            type="button"
+            onClick={openDialog}
+            aria-label="Add expense"
+            className="text-accent -mt-3 flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 px-1 pb-2"
+          >
+            <span className="bg-accent flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md">
+              <NavIconAdd className="h-6 w-6" />
+            </span>
+            <span className="text-[11px] font-semibold">Add</span>
+          </button>
+        ) : (
+          <div
+            className="text-muted -mt-3 flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 px-1 pb-2"
+            aria-hidden
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-stone-300 bg-stone-50">
+              <NavIconAdd className="h-6 w-6 opacity-30" />
+            </span>
+            <span className="text-[11px] font-medium">
+              {fakeDataOn ? "Sample" : "Add"}
+            </span>
+          </div>
+        )}
 
         <NavTab
           href={insights.href}

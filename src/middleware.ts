@@ -5,7 +5,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   getIronSessionOptions,
-  sessionHasAccessToken,
+  sessionIsActive,
+  sessionShowsFakeData,
   type AppSession,
 } from "@/lib/session-config";
 
@@ -14,6 +15,12 @@ const PUBLIC_API_PATHS = new Set([
   "/api/auth/splitwise",
   "/api/auth/splitwise/callback",
   "/api/auth/splitwise/config",
+  "/api/demo/start",
+]);
+
+const FAKE_DATA_WRITE_ALLOWED = new Set([
+  "/api/demo/stop",
+  "/api/fake-data/toggle",
 ]);
 
 const PROTECTED_PAGE_PREFIXES = ["/explore", "/insights"];
@@ -48,13 +55,20 @@ export async function middleware(request: NextRequest) {
     const session = await sessionFromRequest(request, response);
 
     if (pathname.startsWith("/api/")) {
-      if (!sessionHasAccessToken(session)) {
+      if (!sessionIsActive(session)) {
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      }
+      if (
+        sessionShowsFakeData(session) &&
+        request.method !== "GET" &&
+        !FAKE_DATA_WRITE_ALLOWED.has(pathname)
+      ) {
+        return NextResponse.json({ error: "fake_data_read_only" }, { status: 403 });
       }
       return response;
     }
 
-    if (isProtectedPage(pathname) && !sessionHasAccessToken(session)) {
+    if (isProtectedPage(pathname) && !sessionIsActive(session)) {
       const origin = requestOriginFromHeaders(request.headers);
       const settings = appPathUrl("/settings", origin);
       settings.searchParams.set("error", "connect_required");

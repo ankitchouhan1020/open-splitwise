@@ -1,3 +1,5 @@
+import { demoSyncStatus } from "@/lib/demo/handlers";
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { getDb, schema } from "@/lib/db";
@@ -8,6 +10,10 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  if (await isFakeDataRequest()) {
+    return NextResponse.json(demoSyncStatus());
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ configured: false });
   }

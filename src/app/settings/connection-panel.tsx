@@ -20,6 +20,8 @@ type Props = {
     default_currency: string;
   } | null;
   setup: SetupStatus;
+  fakeDataOn?: boolean;
+  guestDemo?: boolean;
   error?: string | null;
   justConnected?: boolean;
 };
@@ -34,6 +36,8 @@ export function ConnectionPanel({
   connected,
   user,
   setup,
+  fakeDataOn = false,
+  guestDemo = false,
   error,
   justConnected,
 }: Props) {
@@ -42,15 +46,16 @@ export function ConnectionPanel({
   const [disconnecting, setDisconnecting] = useState(false);
 
   async function disconnect() {
-    if (
-      !confirm(
-        "Disconnect Splitwise? This clears your session and local synced data.",
-      )
-    ) {
-      return;
-    }
+    const message = guestDemo
+      ? "Exit demo and return to the home page?"
+      : "Disconnect Splitwise? This clears your session and local synced data.";
+    if (!confirm(message)) return;
+
     setDisconnecting(true);
-    await fetch("/api/auth/disconnect", { method: "POST" });
+    await fetch(guestDemo ? "/api/demo/stop" : "/api/auth/disconnect", {
+      method: "POST",
+    });
+    if (guestDemo) router.push("/");
     router.refresh();
     setDisconnecting(false);
   }
@@ -60,7 +65,11 @@ export function ConnectionPanel({
       title="Splitwise account"
       description="OAuth token stored in an encrypted session cookie on this server."
       action={
-        connected ? (
+        guestDemo ? (
+          <StatusBadge tone="warn">Guest demo</StatusBadge>
+        ) : fakeDataOn ? (
+          <StatusBadge tone="warn">Sample data</StatusBadge>
+        ) : connected ? (
           <StatusBadge tone="ok">Connected</StatusBadge>
         ) : oauthConfigured ? (
           <StatusBadge tone="warn">Not connected</StatusBadge>
@@ -85,35 +94,55 @@ export function ConnectionPanel({
             vars, redirect URI, and migration steps tailored to this instance.
           </SettingsAlert>
         ) : connected && user ? (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div
-                className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                aria-hidden
+          <div className="space-y-4">
+            {fakeDataOn && !guestDemo && (
+              <SettingsAlert tone="info">
+                Sample data overlay is on. Use the mask icon in the header to
+                show your real expenses — you stay connected to Splitwise.
+              </SettingsAlert>
+            )}
+            {guestDemo && (
+              <SettingsAlert tone="info">
+                Guest demo with fictional data only. Connect Splitwise to use
+                your own account.
+              </SettingsAlert>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className="bg-accent/10 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                  aria-hidden
+                >
+                  {userInitials(user)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-foreground truncate font-medium">
+                    {user.first_name} {user.last_name}
+                  </p>
+                  <p className="text-muted truncate text-sm">{user.email}</p>
+                  <p className="text-muted mt-0.5 text-xs">
+                    Default currency{" "}
+                    <span className="text-foreground font-mono font-medium">
+                      {user.default_currency}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void disconnect()}
+                disabled={disconnecting}
+                className="border-border text-muted hover:text-foreground shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
               >
-                {userInitials(user)}
-              </div>
-              <div className="min-w-0">
-                <p className="text-foreground truncate font-medium">
-                  {user.first_name} {user.last_name}
-                </p>
-                <p className="text-muted truncate text-sm">{user.email}</p>
-                <p className="text-muted mt-0.5 text-xs">
-                  Default currency{" "}
-                  <span className="text-foreground font-mono font-medium">
-                    {user.default_currency}
-                  </span>
-                </p>
-              </div>
+                {disconnecting
+                  ? guestDemo
+                    ? "Exiting…"
+                    : "Disconnecting…"
+                  : guestDemo
+                    ? "Exit demo"
+                    : "Disconnect"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => void disconnect()}
-              disabled={disconnecting}
-              className="border-border text-muted hover:text-foreground shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
-            >
-              {disconnecting ? "Disconnecting…" : "Disconnect"}
-            </button>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">

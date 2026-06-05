@@ -1,3 +1,12 @@
+import {
+  demoCategoryBreakdown,
+  demoFriendSummary,
+  demoGroupSummary,
+  demoMonthlySpend,
+  demoPeriodComparison,
+  demoRangeSummary,
+} from "@/lib/demo/handlers";
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import {
   getCategoryBreakdown,
@@ -28,15 +37,41 @@ function parseInsightsFilters(
 }
 
 export async function GET(request: NextRequest) {
+  const filters = parseInsightsFilters(request.nextUrl.searchParams);
+  const view = filters.view ?? "dashboard";
+
+  if (await isFakeDataRequest()) {
+    switch (view) {
+      case "monthly":
+        return NextResponse.json({ monthly: demoMonthlySpend(filters) });
+      case "categories":
+        return NextResponse.json({
+          categories: demoCategoryBreakdown(filters),
+        });
+      case "trends":
+        return NextResponse.json({ trends: demoPeriodComparison(filters) });
+      case "groups":
+        return NextResponse.json({ groups: demoGroupSummary(filters) });
+      case "friends":
+        return NextResponse.json({ friends: demoFriendSummary(filters) });
+      default:
+        return NextResponse.json({
+          summary: demoRangeSummary(filters),
+          monthly: demoMonthlySpend(filters),
+          categories: demoCategoryBreakdown(filters),
+          trends: demoPeriodComparison(filters),
+          groups: demoGroupSummary(filters),
+          friends: demoFriendSummary(filters),
+        });
+    }
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },
       { status: 503 },
     );
   }
-
-  const filters = parseInsightsFilters(request.nextUrl.searchParams);
-  const view = filters.view ?? "dashboard";
 
   switch (view) {
     case "monthly":

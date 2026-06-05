@@ -9,6 +9,8 @@ export {
   SESSION_COOKIE,
   getIronSessionOptions,
   sessionHasAccessToken,
+  sessionIsActive,
+  sessionShowsFakeData,
 } from "@/lib/session-config";
 
 export async function getAppSession() {
@@ -20,5 +22,6 @@ export async function clearAppSession() {
   session.accessToken = undefined;
   session.splitwiseUserId = undefined;
   session.oauthState = undefined;
+  session.fakeData = undefined;
   await session.destroy();
 }

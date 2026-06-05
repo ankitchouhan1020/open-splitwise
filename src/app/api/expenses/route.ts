@@ -1,3 +1,5 @@
+import { demoListExpenses } from "@/lib/demo/handlers";
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { createGroupExpense } from "@/lib/expenses/create";
 import { parseExpenseFilters } from "@/lib/expenses/filters";
@@ -5,6 +7,11 @@ import { listExpenses } from "@/lib/expenses/queries";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const filters = parseExpenseFilters(request.nextUrl.searchParams);
+  if (await isFakeDataRequest()) {
+    return NextResponse.json(demoListExpenses(filters));
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },
@@ -12,7 +19,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const filters = parseExpenseFilters(request.nextUrl.searchParams);
   const result = await listExpenses(filters);
   return NextResponse.json(result);
 }

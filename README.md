@@ -37,7 +37,9 @@ pnpm dev          # http://localhost:3000
 
 Connect in **Settings** → **Sync now** to pull expenses.
 
-**Security:** All `/api/*` routes except health and OAuth require a valid Splitwise session cookie. `/explore` and `/insights` redirect to Settings if not connected. Cloudflare Access is optional extra perimeter, not required.
+**Sample data toggle:** When connected, use the **mask icon** in the header to swap real expenses for fictional sample data (stays logged in). Set `DEMO_MODE=true` to also show a **Try demo** button for guests without Splitwise.
+
+**Security:** All `/api/*` routes except health, OAuth, and demo start require a valid Splitwise session cookie (or an active demo session). `/explore` and `/insights` redirect to Settings if not connected. Cloudflare Access is optional extra perimeter, not required.
 
 **Cloudflare Access:** If you protect `split.example.com` with Access, add a **Bypass** policy (higher priority than Allow) for:
 

@@ -1,6 +1,8 @@
 import { HomeDashboard } from "@/app/home-dashboard";
 import { AppShell } from "@/components/app-shell";
+import { DemoModeButton } from "@/components/demo-mode-button";
 import { getConnectedUser } from "@/lib/auth";
+import { isGuestDemoAllowed } from "@/lib/demo/config";
 import Link from "next/link";
 
 const HIGHLIGHTS = [
@@ -56,6 +58,9 @@ export default async function HomePage() {
           >
             Connect Splitwise
           </Link>
+          {isGuestDemoAllowed() && (
+            <DemoModeButton className="border-border bg-card text-foreground rounded-xl border px-6 py-3 text-center text-sm font-medium hover:bg-stone-50 disabled:opacity-50" />
+          )}
           <Link
             href="/privacy"
             className="border-border bg-card text-foreground rounded-xl border px-6 py-3 text-center text-sm font-medium hover:bg-stone-50"

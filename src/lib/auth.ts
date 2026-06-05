@@ -1,3 +1,5 @@
+import { sessionIsGuestDemo } from "@/lib/demo/session";
+import { DEMO_USER } from "@/lib/demo/user";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import { SplitwiseAuthError } from "@/lib/splitwise/errors";
 import type { SplitwiseUser } from "@/lib/splitwise/types";
@@ -22,7 +24,10 @@ export async function getSplitwiseClient() {
 }
 
 export async function getConnectedUser(): Promise<SplitwiseUser | null> {
-  const token = await getAccessToken();
+  const session = await getAppSession();
+  if (sessionIsGuestDemo(session)) return DEMO_USER;
+
+  const token = session.accessToken;
   if (!token) return null;
   try {
     const client = createSplitwiseClient(token);

@@ -7,10 +7,17 @@ import { usePathname } from "next/navigation";
 
 type Props = {
   connected: boolean;
+  oauthConnected: boolean;
   dbConfigured: boolean;
+  fakeDataOn?: boolean;
 };
 
-export function AppNav({ connected, dbConfigured }: Props) {
+export function AppNav({
+  connected,
+  oauthConnected,
+  dbConfigured,
+  fakeDataOn = false,
+}: Props) {
   const pathname = usePathname();
 
   return (
@@ -49,7 +56,12 @@ export function AppNav({ connected, dbConfigured }: Props) {
         )}
 
         <div className="ml-auto shrink-0">
-          <AppNavActions connected={connected} dbConfigured={dbConfigured} />
+          <AppNavActions
+            connected={connected}
+            oauthConnected={oauthConnected}
+            dbConfigured={dbConfigured}
+            fakeDataOn={fakeDataOn}
+          />
         </div>
       </div>
     </header>

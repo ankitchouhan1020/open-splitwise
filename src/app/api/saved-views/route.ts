@@ -1,9 +1,14 @@
+import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { filtersFromJson } from "@/lib/expenses/filters";
 import { createSavedView, listSavedViews } from "@/lib/expenses/saved-views";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
+  if (await isFakeDataRequest()) {
+    return NextResponse.json({ views: [] });
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },

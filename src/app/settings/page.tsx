@@ -7,6 +7,8 @@ import { SystemPanel } from "@/app/settings/system-panel";
 import { getConnectedUser } from "@/lib/auth";
 import { getSetupStatus } from "@/lib/setup/status";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
+import { sessionIsGuestDemo } from "@/lib/demo/session";
+import { getAppSession, sessionShowsFakeData } from "@/lib/session";
 import { connection } from "next/server";
 import { headers } from "next/headers";
 
@@ -23,6 +25,9 @@ export default async function SettingsPage({ searchParams }: PageProps) {
   await connection();
   const params = await searchParams;
   const user = await getConnectedUser();
+  const session = await getAppSession();
+  const fakeDataOn = sessionShowsFakeData(session);
+  const guestDemo = sessionIsGuestDemo(session);
   const headerList = await headers();
   const setup = getSetupStatus(requestOriginFromHeaders(headerList));
 
@@ -50,11 +55,13 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             connected={!!user}
             user={user}
             setup={setup}
+            fakeDataOn={fakeDataOn}
+            guestDemo={guestDemo}
             error={params.connected ? null : (params.error ?? null)}
             justConnected={params.connected === "1"}
           />
 
-          {(user || setup.dbConfigured) && (
+          {!fakeDataOn && (user || setup.dbConfigured) && (
             <SyncPanel dbConfigured={setup.dbConfigured} />
           )}
 

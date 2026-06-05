@@ -4,6 +4,8 @@ export type AppSession = {
   accessToken?: string;
   splitwiseUserId?: number;
   oauthState?: string;
+  /** When true, read APIs return fictional sample data (OAuth may stay connected). */
+  fakeData?: boolean;
 };
 
 export const SESSION_COOKIE = "open_splitwise_session";
@@ -27,4 +29,17 @@ export function getIronSessionOptions(): SessionOptions {
 
 export function sessionHasAccessToken(session: AppSession): boolean {
   return Boolean(session.accessToken);
+}
+
+/** Session allows read access (OAuth or guest sample-data browse). */
+export function sessionIsActive(session: AppSession): boolean {
+  if (sessionHasAccessToken(session)) return true;
+  if (session.fakeData) {
+    return process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1";
+  }
+  return false;
+}
+
+export function sessionShowsFakeData(session: AppSession): boolean {
+  return Boolean(session.fakeData);
 }
