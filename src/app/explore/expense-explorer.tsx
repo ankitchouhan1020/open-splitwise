@@ -83,6 +83,8 @@ export function ExpenseExplorer() {
   const [searchDraft, setSearchDraft] = useState(filters.q ?? "");
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  /** Debounced query we asked the URL to reflect; blocks stale URL → input sync. */
+  const pendingSearchApplyRef = useRef<string | undefined>(undefined);
 
   const { data: filterOptions } = useFilterOptions();
   const options = useMemo<FilterOptions>(
@@ -102,18 +104,38 @@ export function ExpenseExplorer() {
   const sort = filters.sort ?? "date";
   const order = filters.order ?? "desc";
 
-  // Apply debounced search to URL (replace, not push — avoids history spam).
+  // Apply settled debounced search to URL (replace — avoids history spam).
   useEffect(() => {
-    const next = debouncedSearch.trim() || undefined;
-    if (next === filters.q) return;
-    setFilters({ q: next }, true);
-  }, [debouncedSearch, filters.q, setFilters]);
+    if (!searchDraft.trim()) {
+      pendingSearchApplyRef.current = undefined;
+      if (filters.q !== undefined) {
+        setFilters({ q: undefined }, true);
+      }
+      return;
+    }
 
-  // Sync input from URL only when idle (not mid-keystroke or awaiting apply).
+    if (searchDraft.trim() !== debouncedSearch.trim()) {
+      return;
+    }
+
+    const next = debouncedSearch.trim();
+    pendingSearchApplyRef.current = next;
+    if (next === filters.q) {
+      pendingSearchApplyRef.current = undefined;
+      return;
+    }
+    setFilters({ q: next }, true);
+  }, [debouncedSearch, searchDraft, filters.q, setFilters]);
+
+  // Sync input from URL on back/forward — not while a local apply is in flight.
   useEffect(() => {
-    if (searchDraft.trim() !== debouncedSearch.trim()) return;
+    if (pendingSearchApplyRef.current !== undefined) return;
+
     const urlQ = filters.q ?? "";
-    if (searchDraft !== urlQ) setSearchDraft(urlQ);
+    if (searchDraft.trim() !== debouncedSearch.trim()) return;
+    if (debouncedSearch.trim() === urlQ.trim()) return;
+
+    setSearchDraft(urlQ);
   }, [filters.q, debouncedSearch, searchDraft]);
 
   const searchPending =
@@ -141,15 +163,9 @@ export function ExpenseExplorer() {
     [clearFilter],
   );
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchDraft(value);
-      if (!value.trim()) {
-        setFilters({ q: undefined }, true);
-      }
-    },
-    [setFilters],
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchDraft(value);
+  }, []);
 
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
