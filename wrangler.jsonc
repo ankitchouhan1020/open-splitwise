@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "open-splitwise",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "open-splitwise",
+    },
+  ],
+  "placement": {
+    "mode": "smart",
+  },
+  "vars": {
+    "DEPLOY_TARGET": "cloudflare",
+    "NODE_ENV": "production",
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<HYPERDRIVE_ID>",
+      "localConnectionString": "postgresql://open_splitwise:open_splitwise@localhost:5432/open_splitwise"
+    }
+  ]
+}

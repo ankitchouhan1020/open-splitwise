@@ -1,0 +1,13 @@
+# Local Cloudflare Workers preview (copy to .dev.vars — see docs/cloudflare-workers.md)
+NEXTJS_ENV=development
+
+APP_URL=http://localhost:8787
+NEXT_PUBLIC_APP_URL=http://localhost:8787
+SPLITWISE_REDIRECT_URI=http://localhost:8787/api/auth/splitwise/callback
+
+SESSION_SECRET=
+SPLITWISE_CLIENT_ID=
+SPLITWISE_CLIENT_SECRET=
+
+# Optional: direct Neon URL for local preview when Hyperdrive localConnectionString is unset
+# DATABASE_URL=postgresql://...

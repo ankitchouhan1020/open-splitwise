@@ -34,3 +34,8 @@ pnpm-debug.log*
 
 # Build output
 dist/
+.open-next/
+.dev.vars
+
+# Cloudflare (regenerate with pnpm cf:typegen)
+# cloudflare-env.d.ts is committed with minimal Hyperdrive types

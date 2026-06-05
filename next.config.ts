@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -40,3 +41,8 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Bindings emulation for `pnpm dev` only — skip during `pnpm build` (Docker/Railway).
+if (process.env.npm_lifecycle_event === "dev") {
+  initOpenNextCloudflareForDev();
+}

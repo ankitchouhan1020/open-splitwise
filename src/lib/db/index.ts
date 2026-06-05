@@ -2,6 +2,7 @@ import "server-only";
 
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { resolveDbConnection } from "@/lib/db/connection";
 import * as schema from "@/lib/db/schema";
 
 export { isDatabaseConfigured } from "@/lib/db/config";
@@ -12,11 +13,7 @@ let client: ReturnType<typeof postgres> | null = null;
 let db: Database | null = null;
 
 export function getDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  return url;
+  return resolveDbConnection().url;
 }
 
 function postgresSslOption(url: string): false | "require" {
@@ -38,6 +35,18 @@ function postgresSslOption(url: string): false | "require" {
   }
 }
 
+function createPostgresClient(url: string, viaHyperdrive: boolean) {
+  if (viaHyperdrive) {
+    return postgres(url, {
+      max: 1,
+      fetch_types: false,
+      prepare: false,
+      ssl: postgresSslOption(url),
+    });
+  }
+  return postgres(url, { max: 10, ssl: postgresSslOption(url) });
+}
+
 export function getPostgresSql(): ReturnType<typeof postgres> {
   if (!client) getDb();
   if (!client) {
@@ -48,8 +57,8 @@ export function getPostgresSql(): ReturnType<typeof postgres> {
 
 export function getDb(): Database {
   if (db) return db;
-  const url = getDatabaseUrl();
-  client = postgres(url, { max: 10, ssl: postgresSslOption(url) });
+  const { url, viaHyperdrive } = resolveDbConnection();
+  client = createPostgresClient(url, viaHyperdrive);
   db = drizzle(client, { schema });
   return db;
 }

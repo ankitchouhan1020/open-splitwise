@@ -69,12 +69,13 @@ pnpm typecheck && pnpm lint && pnpm test
 
 ### Deploy elsewhere
 
-| Target      | How                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------ |
-| **Railway** | [Deploy to Railway](#deploy-to-railway) (GitHub + Postgres)                      |
-| **Railway + Tunnel** | [Deploy to Railway](#deploy-to-railway), then [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) (steps 3–8) |
-| **Docker**  | `docker compose up --build` — app + Postgres, migrations on start                    |
-| **Docker + Cloudflare Tunnel** | No public ports — see [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) |
+| Target                         | How                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **Railway**                    | [Deploy to Railway](#deploy-to-railway) (GitHub + Postgres)                                                      |
+| **Railway + Tunnel**           | [Deploy to Railway](#deploy-to-railway), then [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) (steps 3–8) |
+| **Docker**                     | `docker compose up --build` — app + Postgres, migrations on start                                                |
+| **Docker + Cloudflare Tunnel** | No public ports — see [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md)                                     |
+| **Cloudflare Workers**         | [docs/cloudflare-workers.md](docs/cloudflare-workers.md) — OpenNext + Hyperdrive + Neon (~$5/mo)                 |
 
 With a tunnel, set `APP_URL` and `SPLITWISE_REDIRECT_URI` to your Cloudflare hostname (e.g. `https://split.example.com`) and remove Railway public domains so traffic only enters via the tunnel.
 
@@ -161,12 +162,12 @@ flowchart LR
 
 ### Key paths
 
-| Flow                   | Entry                                        |
-| ---------------------- | -------------------------------------------- |
-| List / filter expenses | `src/lib/expenses/queries.ts`                |
-| Expense detail         | `GET /api/expenses/[id]`                     |
-| CSV export             | `GET /api/expenses/export`                   |
-| Splitwise deep links   | `src/lib/splitwise/urls.ts`                  |
+| Flow                   | Entry                                                          |
+| ---------------------- | -------------------------------------------------------------- |
+| List / filter expenses | `src/lib/expenses/queries.ts`                                  |
+| Expense detail         | `GET /api/expenses/[id]`                                       |
+| CSV export             | `GET /api/expenses/export`                                     |
+| Splitwise deep links   | `src/lib/splitwise/urls.ts`                                    |
 | DB tenant scope        | `src/lib/db/account.ts` (`account_user_id` per Splitwise user) |
 
 ---

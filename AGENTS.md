@@ -25,3 +25,4 @@ Reusable patterns for contributors and coding agents.
 - Layout shell: use `AppShell` from `src/components/app-shell.tsx` (nav + sync banner) on all main pages
 - Cloudflare Access + OAuth: `pnpm cloudflare:access-oauth-bypass` (`scripts/cloudflare-access-oauth-bypass.mjs`); docs in `docs/cloudflare-tunnel.md`
 - Cloudflare Tunnel: `docker-compose.tunnel.yml` overlay + `docs/cloudflare-tunnel.md`; Railway sidecar in `deploy/cloudflared/`
+- Cloudflare Workers (alternate deploy): `@opennextjs/cloudflare` + `wrangler.jsonc` + `pnpm cf:deploy`; Hyperdrive → Neon Postgres; docs in `docs/cloudflare-workers.md`; DB resolves Hyperdrive binding when `DEPLOY_TARGET=cloudflare`, else `DATABASE_URL`
