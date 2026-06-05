@@ -14,7 +14,6 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "cloudflare:access-oauth-bypass": "node scripts/cloudflare-access-oauth-bypass.mjs",
-    "railway:template:validate": "node scripts/validate-railway-template.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

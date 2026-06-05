@@ -201,7 +201,7 @@ openssl rand -base64 32
 
 **2a. Create the project**
 
-1. Use **[Deploy on Railway](../README.md#deploy-to-railway)** (full template: app + Postgres), or [Railway](https://railway.com) → **New Project** → deploy from this GitHub repo.
+1. Use **[Deploy on Railway](../README.md#deploy-to-railway)**, or [Railway](https://railway.com) → **New Project** → deploy from this GitHub repo.
 2. Add **PostgreSQL** to the project (Railway plugin).
 3. Name the app service `open-splitwise` (or note the name you use).
 
@@ -281,7 +281,7 @@ For local dev **without** a tunnel, use `docker compose up -d` instead.
 
 ### Option A: Railway (GitHub repo — recommended)
 
-Connects `deploy/cloudflared` from this repo. Required for the [Railway template](../docs/railway-template.md) and for **Generate Template** snapshots (CLI `railway up` uploads cannot be templated).
+Connects `deploy/cloudflared` from this repo (preferred over CLI `railway up` uploads).
 
 1. In the same Railway project: **New** → **GitHub Repo** → `ankitchouhan1020/open-splitwise`
 2. Name the service `cloudflared`. Set **Root Directory** to `deploy/cloudflared`.

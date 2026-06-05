@@ -1,5 +1,5 @@
 # Railway config-as-code — https://docs.railway.com/config-as-code
-# One-click deploy: README → "Deploy to Railway" (see docs/railway-template.md)
+# Railway config-as-code — README → "Deploy to Railway"
 # Also set on the app service: PORT=3000, HOSTNAME=:: (tunnel origin uses :3000)
 
 [build]

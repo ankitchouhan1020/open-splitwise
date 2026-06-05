@@ -4,34 +4,17 @@ Self-hosted companion for [Splitwise](https://splitwise.com): sync your data loc
 
 ## Deploy to Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template/open-splitwise?utm_medium=integration&utm_source=button&utm_campaign=open-splitwise)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?owner=ankitchouhan1020&repo=open-splitwise&utm_medium=integration&utm_source=button&utm_campaign=open-splitwise)
 
-One click provisions **PostgreSQL**, **open-splitwise**, and **cloudflared** (see [`deploy/railway-template.json`](deploy/railway-template.json)).
+Deploy from GitHub using the [Dockerfile](Dockerfile) and [`railway.toml`](railway.toml) (health check on `/api/health`, migrations on container start).
 
-> **Maintainers:** refresh via **Generate Template from Project** (visual editor — no JSON paste) — [docs/railway-template.md](docs/railway-template.md).
+**After Railway creates the app service:**
 
-**The template wires:**
-
-| Service | Notes |
-| ------- | ----- |
-| **Postgres** | `DATABASE_URL` reference |
-| **open-splitwise** | Dockerfile + [`railway.toml`](railway.toml); `PORT=3000`, `HOSTNAME=::` |
-| **cloudflared** | `deploy/cloudflared` — set `TUNNEL_TOKEN` at deploy |
-
-**You still need to:**
-
-1. **`TUNNEL_TOKEN`** — Cloudflare tunnel connector token; point the tunnel hostname at `open-splitwise.railway.internal:3000` ([cloudflare-tunnel.md](docs/cloudflare-tunnel.md)).
-2. **Splitwise OAuth** — `SPLITWISE_CLIENT_ID` / `SECRET` from [secure.splitwise.com/apps](https://secure.splitwise.com/apps).
-3. **`APP_URL` + `SPLITWISE_REDIRECT_URI`** — your Cloudflare hostname (not `*.up.railway.app` when using the tunnel).
-4. Open the site → **Settings** → **Connect Splitwise** → **Sync**.
-
-### App-only Railway deploy
-
-If you prefer to add Postgres yourself:
-
-[![Deploy app from GitHub](https://railway.com/button.svg)](https://railway.com/new/github?owner=ankitchouhan1020&repo=open-splitwise&utm_medium=integration&utm_source=button&utm_campaign=open-splitwise-app)
-
-Then add **PostgreSQL**, set `DATABASE_URL=${{Postgres.DATABASE_URL}}`, and the variables from [`.env.example`](.env.example).
+1. **Add PostgreSQL** — **+ New** → **Database** → **PostgreSQL**
+2. **Connect the database** — `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+3. **Set variables** from [`.env.example`](.env.example): `SESSION_SECRET`, Splitwise OAuth, `PORT=3000`, `HOSTNAME=::`, `APP_URL`, `SPLITWISE_REDIRECT_URI`
+4. **Optional — Cloudflare Tunnel:** add `cloudflared` and finish setup in [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md)
+5. Open the site → **Settings** → **Connect Splitwise** → **Sync**
 
 ## Setup (local)
 
@@ -88,7 +71,7 @@ pnpm typecheck && pnpm lint && pnpm test
 
 | Target      | How                                                                                  |
 | ----------- | ------------------------------------------------------------------------------------ |
-| **Railway** | [Deploy to Railway](#deploy-to-railway) (template: app + Postgres)                 |
+| **Railway** | [Deploy to Railway](#deploy-to-railway) (GitHub + Postgres)                      |
 | **Railway + Tunnel** | [Deploy to Railway](#deploy-to-railway), then [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) (steps 3–8) |
 | **Docker**  | `docker compose up --build` — app + Postgres, migrations on start                    |
 | **Docker + Cloudflare Tunnel** | No public ports — see [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) |
