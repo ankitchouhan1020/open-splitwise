@@ -41,4 +41,28 @@ export const ui = {
     "border-border bg-card from-gradient-from to-gradient-to overflow-hidden rounded-2xl border bg-gradient-to-b shadow-sm",
   tabRail: "border-border bg-muted-surface flex gap-1 rounded-lg border p-1",
   overlay: "bg-overlay fixed inset-0 backdrop-blur-[1px]",
+  listBordered:
+    "divide-border border-border divide-y overflow-hidden rounded-lg border",
+  listFlush: "divide-border divide-y",
+  interactiveRow:
+    "hover:bg-hover focus-visible:ring-accent flex items-center gap-3 px-3 py-3 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none sm:px-4",
+  segmentTabRail:
+    "border-border flex items-center justify-between gap-3 border-b",
+  segmentTabActive:
+    "text-foreground border-accent -mb-px border-b-2 pb-2.5 text-sm font-semibold",
+  segmentTabInactive:
+    "text-muted hover:text-foreground pb-2.5 text-sm font-medium",
+  seeAllLink: "text-accent shrink-0 pb-2.5 text-xs font-medium hover:underline",
+  emptyDashed:
+    "text-muted rounded-lg border border-dashed p-6 text-center text-sm",
+  emptyPlain: "text-muted text-center text-sm",
+  summaryCard: "rounded-lg border p-4 md:p-5",
+  listSectionHeader:
+    "border-border bg-muted-surface/60 border-b px-3 py-2 sm:px-4",
 } as const;
+
+/** Active/inactive pill button classes — use with FilterPills or standalone toggles. */
+export function pillClass(active: boolean, size: "sm" | "md" = "md"): string {
+  if (active) return size === "sm" ? ui.pillActive : ui.pillActiveMd;
+  return size === "sm" ? ui.pill : ui.pillMd;
+}

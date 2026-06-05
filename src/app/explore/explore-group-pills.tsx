@@ -1,17 +1,20 @@
 "use client";
 
+import { FilterPillButton } from "@/components/ui/filter-pills";
 import type { ExploreGroupStat } from "@/lib/expenses/explore-context";
 
 type Props = {
   groups: ExploreGroupStat[];
   activeGroupId?: number;
   onSelectGroup: (groupId: number | undefined) => void;
+  size?: "sm" | "md";
 };
 
 export function ExploreGroupPills({
   groups,
   activeGroupId,
   onSelectGroup,
+  size = "md",
 }: Props) {
   if (groups.length === 0) return null;
 
@@ -20,26 +23,15 @@ export function ExploreGroupPills({
       {groups.slice(0, 10).map((g) => {
         const active = activeGroupId === g.groupId;
         return (
-          <button
+          <FilterPillButton
             key={g.groupId}
-            type="button"
+            active={active}
             onClick={() => onSelectGroup(active ? undefined : g.groupId)}
             title={`${g.expenseCount} expenses`}
-            className={
-              active
-                ? "bg-accent text-accent-foreground shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
-                : "border-border bg-card hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
-            }
+            size={size}
           >
             {g.groupName}
-            <span
-              className={
-                active ? "text-balance-get/70 ml-1" : "text-muted ml-1"
-              }
-            >
-              {g.expenseCount}
-            </span>
-          </button>
+          </FilterPillButton>
         );
       })}
     </div>

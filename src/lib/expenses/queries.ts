@@ -35,19 +35,22 @@ function sortColumn(sort: ExpenseListSort) {
   }
 }
 
-function paidByFromRaw(raw: unknown): string {
-  if (!raw || typeof raw !== "object") return "—";
-  const users = (
-    raw as {
-      users?: Array<{
-        user_id: number;
-        paid_share: string;
-        user?: { id?: number; first_name?: string; last_name?: string };
-      }>;
-    }
-  ).users;
+type RawExpenseUser = {
+  user_id: number;
+  paid_share: string;
+  owed_share?: string;
+  user?: { id?: number; first_name?: string; last_name?: string };
+};
 
-  if (Array.isArray(users) && users.length > 0) {
+function rawExpenseUsers(raw: unknown): RawExpenseUser[] {
+  if (!raw || typeof raw !== "object") return [];
+  const users = (raw as { users?: RawExpenseUser[] }).users;
+  return Array.isArray(users) ? users : [];
+}
+
+function paidByFromRaw(raw: unknown): string {
+  const users = rawExpenseUsers(raw);
+  if (users.length > 0) {
     let bestPaid = 0;
     let payerName: string | null = null;
     for (const u of users) {
@@ -71,6 +74,26 @@ function paidByFromRaw(raw: unknown): string {
   return (
     [createdBy.first_name, createdBy.last_name].filter(Boolean).join(" ") || "—"
   );
+}
+
+function paidToFromRaw(raw: unknown): string {
+  const users = rawExpenseUsers(raw);
+  if (users.length === 0) return "—";
+
+  let bestOwed = 0;
+  let payeeName: string | null = null;
+  for (const u of users) {
+    const owed = Number(u.owed_share ?? 0);
+    if (owed > bestOwed + 0.005) {
+      bestOwed = owed;
+      payeeName = formatParticipantName(
+        u.user?.first_name,
+        u.user?.last_name,
+        u.user_id ?? u.user?.id,
+      );
+    }
+  }
+  return payeeName ?? "—";
 }
 
 function formatParticipantName(
@@ -298,6 +321,7 @@ function mapListRow(r: {
     myShare: r.myShare,
     myPaidShare: r.myPaidShare,
     paidBy: paidByFromRaw(r.raw),
+    paidTo: paidToFromRaw(r.raw),
     payment: r.payment,
   };
 }

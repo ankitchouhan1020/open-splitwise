@@ -1,45 +1,60 @@
 import { Shimmer, ShimmerCard } from "@/components/shimmer";
 
-export function InsightsDashboardSkeleton() {
+function TableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div
-      className="flex flex-col gap-3"
-      aria-busy="true"
-      aria-label="Loading insights"
-    >
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <ShimmerCard
-            key={i}
-            className={`rounded-lg p-3 ${i === 2 ? "sm:col-span-2" : ""}`}
-          >
-            <Shimmer className="h-2.5 w-20 rounded-md" />
-            <Shimmer className="mt-2 h-7 w-28 rounded-md" />
-            <Shimmer className="mt-2 h-3 w-32 rounded-md" />
-          </ShimmerCard>
+    <div className="h-80 overflow-hidden">
+      <Shimmer className="h-9 w-full rounded-none" />
+      <div className="divide-border divide-y">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+            <Shimmer className="h-4 min-w-0 flex-1 rounded-md" />
+            <Shimmer className="h-4 w-14 shrink-0 rounded-md" />
+            <Shimmer className="h-4 w-16 shrink-0 rounded-md" />
+          </div>
         ))}
       </div>
-      <ShimmerCard className="rounded-lg p-3 lg:col-span-3">
-        <Shimmer className="h-4 w-32 rounded-md" />
-        <Shimmer className="mt-3 h-48 w-full rounded-lg" />
-      </ShimmerCard>
-      <div className="grid gap-3 lg:grid-cols-5">
-        <ShimmerCard className="rounded-lg p-3 lg:col-span-3">
-          <Shimmer className="h-4 w-28 rounded-md" />
-          <div className="mt-3 space-y-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Shimmer key={i} className="h-8 w-full rounded-md" />
-            ))}
+    </div>
+  );
+}
+
+export function InsightsDashboardSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading insights">
+      <div className="space-y-2">
+        <Shimmer className="h-4 w-28 rounded-md" />
+        <Shimmer className="h-9 w-40 rounded-md" />
+        <Shimmer className="h-4 w-64 rounded-md" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        <ShimmerCard className="overflow-hidden rounded-lg lg:col-span-3">
+          <Shimmer className="h-12 w-full rounded-none" />
+          <div className="p-4">
+            <Shimmer className="h-72 w-full rounded-lg" />
           </div>
         </ShimmerCard>
-        <ShimmerCard className="rounded-lg p-3 lg:col-span-2">
-          <Shimmer className="h-4 w-24 rounded-md" />
-          <div className="mt-3 space-y-2">
-            {Array.from({ length: 5 }, (_, i) => (
+        <ShimmerCard className="overflow-hidden rounded-lg lg:col-span-2">
+          <Shimmer className="h-12 w-full rounded-none" />
+          <div className="h-72 space-y-3 p-4">
+            {Array.from({ length: 6 }, (_, i) => (
               <Shimmer key={i} className="h-6 w-full rounded-md" />
             ))}
           </div>
         </ShimmerCard>
+      </div>
+
+      <ShimmerCard className="overflow-hidden rounded-lg">
+        <Shimmer className="h-12 w-full rounded-none" />
+        <TableSkeleton rows={5} />
+      </ShimmerCard>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 2 }, (_, i) => (
+          <ShimmerCard key={i} className="overflow-hidden rounded-lg">
+            <Shimmer className="h-12 w-full rounded-none" />
+            <TableSkeleton />
+          </ShimmerCard>
+        ))}
       </div>
     </div>
   );

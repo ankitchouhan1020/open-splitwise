@@ -9,5 +9,8 @@ export async function invalidateExpenseCaches(qc: QueryClient) {
     qc.invalidateQueries({ queryKey: queryKeys.insights.all() }),
     qc.invalidateQueries({ queryKey: queryKeys.explore.context() }),
     qc.invalidateQueries({ queryKey: queryKeys.filters.options() }),
+    qc.invalidateQueries({ queryKey: queryKeys.friends.balances() }),
+    qc.invalidateQueries({ queryKey: queryKeys.groups.list() }),
+    qc.invalidateQueries({ queryKey: queryKeys.sync.status() }),
   ]);
 }

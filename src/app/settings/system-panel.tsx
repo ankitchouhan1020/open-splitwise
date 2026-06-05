@@ -1,4 +1,6 @@
 import {
+  SettingsBlock,
+  SettingsRow,
   SettingsSection,
   SettingsStat,
   StatusBadge,
@@ -7,19 +9,59 @@ import type { SetupStatus } from "@/lib/setup/status";
 
 type Props = {
   setup: SetupStatus;
+  bare?: boolean;
 };
 
-export function SystemPanel({ setup }: Props) {
+export function SystemPanel({ setup, bare = false }: Props) {
   const { oauthConfigured, dbConfigured, envVars } = setup;
   const allReady = oauthConfigured && dbConfigured;
   const oauthReady = envVars
     .filter((v) => v.key !== "DATABASE_URL")
     .every((v) => v.configured);
 
+  const content = (
+    <SettingsBlock
+      title="Environment"
+      description="Required variables for OAuth and the expense database."
+    >
+      {allReady ? (
+        <div className="grid gap-3 p-4 sm:grid-cols-2 md:p-5">
+          <SettingsStat label="Splitwise OAuth" value="Ready" />
+          <SettingsStat label="Database" value="Connected" />
+        </div>
+      ) : (
+        <>
+          {envVars.map((v) => (
+            <SettingsRow
+              key={v.key}
+              label={v.key}
+              description={v.configured ? v.label : v.hint}
+            >
+              <StatusBadge tone={v.configured ? "ok" : "warn"}>
+                {v.configured ? "Set" : "Missing"}
+              </StatusBadge>
+            </SettingsRow>
+          ))}
+          {!oauthReady && (
+            <div className="border-border border-t px-4 py-3 md:px-5">
+              <p className="text-muted text-sm">
+                Splitwise callback URL:{" "}
+                <code className="text-foreground text-xs break-all">
+                  {setup.redirectUri}
+                </code>
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </SettingsBlock>
+  );
+
+  if (bare) return content;
+
   return (
     <SettingsSection
       title="Server setup"
-      description="Self-hosted requirements for this instance."
       action={
         allReady ? (
           <StatusBadge tone="ok">Ready</StatusBadge>
@@ -28,43 +70,7 @@ export function SystemPanel({ setup }: Props) {
         )
       }
     >
-      {allReady ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <SettingsStat label="OAuth" value="Configured" />
-          <SettingsStat label="Database" value="Connected" />
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {envVars.map((v) => (
-            <li key={v.key} className="flex items-start gap-2 text-sm">
-              <span
-                className={
-                  v.configured
-                    ? "bg-balance-get-bg text-balance-get mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
-                    : "bg-balance-pay-bg text-warn-text mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
-                }
-                aria-hidden
-              >
-                {v.configured ? "✓" : "!"}
-              </span>
-              <div>
-                <p className="text-foreground font-medium">
-                  <code className="text-xs">{v.key}</code>
-                </p>
-                <p className="text-muted mt-0.5 text-xs leading-relaxed">
-                  {v.configured ? v.label : v.hint}
-                </p>
-              </div>
-            </li>
-          ))}
-          {!oauthReady && (
-            <li className="text-muted border-border bg-muted-surface mt-2 rounded-md border px-3 py-2 text-xs">
-              Callback URL for Splitwise:{" "}
-              <code className="text-foreground">{setup.redirectUri}</code>
-            </li>
-          )}
-        </ul>
-      )}
+      {content}
     </SettingsSection>
   );
 }

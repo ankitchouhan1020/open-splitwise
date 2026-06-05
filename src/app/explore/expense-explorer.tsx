@@ -1,7 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
-import { ExpenseDetailPanel } from "@/components/expense-detail-panel";
 import { ExpenseTableSkeleton } from "@/components/expense-table-skeleton";
 import {
   ExpenseListItemRow,
@@ -14,13 +14,8 @@ import {
   buildExpenseListSections,
   sectionHeight,
 } from "@/lib/expenses/list-sections";
-import { ExpenseFiltersPanel } from "@/app/explore/expense-filters-panel";
-import { ExploreGroupPills } from "@/app/explore/explore-group-pills";
-import { ExploreSavedViews } from "@/app/explore/explore-saved-views";
-import {
-  ExploreToolbar,
-  detectDatePreset,
-} from "@/app/explore/explore-toolbar";
+import { ExploreFiltersCard } from "@/app/explore/explore-filters-card";
+import { detectDatePreset } from "@/app/explore/explore-toolbar";
 import { useExpenseFilters } from "@/app/explore/use-expense-filters";
 import {
   useExploreContext,
@@ -28,6 +23,7 @@ import {
   useFilterOptions,
 } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
+import { ui } from "@/lib/ui-classes";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -80,12 +76,11 @@ export function ExpenseExplorer() {
   const [rows, setRows] = useState<ExpenseListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchDraft, setSearchDraft] = useState(filters.q ?? "");
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState("");
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  /** Debounced query we asked the URL to reflect; blocks stale URL → input sync. */
-  const pendingSearchApplyRef = useRef<string | undefined>(undefined);
+  const searchQ = debouncedSearch.trim() || undefined;
 
   const { data: filterOptions } = useFilterOptions();
   const options = useMemo<FilterOptions>(
@@ -105,43 +100,12 @@ export function ExpenseExplorer() {
   const sort = filters.sort ?? "date";
   const order = filters.order ?? "desc";
 
-  // Apply settled debounced search to URL (replace — avoids history spam).
-  useEffect(() => {
-    if (!searchDraft.trim()) {
-      pendingSearchApplyRef.current = undefined;
-      if (filters.q !== undefined) {
-        setFilters({ q: undefined }, true);
-      }
-      return;
-    }
+  const effectiveFilters = useMemo(
+    () => ({ ...filters, q: searchQ }),
+    [filters, searchQ],
+  );
 
-    if (searchDraft.trim() !== debouncedSearch.trim()) {
-      return;
-    }
-
-    const next = debouncedSearch.trim();
-    pendingSearchApplyRef.current = next;
-    if (next === filters.q) {
-      pendingSearchApplyRef.current = undefined;
-      return;
-    }
-    setFilters({ q: next }, true);
-  }, [debouncedSearch, searchDraft, filters.q, setFilters]);
-
-  // Sync input from URL on back/forward — not while a local apply is in flight.
-  useEffect(() => {
-    if (pendingSearchApplyRef.current !== undefined) return;
-
-    const urlQ = filters.q ?? "";
-    if (searchDraft.trim() !== debouncedSearch.trim()) return;
-    if (debouncedSearch.trim() === urlQ.trim()) return;
-
-    setSearchDraft(urlQ);
-  }, [filters.q, debouncedSearch, searchDraft]);
-
-  const searchPending =
-    searchDraft.trim() !== debouncedSearch.trim() ||
-    debouncedSearch.trim() !== (filters.q ?? "").trim();
+  const searchPending = searchDraft.trim() !== debouncedSearch.trim();
 
   const handleClearAll = useCallback(() => {
     setSearchDraft("");
@@ -151,7 +115,9 @@ export function ExpenseExplorer() {
   const handleApplySavedView = useCallback(
     (viewFilters: Parameters<typeof applySavedView>[0]) => {
       setSearchDraft(viewFilters.q ?? "");
-      applySavedView(viewFilters);
+      const urlFilters = { ...viewFilters };
+      delete urlFilters.q;
+      applySavedView(urlFilters);
     },
     [applySavedView],
   );
@@ -174,13 +140,13 @@ export function ExpenseExplorer() {
   const listParams = useCallback(
     (page?: number) =>
       filtersToSearchParams({
-        ...filters,
+        ...effectiveFilters,
         page: page ?? 1,
         pageSize: PAGE_SIZE,
         sort,
         order,
       }),
-    [filters, sort, order],
+    [effectiveFilters, sort, order],
   );
 
   const fetchPage = useCallback(
@@ -196,11 +162,11 @@ export function ExpenseExplorer() {
   );
 
   const fetchSummary = useCallback(async () => {
-    const params = filtersToSearchParams(filters);
+    const params = filtersToSearchParams(effectiveFilters);
     const res = await fetch(`/api/expenses/summary?${params}`);
     if (!res.ok) return null;
     return (await res.json()) as SummaryResponse;
-  }, [filters]);
+  }, [effectiveFilters]);
 
   const expenseIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
@@ -238,7 +204,7 @@ export function ExpenseExplorer() {
   }, [expenseIds, selectedId]);
 
   const listQueryKey = listParams(1).toString();
-  const summaryQueryKey = filtersToSearchParams(filters).toString();
+  const summaryQueryKey = filtersToSearchParams(effectiveFilters).toString();
 
   const {
     data: page1,
@@ -331,6 +297,7 @@ export function ExpenseExplorer() {
 
   const chips = activeFilterChips(filters, labelMaps).filter((chip) => {
     if (chip.key === "q") return false;
+    if (chip.key === "payment") return false;
     if (chip.key === "group") {
       return !groupStats.some((g) => g.groupId === filters.groupId);
     }
@@ -341,7 +308,7 @@ export function ExpenseExplorer() {
   });
 
   function exportCsv() {
-    window.location.href = `/api/expenses/export?${filtersToSearchParams({ ...filters, sort, order })}`;
+    window.location.href = `/api/expenses/export?${filtersToSearchParams({ ...effectiveFilters, sort, order })}`;
   }
 
   const count = summary?.count ?? total;
@@ -349,49 +316,21 @@ export function ExpenseExplorer() {
   const listColumn = (
     <>
       <div className="shrink-0 space-y-2">
-        <div className="border-border bg-card overflow-hidden rounded-lg border">
-          <ExploreSavedViews
-            currentFilters={filters}
-            onApply={handleApplySavedView}
-            onClear={handleClearAll}
-          />
-
-          <ExploreToolbar
-            filters={filters}
-            searchInput={searchDraft}
-            onSearchChange={handleSearchChange}
-            searchPending={searchPending || listRefreshing || summaryFetching}
-            searchRef={searchRef}
-            onChange={(patch) => setFilters(patch)}
-            filtersOpen={filtersOpen}
-            onToggleFilters={() => setFiltersOpen((v) => !v)}
-            onExport={exportCsv}
-            visibleGroupIds={groupStats.map((g) => g.groupId)}
-          />
-
-          {groupStats.length > 0 && (
-            <div className="border-border border-t px-3 pb-3">
-              <p className="text-muted mb-1.5 text-[11px] font-medium tracking-wide uppercase">
-                Groups
-              </p>
-              <ExploreGroupPills
-                groups={groupStats}
-                activeGroupId={filters.groupId}
-                onSelectGroup={(id) => setFilters({ groupId: id, page: 1 })}
-              />
-            </div>
-          )}
-
-          {filtersOpen && (
-            <div className="border-border border-t px-3 py-3">
-              <ExpenseFiltersPanel
-                filters={filters}
-                options={options}
-                onChange={(patch) => setFilters(patch)}
-              />
-            </div>
-          )}
-        </div>
+        <ExploreFiltersCard
+          filters={filters}
+          searchInput={searchDraft}
+          onSearchChange={handleSearchChange}
+          searchPending={searchPending || listRefreshing || summaryFetching}
+          searchRef={searchRef}
+          onChange={(patch) => setFilters(patch)}
+          refineOpen={refineOpen}
+          onToggleRefine={() => setRefineOpen((v) => !v)}
+          onExport={exportCsv}
+          onApplySavedView={handleApplySavedView}
+          onClearAll={handleClearAll}
+          groupStats={groupStats}
+          options={options}
+        />
 
         {(chips.length > 0 || !showInitialSkeleton) && (
           <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1">
@@ -438,7 +377,7 @@ export function ExpenseExplorer() {
                   key={chip.key}
                   type="button"
                   onClick={() => handleClearFilter(chip.key)}
-                  className="border-border bg-muted-surface hover:bg-hover rounded px-1.5 py-0.5"
+                  className={`${ui.chip} text-xs`}
                 >
                   {chip.label} ×
                 </button>
@@ -467,9 +406,9 @@ export function ExpenseExplorer() {
       {showInitialSkeleton ? (
         <ExpenseTableSkeleton rows={12} />
       ) : showEmptyState ? (
-        <p className="text-muted rounded-lg border border-dashed p-6 text-center text-sm">
-          {filters.q ? "No matches." : "No expenses in this view."}
-        </p>
+        <EmptyState variant="dashed">
+          {searchQ ? "No matches." : "No expenses in this view."}
+        </EmptyState>
       ) : (
         total > 0 && (
           <div
@@ -477,7 +416,7 @@ export function ExpenseExplorer() {
           >
             <div
               ref={parentRef}
-              className="max-h-[calc(100dvh-18rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100vh-220px)]"
+              className="max-h-[calc(100dvh-14rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100dvh-11rem)]"
             >
               <div
                 style={{
@@ -505,7 +444,7 @@ export function ExpenseExplorer() {
                       ) : section?.kind === "expense" ? (
                         <ExpenseListItemRow
                           expense={section.expense}
-                          searchQuery={filters.q ?? ""}
+                          searchQuery={searchQ ?? ""}
                           selected={selectedId === section.expense.id}
                           onSelect={() => setSelectedId(section.expense.id)}
                         />
@@ -522,19 +461,8 @@ export function ExpenseExplorer() {
   );
 
   return (
-    <div className="flex min-h-0 flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start lg:gap-4">
-      <div className="flex min-h-0 min-w-0 flex-col gap-2">{listColumn}</div>
-
-      <div className="sticky top-20 hidden min-h-0 lg:block">
-        <ExpenseDetailPanel
-          expense={detail ?? null}
-          loading={detailLoading}
-          onClose={() => setSelectedId(null)}
-          variant="inline"
-          selected={selectedId != null}
-        />
-      </div>
-
+    <div className="flex min-h-0 flex-col gap-2">
+      {listColumn}
       <ExpenseDetailDrawer
         expense={detail ?? null}
         loading={detailLoading}

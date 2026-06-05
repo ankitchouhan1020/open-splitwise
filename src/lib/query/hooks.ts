@@ -1,6 +1,5 @@
 "use client";
 
-import type { GroupDetail } from "@/lib/groups/detail";
 import type { GroupListItem } from "@/lib/groups/list";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseDetail } from "@/lib/expenses/types";
@@ -93,15 +92,6 @@ export function useGroupsList() {
   });
 }
 
-export function useGroupDetail(groupId: number) {
-  return useQuery({
-    queryKey: queryKeys.groups.detail(groupId),
-    queryFn: () => fetchJson<GroupDetail>(`/api/groups/${groupId}/detail`),
-    enabled: Number.isFinite(groupId) && groupId > 0,
-    staleTime: FILTER_OPTIONS_STALE,
-  });
-}
-
 export function useExpenseDetail(id: number | null) {
   return useQuery({
     queryKey: queryKeys.expenses.detail(id ?? 0),
@@ -137,14 +127,12 @@ export type InsightsQueryParams = {
   from: string;
   to: string;
   groupId: string;
-  currency: string;
 };
 
 export function insightsParamsKey({
   from,
   to,
   groupId,
-  currency,
 }: InsightsQueryParams): string {
   const params = new URLSearchParams();
   if (from) params.set("from", new Date(from).toISOString());
@@ -154,7 +142,6 @@ export function insightsParamsKey({
     params.set("to", end.toISOString());
   }
   if (groupId) params.set("group", groupId);
-  if (currency) params.set("currency", currency);
   return params.toString();
 }
 

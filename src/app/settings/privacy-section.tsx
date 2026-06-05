@@ -1,34 +1,56 @@
 import { DeleteSyncedDataButton } from "@/app/settings/delete-synced-data-button";
-import { SettingsSection } from "@/app/settings/settings-ui";
+import {
+  SettingsBlock,
+  SettingsDangerZone,
+  SettingsRow,
+  SettingsSection,
+} from "@/app/settings/settings-ui";
 import Link from "next/link";
 
 type Props = {
   canDeleteSyncedData?: boolean;
+  bare?: boolean;
 };
 
-export function PrivacySection({ canDeleteSyncedData = false }: Props) {
-  return (
-    <SettingsSection
-      title="Privacy & data"
-      description="What this instance stores and how to remove it."
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted max-w-md text-sm leading-relaxed">
-          OAuth tokens live in an encrypted session cookie. Synced expenses live
-          in Postgres and stay there when you disconnect — use{" "}
-          <strong>Delete synced data</strong> to wipe your cached copy from this
-          server.
-        </p>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {canDeleteSyncedData && <DeleteSyncedDataButton />}
+export function PrivacySection({
+  canDeleteSyncedData = false,
+  bare = false,
+}: Props) {
+  const content = (
+    <div className="space-y-4">
+      <SettingsBlock title="How your data is stored">
+        <SettingsRow
+          label="On this server"
+          description="Expenses you sync are kept in a local database so search and charts stay fast. They remain here after you sign out."
+        />
+        <SettingsRow
+          label="On Splitwise"
+          description="Nothing in this app changes your balances or expenses in Splitwise. Settle up and add expenses there as usual."
+        />
+        <SettingsRow label="Privacy policy">
           <Link
             href="/privacy"
-            className="border-border text-foreground hover:bg-hover rounded-lg border px-3 py-1.5 text-sm font-medium"
+            className="text-accent text-sm font-medium hover:underline"
           >
-            Read privacy policy
+            Read policy
           </Link>
-        </div>
-      </div>
-    </SettingsSection>
+        </SettingsRow>
+      </SettingsBlock>
+
+      {canDeleteSyncedData && (
+        <SettingsDangerZone description="Permanently removes your synced copy from this server. You can sync again afterward.">
+          <SettingsRow
+            label="Delete all synced data"
+            description="Removes expenses, groups, friends, and categories stored for your account on this server."
+          >
+            <DeleteSyncedDataButton />
+          </SettingsRow>
+        </SettingsDangerZone>
+      )}
+    </div>
   );
+
+  if (bare) return content;
+
+  return <SettingsSection title="Privacy & data">{content}</SettingsSection>;
 }

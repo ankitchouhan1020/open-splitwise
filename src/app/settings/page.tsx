@@ -1,10 +1,9 @@
 import { AppShell } from "@/components/app-shell";
-import { ConnectionPanel } from "@/app/settings/connection-panel";
-import { PrivacySection } from "@/app/settings/privacy-section";
-import { SettingsAlert } from "@/app/settings/settings-ui";
-import { ThemeSection } from "@/app/settings/theme-section";
-import { SyncPanel } from "@/app/settings/sync-panel";
-import { SystemPanel } from "@/app/settings/system-panel";
+import { PageContainer } from "@/components/page-container";
+import {
+  SettingsLayout,
+  SettingsPageAlerts,
+} from "@/app/settings/settings-layout";
 import { getConnectedUser } from "@/lib/auth";
 import { getSetupStatus } from "@/lib/setup/status";
 import { requestOriginFromHeaders } from "@/lib/request-origin";
@@ -17,15 +16,26 @@ import {
 } from "@/lib/session";
 import { connection } from "next/server";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 
 type PageProps = {
   searchParams: Promise<{
     error?: string;
     connected?: string;
+    tab?: string;
   }>;
 };
 
 export const dynamic = "force-dynamic";
+
+function SettingsSkeleton() {
+  return (
+    <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
+      <div className="bg-muted-surface h-24 w-28 animate-pulse rounded-md" />
+      <div className="bg-muted-surface h-64 min-w-0 flex-1 animate-pulse rounded-lg" />
+    </div>
+  );
+}
 
 export default async function SettingsPage({ searchParams }: PageProps) {
   await connection();
@@ -41,67 +51,32 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     oauthConfigured: setup.oauthConfigured,
     dbConfigured: setup.dbConfigured,
   });
+  const showSync = !fakeDataOn && (!!user || setup.dbConfigured);
+  const oauthConnected = !!user && !guestDemo;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 md:py-6">
-        <header className="mb-4 hidden md:block">
-          <h1 className="text-foreground text-xl font-semibold tracking-tight">
-            Settings
-          </h1>
-          <p className="text-muted mt-1 text-sm">
-            Account connection, data sync, and server configuration for this
-            instance.
-          </p>
-        </header>
+      <PageContainer>
+        <SettingsPageAlerts error={params.error} connected={params.connected} />
 
-        {params.error && !params.connected && (
-          <div className="mb-4">
-            <SettingsAlert tone="error">
-              {oauthErrorMessage(params.error)}
-            </SettingsAlert>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <ConnectionPanel
+        <Suspense fallback={<SettingsSkeleton />}>
+          <SettingsLayout
             connected={!!user}
             user={user}
             setup={setup}
             showSetupDetails={showSetupDetails}
             fakeDataOn={fakeDataOn}
             guestDemo={guestDemo}
-            error={params.connected ? null : (params.error ?? null)}
-            justConnected={params.connected === "1"}
-          />
-
-          <ThemeSection />
-
-          {!fakeDataOn && (user || setup.dbConfigured) && (
-            <SyncPanel dbConfigured={setup.dbConfigured} />
-          )}
-
-          {showSetupDetails && <SystemPanel setup={setup} />}
-
-          <PrivacySection
+            oauthConnected={oauthConnected}
+            showSync={showSync}
             canDeleteSyncedData={
               !!user && !guestDemo && setup.dbConfigured && !fakeDataOn
             }
+            oauthError={params.connected ? null : (params.error ?? null)}
+            justConnected={params.connected === "1"}
           />
-        </div>
-      </div>
+        </Suspense>
+      </PageContainer>
     </AppShell>
   );
-}
-
-function oauthErrorMessage(code: string): string {
-  const messages: Record<string, string> = {
-    invalid_state: "OAuth session expired or invalid. Try connecting again.",
-    missing_code_or_state:
-      "Incomplete sign-in response from Splitwise. Try connecting again.",
-    oauth_failed:
-      "Could not complete Splitwise sign-in. Check server configuration and logs.",
-    connect_required: "Connect Splitwise to use this app.",
-  };
-  return messages[code] ?? "Sign-in failed. Try connecting again.";
 }

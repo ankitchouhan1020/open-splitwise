@@ -4,3 +4,7 @@ export const INSIGHTS_TH =
 export const INSIGHTS_TD = "border-b border-border px-3 py-2 align-middle";
 export const INSIGHTS_TD_NUM =
   "border-b border-border px-3 py-2 text-right font-mono tabular-nums align-middle";
+
+export const INSIGHTS_CHART_HEIGHT = "h-72";
+export const INSIGHTS_LIST_HEIGHT = "h-72";
+export const INSIGHTS_TABLE_BODY = "h-80 overflow-x-auto overflow-y-auto";

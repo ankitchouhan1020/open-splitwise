@@ -98,6 +98,54 @@ export function filtersToSearchParams(
   return params;
 }
 
+export function exploreHref(filters: ExpenseFilters = {}): string {
+  const params = filtersToSearchParams(filters);
+  const qs = params.toString();
+  return qs ? `/explore?${qs}` : "/explore";
+}
+
+/** Hide settlement payments when drilling into a group or friend. */
+export const GROUP_EXPLORE_DEFAULTS: Pick<ExpenseFilters, "payment"> = {
+  payment: false,
+};
+
+export function exploreGroupHref(
+  groupId: number,
+  overrides: ExpenseFilters = {},
+): string {
+  return exploreHref({
+    ...GROUP_EXPLORE_DEFAULTS,
+    groupId,
+    ...overrides,
+  });
+}
+
+export function exploreFriendHref(
+  friendId: number,
+  overrides: ExpenseFilters = {},
+): string {
+  return exploreHref({
+    ...GROUP_EXPLORE_DEFAULTS,
+    friendId,
+    ...overrides,
+  });
+}
+
+/** Defaults when opening Explore from Home people/groups feeds. */
+export function peopleGroupExploreHref(
+  groupId: number,
+  currency?: string,
+): string {
+  return exploreGroupHref(groupId, currency ? { currency } : {});
+}
+
+export function peopleFriendExploreHref(
+  friendId: number,
+  currency?: string,
+): string {
+  return exploreFriendHref(friendId, currency ? { currency } : {});
+}
+
 export function filtersFromJson(value: unknown): ExpenseFilters {
   if (!value || typeof value !== "object") return {};
   const o = value as Record<string, unknown>;

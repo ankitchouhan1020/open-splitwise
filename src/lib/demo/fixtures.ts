@@ -40,6 +40,19 @@ type SeedExpense = {
   shares: ExpenseDetail["shares"];
 };
 
+function payeeFromShares(shares: SeedExpense["shares"]): string {
+  let bestOwed = 0;
+  let payee = "—";
+  for (const share of shares) {
+    const owed = Number(share.owedShare);
+    if (owed > bestOwed + 0.005) {
+      bestOwed = owed;
+      payee = share.name;
+    }
+  }
+  return payee;
+}
+
 function daysAgoIso(daysAgo: number, now = new Date()): string {
   const d = new Date(now);
   d.setDate(d.getDate() - daysAgo);
@@ -856,6 +869,7 @@ function refreshCache(now = new Date()) {
         seed.shares.find((s) => s.splitwiseUserId === DEMO_OWNER_SPLITWISE_ID)
           ?.paidShare ?? "0.00",
       paidBy: seed.paidBy,
+      paidTo: payeeFromShares(seed.shares),
       payment: seed.payment ?? false,
     };
   });

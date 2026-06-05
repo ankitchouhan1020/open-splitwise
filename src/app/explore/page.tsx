@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/app-shell";
 import { AppFooter } from "@/components/app-footer";
 import { ExpenseExplorer } from "@/app/explore/expense-explorer";
+import { PageContainer } from "@/components/page-container";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getConnectedUser } from "@/lib/auth";
 import { Suspense } from "react";
 
@@ -15,23 +17,17 @@ export default async function ExplorePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto flex max-w-6xl flex-col px-4 py-3 sm:px-6 md:py-4">
-        <header className="mb-3 hidden shrink-0 md:block">
-          <h1 className="text-foreground text-xl font-semibold tracking-tight">
-            Explore
-          </h1>
-        </header>
-
+      <PageContainer>
         {user ? (
           <Suspense fallback={<ExplorerFallback />}>
             <ExpenseExplorer />
           </Suspense>
         ) : (
-          <p className="text-muted rounded-lg border border-dashed p-6 text-center text-sm">
+          <EmptyState variant="dashed">
             Connect Splitwise using the button in the header to browse expenses.
-          </p>
+          </EmptyState>
         )}
-      </div>
+      </PageContainer>
       <AppFooter />
     </AppShell>
   );

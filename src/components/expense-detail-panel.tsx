@@ -27,10 +27,10 @@ type Props = {
   selected?: boolean;
 };
 
-const actionBtn =
-  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 sm:flex-none";
-const actionSecondary = `${actionBtn} border-border border bg-card hover:bg-hover`;
-const actionDanger = `${actionBtn} border-error-border bg-card text-error-text hover:bg-error-bg border`;
+const iconBtn =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-50";
+const iconSecondary = `${iconBtn} border-border border bg-card text-muted hover:text-foreground hover:bg-hover`;
+const iconDanger = `${iconBtn} border-error-border text-error-text hover:bg-error-bg border`;
 
 export function ExpenseDetailPanel({
   expense,
@@ -120,26 +120,104 @@ export function ExpenseDetailPanel({
       role={inline ? "region" : undefined}
       aria-label={inline ? "Expense details" : undefined}
     >
-      <div className="border-border flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 className="truncate text-base font-semibold">
-            {mode === "edit" ? "Edit expense" : "Expense"}
-          </h2>
-          {expense?.payment && (
-            <span className="bg-balance-get-bg text-balance-get shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
-              Payment
-            </span>
-          )}
+      <div className="border-border flex shrink-0 flex-col gap-2 border-b px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="truncate text-base font-semibold">
+              {mode === "edit" ? "Edit expense" : "Expense"}
+            </h2>
+            {expense?.payment && (
+              <span className="bg-balance-get-bg text-balance-get shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                Payment
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {expense && mode === "view" && !confirmDelete && (
+              <>
+                {mutable && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setMode("edit")}
+                      className={iconSecondary}
+                      aria-label="Edit expense"
+                    >
+                      <IconEdit className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className={iconDanger}
+                      aria-label="Delete expense"
+                    >
+                      <IconTrash className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+                <a
+                  href={splitwiseExpenseUrl(expense.splitwiseId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={iconSecondary}
+                  aria-label="Open in Splitwise"
+                >
+                  <IconExternalLink className="h-4 w-4" />
+                </a>
+              </>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className={`${iconBtn} text-muted hover:text-foreground hover:bg-hover`}
+                aria-label="Close"
+              >
+                <IconClose className="h-[18px] w-[18px]" />
+              </button>
+            )}
+          </div>
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted hover:text-foreground hover:bg-hover inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-            aria-label="Close"
-          >
-            <IconClose className="h-[18px] w-[18px]" />
-          </button>
+
+        {expense && mode === "view" && confirmDelete && (
+          <div className="border-error-border bg-error-bg flex items-center gap-2 rounded-lg border px-2.5 py-2">
+            <p className="text-error-text min-w-0 flex-1 text-xs leading-snug">
+              Delete from Splitwise?
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              <IconCheck className="h-3 w-3" />
+              {deleting ? "…" : "Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmDelete(false);
+                setDeleteError(null);
+              }}
+              className="text-muted hover:text-foreground shrink-0 px-1.5 text-xs font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {deleteError && (
+          <p className="bg-error-bg text-error-text rounded-lg px-2.5 py-1.5 text-xs">
+            {deleteError}
+          </p>
+        )}
+
+        {expense && mode === "view" && !mutable && !confirmDelete && (
+          <p className="text-muted text-xs">
+            {expense.payment
+              ? "Payments can only be changed in Splitwise."
+              : "Non-group expenses can only be changed in Splitwise."}
+          </p>
         )}
       </div>
 
@@ -156,89 +234,6 @@ export function ExpenseDetailPanel({
           <ExpenseDetailView expense={expense} />
         )}
       </div>
-
-      {expense && mode === "view" && (
-        <div className="border-border bg-muted-surface/60 shrink-0 space-y-2 border-t px-4 py-3">
-          {confirmDelete ? (
-            <div className="border-error-border bg-error-bg space-y-2 rounded-xl border p-3">
-              <div className="flex items-start gap-2">
-                <IconTrash
-                  className="text-error-text mt-0.5 h-4 w-4 shrink-0"
-                  aria-hidden
-                />
-                <p className="text-error-text text-sm leading-snug">
-                  Delete this expense from Splitwise? This cannot be undone.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
-                  disabled={deleting}
-                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                >
-                  <IconCheck className="h-3.5 w-3.5" />
-                  {deleting ? "Deleting…" : "Delete"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmDelete(false);
-                    setDeleteError(null);
-                  }}
-                  className="border-border bg-card hover:bg-hover inline-flex flex-1 items-center justify-center rounded-xl border px-3 py-2 text-sm font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {mutable && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setMode("edit")}
-                    className={actionSecondary}
-                  >
-                    <IconEdit className="h-4 w-4" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(true)}
-                    className={actionDanger}
-                  >
-                    <IconTrash className="h-4 w-4" />
-                    Delete
-                  </button>
-                </>
-              )}
-              <a
-                href={splitwiseExpenseUrl(expense.splitwiseId)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={actionSecondary}
-              >
-                <IconExternalLink className="h-4 w-4" />
-                Splitwise
-              </a>
-            </div>
-          )}
-          {deleteError && (
-            <p className="bg-error-bg text-error-text rounded-xl px-3 py-2 text-sm">
-              {deleteError}
-            </p>
-          )}
-          {!mutable && !confirmDelete && (
-            <p className="text-muted text-center text-xs">
-              {expense.payment
-                ? "Payments can only be changed in Splitwise."
-                : "Non-group expenses can only be changed in Splitwise."}
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

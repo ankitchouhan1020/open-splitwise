@@ -19,6 +19,7 @@ function expense(overrides: Partial<ExpenseDetail> = {}): ExpenseDetail {
     myShare: "5.00",
     myPaidShare: "10.00",
     paidBy: "You",
+    paidTo: "—",
     payment: false,
     groupId: 42,
     friendshipId: null,

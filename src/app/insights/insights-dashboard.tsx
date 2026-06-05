@@ -1,19 +1,24 @@
 "use client";
 
+import { InsightsFiltersCard } from "@/app/insights/insights-filters-card";
+import { InsightsSummary } from "@/app/insights/insights-summary";
 import {
-  InsightsToolbar,
   defaultDateRange,
+  insightsPeriodLabel,
   presetRange,
   type DatePreset,
 } from "@/app/insights/insights-toolbar";
 import { InsightsDashboardSkeleton } from "@/components/insights-dashboard-skeleton";
-import { useFilterOptions, useInsights } from "@/lib/query/hooks";
 import {
+  INSIGHTS_CHART_HEIGHT,
+  INSIGHTS_LIST_HEIGHT,
   INSIGHTS_TABLE,
+  INSIGHTS_TABLE_BODY,
   INSIGHTS_TD,
   INSIGHTS_TD_NUM,
   INSIGHTS_TH,
 } from "@/app/insights/insights-table-layout";
+import { useFilterOptions, useInsights } from "@/lib/query/hooks";
 import { filtersToSearchParams } from "@/lib/expenses/filters";
 import { useTheme } from "@/components/theme-provider";
 import { chartThemeFromDocument } from "@/lib/chart-theme";
@@ -57,7 +62,7 @@ function ChartTooltip({ active, payload, label, currency }: ChartTooltipProps) {
             className="flex justify-between gap-4"
           >
             <span style={{ color: entry.color }}>{entry.name}</span>
-            <span className="font-mono font-medium tabular-nums">
+            <span className="font-medium tabular-nums">
               {currency
                 ? formatMoney(Number(entry.value ?? 0), currency)
                 : formatAmount(Number(entry.value ?? 0), { currency })}
@@ -74,26 +79,18 @@ function fmtAmount(n: number, currency?: string) {
   return formatAmount(n);
 }
 
-function DeltaBadge({
-  value,
-  pct,
-  label,
+function InsightsCardHeader({
+  title,
+  detail,
 }: {
-  value: number;
-  pct: number | null;
-  label: string;
+  title: string;
+  detail?: string;
 }) {
-  const up = value > 0;
-  const down = value < 0;
   return (
-    <span
-      className={
-        up ? "text-balance-pay" : down ? "text-balance-get" : "text-muted"
-      }
-    >
-      {label} {up ? "+" : ""}
-      {pct != null ? formatPercent(pct) : "—"}
-    </span>
+    <div className="border-border border-b px-3 py-2.5 sm:px-4">
+      <p className="text-sm font-semibold">{title}</p>
+      {detail ? <p className="text-muted text-xs">{detail}</p> : null}
+    </div>
   );
 }
 
@@ -106,20 +103,17 @@ export function InsightsDashboard() {
   const [to, setTo] = useState(defaults.to);
   const [activePreset, setActivePreset] = useState<DatePreset | null>("all");
   const [groupId, setGroupId] = useState("");
-  const [currency, setCurrency] = useState("");
 
   const { data: filterOptions } = useFilterOptions();
   const groups = (filterOptions?.groups ?? []).filter((g) => g.id > 0);
-  const currencies = filterOptions?.currencies ?? [];
 
   const insightsParams = useMemo(
-    () => ({ from, to, groupId, currency }),
-    [from, to, groupId, currency],
+    () => ({ from, to, groupId }),
+    [from, to, groupId],
   );
   const { data, isLoading: loading } = useInsights(insightsParams);
 
-  const displayCurrency =
-    currency || data?.summary.currency || currencies[0] || undefined;
+  const displayCurrency = data?.summary.currency ?? undefined;
 
   const monthlyChart = useMemo(() => {
     if (!data?.monthly.length) return [];
@@ -128,13 +122,12 @@ export function InsightsDashboard() {
       { month: string } & Record<string, number | string>
     >();
     for (const row of data.monthly) {
-      if (currency && row.currency !== currency) continue;
       const entry = byMonth.get(row.month) ?? { month: row.month };
       entry[row.currency] = Number(row.total);
       byMonth.set(row.month, entry);
     }
     return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
-  }, [data?.monthly, currency]);
+  }, [data?.monthly]);
 
   const categoryMax = useMemo(() => {
     const cats = data?.categories ?? [];
@@ -146,7 +139,6 @@ export function InsightsDashboard() {
       dateFrom: from ? new Date(from).toISOString() : undefined,
       dateTo: to ? new Date(to).toISOString() : undefined,
       groupId: groupId ? Number(groupId) : undefined,
-      currency: currency || undefined,
       categoryId:
         patch.categoryId !== undefined ? Number(patch.categoryId) : undefined,
       friendId:
@@ -165,23 +157,20 @@ export function InsightsDashboard() {
   const yoyDeltaPct = yearAgo === 0 ? null : (yoyDelta / yearAgo) * 100;
 
   const isAllTime = !from && !to;
-
+  const periodLabel = insightsPeriodLabel(from, to, activePreset);
   const fmt = (n: number) => fmtAmount(n, displayCurrency);
 
   return (
-    <div className="flex flex-col gap-3">
-      <InsightsToolbar
+    <div className="space-y-6">
+      <InsightsFiltersCard
         from={from}
         to={to}
         groupId={groupId}
-        currency={currency}
         activePreset={activePreset}
         groups={groups}
-        currencies={currencies}
         onFromChange={setFrom}
         onToChange={setTo}
         onGroupChange={setGroupId}
-        onCurrencyChange={setCurrency}
         onPreset={(p) => {
           const range = presetRange(p);
           setFrom(range.from);
@@ -195,85 +184,34 @@ export function InsightsDashboard() {
 
       {!loading && data && (
         <>
-          {/* KPI strip */}
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="border-border bg-card rounded-lg border px-3 py-2.5">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Your spend
-              </p>
-              <p className="text-foreground mt-0.5 font-mono text-xl font-semibold tabular-nums">
-                {fmt(Number(data.summary.totalSpend))}
-              </p>
-              <p className="text-muted mt-1 text-xs">
-                {isAllTime ? (
-                  "All time"
-                ) : (
-                  <>
-                    <DeltaBadge value={delta} pct={deltaPct} label="vs prev" />
-                    {" · "}
-                    <DeltaBadge
-                      value={yoyDelta}
-                      pct={yoyDeltaPct}
-                      label="YoY"
-                    />
-                  </>
-                )}
-              </p>
-            </div>
-            <div className="border-border bg-card rounded-lg border px-3 py-2.5">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Expenses
-              </p>
-              <p className="text-foreground mt-0.5 font-mono text-xl font-semibold tabular-nums">
-                {data.summary.expenseCount.toLocaleString()}
-              </p>
-              <p className="text-muted mt-1 text-xs">
-                Avg{" "}
-                {fmt(
-                  data.summary.expenseCount
-                    ? Number(data.summary.totalSpend) /
-                        data.summary.expenseCount
-                    : 0,
-                )}
-              </p>
-            </div>
-            <div className="border-border bg-card rounded-lg border px-3 py-2.5 sm:col-span-2">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Top category
-              </p>
-              {data.summary.topCategory ? (
-                <>
-                  <p className="text-foreground mt-0.5 truncate text-[15px] font-semibold">
-                    <Link
-                      href={exploreLink({
-                        categoryId:
-                          data.summary.topCategory.categoryId ?? undefined,
-                      })}
-                      className="text-accent hover:underline"
-                    >
-                      {data.summary.topCategory.categoryName}
-                    </Link>
-                  </p>
-                  <p className="text-muted mt-0.5 font-mono text-xs tabular-nums">
-                    {fmt(Number(data.summary.topCategory.total))}
-                  </p>
-                </>
-              ) : (
-                <p className="text-muted mt-1 text-sm">—</p>
-              )}
-            </div>
-          </div>
+          <InsightsSummary
+            totalSpend={Number(data.summary.totalSpend)}
+            expenseCount={data.summary.expenseCount}
+            currency={displayCurrency}
+            periodLabel={periodLabel}
+            isAllTime={isAllTime}
+            delta={delta}
+            deltaPct={deltaPct}
+            yoyDelta={yoyDelta}
+            yoyDeltaPct={yoyDeltaPct}
+            topCategory={data.summary.topCategory}
+            exploreCategoryHref={
+              data.summary.topCategory
+                ? exploreLink({
+                    categoryId:
+                      data.summary.topCategory.categoryId ?? undefined,
+                  })
+                : undefined
+            }
+          />
 
-          {/* Chart + categories */}
-          <div className="grid gap-3 lg:grid-cols-5">
-            <div className="border-border bg-card rounded-lg border p-3 lg:col-span-3">
-              <h2 className="text-foreground text-sm font-semibold">
-                Monthly spend
-              </h2>
-              <p className="text-muted text-xs">
-                Your share, settlements excluded
-              </p>
-              <div className="mt-2 h-48">
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="border-border bg-card overflow-hidden rounded-lg border lg:col-span-3">
+              <InsightsCardHeader
+                title="Monthly spend"
+                detail="Your share · settlements excluded"
+              />
+              <div className={`${INSIGHTS_CHART_HEIGHT} p-3 sm:p-4`}>
                 {monthlyChart.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyChart}>
@@ -299,20 +237,19 @@ export function InsightsDashboard() {
                       <Tooltip
                         content={<ChartTooltip currency={displayCurrency} />}
                       />
-                      {(currency
-                        ? [currency]
-                        : [...new Set(data.monthly.map((m) => m.currency))]
-                      ).map((cur, i) => (
-                        <Line
-                          key={cur}
-                          type="monotone"
-                          dataKey={cur}
-                          stroke={lineColors[i % lineColors.length]}
-                          strokeWidth={2}
-                          dot={false}
-                          name={cur}
-                        />
-                      ))}
+                      {[...new Set(data.monthly.map((m) => m.currency))].map(
+                        (cur, i) => (
+                          <Line
+                            key={cur}
+                            type="monotone"
+                            dataKey={cur}
+                            stroke={lineColors[i % lineColors.length]}
+                            strokeWidth={2}
+                            dot={false}
+                            name={cur}
+                          />
+                        ),
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -321,11 +258,11 @@ export function InsightsDashboard() {
               </div>
             </div>
 
-            <div className="border-border bg-card rounded-lg border p-3 lg:col-span-2">
-              <h2 className="text-foreground text-sm font-semibold">
-                By category
-              </h2>
-              <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+            <div className="border-border bg-card overflow-hidden rounded-lg border lg:col-span-2">
+              <InsightsCardHeader title="By category" />
+              <ul
+                className={`${INSIGHTS_LIST_HEIGHT} space-y-2 overflow-y-auto p-3 sm:p-4`}
+              >
                 {(data.categories ?? []).slice(0, 8).map((c) => {
                   const total = Number(c.total);
                   return (
@@ -339,7 +276,7 @@ export function InsightsDashboard() {
                         >
                           {c.categoryName}
                         </Link>
-                        <span className="text-muted shrink-0 font-mono tabular-nums">
+                        <span className="text-muted shrink-0 tabular-nums">
                           {fmt(total)}
                         </span>
                       </div>
@@ -356,18 +293,13 @@ export function InsightsDashboard() {
             </div>
           </div>
 
-          {/* Category trends */}
-          {!isAllTime && (
+          {!isAllTime && data.trends.categories.length > 0 ? (
             <div className="border-border bg-card overflow-hidden rounded-lg border">
-              <div className="border-border border-b px-3 py-2">
-                <h2 className="text-foreground text-sm font-semibold">
-                  Category trends
-                </h2>
-                <p className="text-muted text-xs">
-                  Change vs previous period and vs same period last year
-                </p>
-              </div>
-              <div className="overflow-x-auto">
+              <InsightsCardHeader
+                title="Category trends"
+                detail="Change vs previous period and vs same period last year"
+              />
+              <div className={INSIGHTS_TABLE_BODY}>
                 <table className={INSIGHTS_TABLE}>
                   <thead>
                     <tr>
@@ -437,86 +369,91 @@ export function InsightsDashboard() {
                 </table>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Groups + friends */}
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="border-border bg-card overflow-hidden rounded-lg border">
-              <div className="border-border border-b px-3 py-2">
-                <h2 className="text-foreground text-sm font-semibold">
-                  By group
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className={INSIGHTS_TABLE}>
-                  <thead>
-                    <tr>
-                      <th className={INSIGHTS_TH}>Group</th>
-                      <th className={`${INSIGHTS_TH} text-right`}>Count</th>
-                      <th className={`${INSIGHTS_TH} text-right`}>Share</th>
-                      <th className={`${INSIGHTS_TH} text-right`}>%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.groups.map((g) => (
-                      <tr key={g.groupId} className="hover:bg-hover">
-                        <td className={INSIGHTS_TD}>
-                          <Link
-                            href={exploreLink({ groupId: g.groupId })}
-                            className="text-accent font-medium hover:underline"
-                          >
-                            {g.groupName}
-                          </Link>
-                        </td>
-                        <td className={INSIGHTS_TD_NUM}>{g.expenseCount}</td>
-                        <td className={INSIGHTS_TD_NUM}>
-                          {fmt(Number(g.myShareTotal))}
-                        </td>
-                        <td className={INSIGHTS_TD_NUM}>
-                          {g.percentOfTotal.toFixed(0)}%
-                        </td>
+              <InsightsCardHeader title="By group" />
+              <div className={INSIGHTS_TABLE_BODY}>
+                {data.groups.length > 0 ? (
+                  <table className={INSIGHTS_TABLE}>
+                    <thead>
+                      <tr>
+                        <th className={INSIGHTS_TH}>Group</th>
+                        <th className={`${INSIGHTS_TH} text-right`}>Count</th>
+                        <th className={`${INSIGHTS_TH} text-right`}>Share</th>
+                        <th className={`${INSIGHTS_TH} text-right`}>%</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.groups.map((g) => (
+                        <tr key={g.groupId} className="hover:bg-hover">
+                          <td className={INSIGHTS_TD}>
+                            <Link
+                              href={exploreLink({ groupId: g.groupId })}
+                              className="text-accent font-medium hover:underline"
+                            >
+                              {g.groupName}
+                            </Link>
+                          </td>
+                          <td className={INSIGHTS_TD_NUM}>{g.expenseCount}</td>
+                          <td className={INSIGHTS_TD_NUM}>
+                            {fmt(Number(g.myShareTotal))}
+                          </td>
+                          <td className={INSIGHTS_TD_NUM}>
+                            {g.percentOfTotal.toFixed(0)}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-muted px-3 py-4 text-sm">
+                    No group expenses in range.
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="border-border bg-card overflow-hidden rounded-lg border">
-              <div className="border-border border-b px-3 py-2">
-                <h2 className="text-foreground text-sm font-semibold">
-                  By friend
-                </h2>
-                <p className="text-muted text-xs">Non-group expenses</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className={INSIGHTS_TABLE}>
-                  <thead>
-                    <tr>
-                      <th className={INSIGHTS_TH}>Friend</th>
-                      <th className={`${INSIGHTS_TH} text-right`}>Count</th>
-                      <th className={`${INSIGHTS_TH} text-right`}>Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.friends.map((f) => (
-                      <tr key={f.friendId} className="hover:bg-hover">
-                        <td className={INSIGHTS_TD}>
-                          <Link
-                            href={exploreLink({ friendId: f.friendId })}
-                            className="text-accent font-medium hover:underline"
-                          >
-                            {f.friendName}
-                          </Link>
-                        </td>
-                        <td className={INSIGHTS_TD_NUM}>{f.expenseCount}</td>
-                        <td className={INSIGHTS_TD_NUM}>
-                          {fmt(Number(f.myShareTotal))}
-                        </td>
+              <InsightsCardHeader
+                title="By friend"
+                detail="Non-group expenses"
+              />
+              <div className={INSIGHTS_TABLE_BODY}>
+                {data.friends.length > 0 ? (
+                  <table className={INSIGHTS_TABLE}>
+                    <thead>
+                      <tr>
+                        <th className={INSIGHTS_TH}>Friend</th>
+                        <th className={`${INSIGHTS_TH} text-right`}>Count</th>
+                        <th className={`${INSIGHTS_TH} text-right`}>Share</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.friends.map((f) => (
+                        <tr key={f.friendId} className="hover:bg-hover">
+                          <td className={INSIGHTS_TD}>
+                            <Link
+                              href={exploreLink({ friendId: f.friendId })}
+                              className="text-accent font-medium hover:underline"
+                            >
+                              {f.friendName}
+                            </Link>
+                          </td>
+                          <td className={INSIGHTS_TD_NUM}>{f.expenseCount}</td>
+                          <td className={INSIGHTS_TD_NUM}>
+                            {fmt(Number(f.myShareTotal))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-muted px-3 py-4 text-sm">
+                    No non-group expenses in range.
+                  </p>
+                )}
               </div>
             </div>
           </div>

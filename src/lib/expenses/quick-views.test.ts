@@ -66,5 +66,6 @@ describe("buildDashboardQuickViews", () => {
     const group = views.find((v) => v.id === "group-99");
     expect(group?.href).toContain("/explore?");
     expect(group?.href).toContain("group=99");
+    expect(group?.href).toContain("payment=0");
   });
 });

@@ -214,10 +214,56 @@ h3 {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+@keyframes add-drawer-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes add-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes add-drawer-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.add-drawer-backdrop {
+  animation: add-drawer-fade 0.18s ease-out both;
+}
+
+.add-drawer-panel {
+  animation: add-drawer-up 0.28s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@media (min-width: 640px) {
+  .add-drawer-panel {
+    animation-name: add-drawer-in;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: none;
     background: var(--border);
+  }
+
+  .add-drawer-backdrop,
+  .add-drawer-panel {
+    animation: none;
   }
 }
 

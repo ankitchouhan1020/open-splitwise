@@ -144,6 +144,7 @@ export const config = {
     "/explore/:path*",
     "/insights",
     "/insights/:path*",
+    "/people",
     "/friends",
     "/groups",
     "/groups/:path*",

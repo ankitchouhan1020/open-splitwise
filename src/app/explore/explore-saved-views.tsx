@@ -1,5 +1,6 @@
 "use client";
 
+import { FilterPillButton } from "@/components/ui/filter-pills";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
 import { useCallback, useEffect, useState } from "react";
 
@@ -82,34 +83,22 @@ export function ExploreSavedViews({ currentFilters, onApply, onClear }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 pt-3">
-      <button
-        type="button"
-        onClick={onClear}
-        className={
-          !hasActiveFilters
-            ? "bg-pill-active text-pill-active-fg shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
-            : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
-        }
-      >
+    <div className="border-border flex flex-wrap items-center gap-1 border-t px-2.5 py-1.5">
+      <FilterPillButton active={!hasActiveFilters} onClick={onClear} size="sm">
         All
-      </button>
+      </FilterPillButton>
       {views.map((v) => {
         const isActive =
           JSON.stringify(v.filters) === JSON.stringify(currentFilters);
         return (
-          <button
+          <FilterPillButton
             key={v.id}
-            type="button"
+            active={isActive}
             onClick={() => onApply(v.filters)}
-            className={
-              isActive
-                ? "bg-accent text-accent-foreground shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
-                : "border-border hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
-            }
+            size="sm"
           >
             {v.name}
-          </button>
+          </FilterPillButton>
         );
       })}
       {hasActiveFilters && !showSave && (

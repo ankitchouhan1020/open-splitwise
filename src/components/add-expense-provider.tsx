@@ -1,6 +1,6 @@
 "use client";
 
-import { AddExpenseDialog } from "@/components/add-expense-dialog";
+import { AddExpenseDrawer } from "@/components/add-expense-drawer";
 import {
   createContext,
   useCallback,
@@ -32,7 +32,7 @@ export function AddExpenseProvider({ children }: { children: ReactNode }) {
   return (
     <AddExpenseContext.Provider value={value}>
       {children}
-      <AddExpenseDialog open={open} onClose={closeDialog} />
+      <AddExpenseDrawer open={open} onClose={closeDialog} />
     </AddExpenseContext.Provider>
   );
 }

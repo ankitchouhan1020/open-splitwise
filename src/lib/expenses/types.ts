@@ -15,6 +15,8 @@ export type ExpenseListItem = {
   myShare: string | null;
   myPaidShare: string | null;
   paidBy: string;
+  /** On settlements: participant who received the payment (max owed share). */
+  paidTo: string;
   payment: boolean;
 };
 

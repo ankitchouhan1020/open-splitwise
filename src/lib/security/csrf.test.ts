@@ -51,4 +51,14 @@ describe("csrf", () => {
     });
     expect(isSameOriginMutation(req)).toBe(true);
   });
+
+  it("allows NEXT_PUBLIC_APP_URL when APP_URL differs (local dev + tunnel)", () => {
+    process.env.APP_URL = "https://split.example.com";
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    const req = request("http://localhost:3000/api/fake-data/toggle", "POST", {
+      origin: "http://localhost:3000",
+      host: "localhost:3000",
+    });
+    expect(isSameOriginMutation(req)).toBe(true);
+  });
 });

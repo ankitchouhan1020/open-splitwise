@@ -15,6 +15,7 @@ import {
   getMonthlySpend,
   getPeriodComparison,
   getRangeSummary,
+  normalizeInsightsFilters,
   type InsightsFilters,
 } from "@/lib/expenses/insights";
 import { NextRequest, NextResponse } from "next/server";
@@ -37,7 +38,9 @@ function parseInsightsFilters(
 }
 
 export async function GET(request: NextRequest) {
-  const filters = parseInsightsFilters(request.nextUrl.searchParams);
+  const filters = await normalizeInsightsFilters(
+    parseInsightsFilters(request.nextUrl.searchParams),
+  );
   const view = filters.view ?? "dashboard";
 
   if (await isFakeDataRequest()) {

@@ -31,6 +31,10 @@ export type FriendBalanceEntry = {
   name: string;
   direction: "to_get" | "to_pay";
   amount: number;
+  /** Synced non-group expenses shared with this friend, when available. */
+  expenseCount?: number;
+  lastActivityAt?: string | null;
+  myShareTotal?: string;
 };
 
 export type FriendsBalancePage = {

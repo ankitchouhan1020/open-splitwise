@@ -13,6 +13,8 @@ type Props = {
   onParticipantChange: (ids: number[]) => void;
   paidByUserId: number | null;
   onPaidByChange: (id: number) => void;
+  splitCompact?: boolean;
+  showSplit?: boolean;
 };
 
 export function ExpenseFormGroupSection({
@@ -24,6 +26,8 @@ export function ExpenseFormGroupSection({
   onParticipantChange,
   paidByUserId,
   onPaidByChange,
+  splitCompact = false,
+  showSplit = true,
 }: Props) {
   return (
     <>
@@ -33,13 +37,14 @@ export function ExpenseFormGroupSection({
         groupId={groupId}
         onGroupChange={onGroupChange}
       />
-      {groupId ? (
+      {showSplit && groupId ? (
         <ExpenseParticipantPicker
           groupId={groupId}
           selectedIds={participantIds}
           onSelectedChange={onParticipantChange}
           paidByUserId={paidByUserId}
           onPaidByChange={onPaidByChange}
+          compact={splitCompact}
         />
       ) : null}
     </>

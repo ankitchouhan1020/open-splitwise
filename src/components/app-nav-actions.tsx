@@ -1,6 +1,6 @@
 "use client";
 
-import { AddExpenseButton } from "@/components/add-expense-dialog";
+import { AddExpenseButton } from "@/components/add-expense-drawer";
 import { FakeDataToggle } from "@/components/fake-data-toggle";
 import {
   NavIconAdd,

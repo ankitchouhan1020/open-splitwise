@@ -47,10 +47,10 @@ export function FakeDataToggle({ enabled, compact = false }: Props) {
     }
   }
 
-  const label = enabled ? "Showing sample data" : "Show sample data";
+  const label = enabled ? "Demo mode on" : "Demo mode off";
   const title = enabled
-    ? "Sample data is on — click to show your real expenses"
-    : "Replace amounts with fictional sample data for demos";
+    ? "Showing fictional data — click to use your real expenses"
+    : "Turn on demo mode to show fictional expenses";
 
   if (compact) {
     return (
@@ -87,9 +87,7 @@ export function FakeDataToggle({ enabled, compact = false }: Props) {
       }
     >
       <MaskIcon className="h-4 w-4 shrink-0" />
-      <span className="hidden sm:inline">
-        {enabled ? "Sample data" : "Sample"}
-      </span>
+      <span>{enabled ? "On" : "Off"}</span>
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, sql, sum } from "drizzle-orm";
+import { and, count, eq, isNull, max, sql, sum } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
@@ -10,6 +10,16 @@ export type InsightsFilters = Pick<
 > & {
   excludePayments?: boolean;
 };
+
+/** Scope totals to the connected account's Splitwise default currency. */
+export async function normalizeInsightsFilters<T extends InsightsFilters>(
+  filters: T,
+): Promise<T> {
+  if (filters.currency) return filters;
+  const owner = await getAuthenticatedAccountOwner();
+  if (!owner?.defaultCurrency) return filters;
+  return { ...filters, currency: owner.defaultCurrency };
+}
 
 function baseWhere(
   accountUserId: number,
@@ -167,7 +177,7 @@ export async function getRangeSummary(filters: InsightsFilters): Promise<{
   return {
     totalSpend: agg?.total ?? "0",
     expenseCount: agg?.expenseCount ?? 0,
-    currency: filters.currency ?? null,
+    currency: filters.currency ?? owner.defaultCurrency,
     topCategory: top
       ? {
           categoryId: top.categoryId,
@@ -281,7 +291,7 @@ export async function getPeriodComparison(
     currentTotal: String(currentTotal),
     previousTotal: String(previousTotal),
     yearAgoTotal: String(yearAgoTotal),
-    currency: filters.currency ?? null,
+    currency: filters.currency ?? owner.defaultCurrency,
     categories,
   };
 }
@@ -348,6 +358,7 @@ export async function getFriendSummary(filters: InsightsFilters): Promise<
     friendName: string;
     myShareTotal: string;
     expenseCount: number;
+    lastActivityAt: string | null;
   }>
 > {
   const owner = await getAuthenticatedAccountOwner();
@@ -367,6 +378,7 @@ export async function getFriendSummary(filters: InsightsFilters): Promise<
       lastName: schema.friends.lastName,
       myShareTotal: sum(schema.expenseShares.owedShare),
       expenseCount: count(),
+      lastActivityAt: max(schema.expenses.date),
     })
     .from(schema.expenses)
     .innerJoin(
@@ -400,5 +412,6 @@ export async function getFriendSummary(filters: InsightsFilters): Promise<
       `User ${r.friendId}`,
     myShareTotal: r.myShareTotal ?? "0",
     expenseCount: r.expenseCount,
+    lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
   }));
 }

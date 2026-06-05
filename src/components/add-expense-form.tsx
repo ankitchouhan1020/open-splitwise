@@ -2,91 +2,111 @@
 
 import { ExpenseCurrencySelect } from "@/components/expense-group-picker";
 import { ExpenseFormGroupSection } from "@/components/expense-form-group-section";
+import { ExpenseParticipantPicker } from "@/components/expense-participant-picker";
+import { IconChevronDown } from "@/components/expense-icons";
 import {
   defaultExpenseDateTimeLocal,
+  expenseAmountHeroClass,
   expenseInputClass,
   expenseLabelClass,
 } from "@/components/expense-form-styles";
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
+import { useToast } from "@/components/toast-provider";
 import { useExpenseFormDefaults } from "@/components/use-expense-form-defaults";
-import { parseBulkExpenseText } from "@/lib/expenses/bulk-parse";
 import { formatMoney } from "@/lib/format";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
-import { splitwiseExpenseUrl } from "@/lib/splitwise/urls";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-type Mode = "single" | "bulk";
-
-type BulkResult = {
-  created: number;
-  failed: number;
-  results: Array<{
-    index: number;
-    description: string;
-    cost: string;
-    ok: boolean;
-    error?: string;
-  }>;
-};
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Props = {
-  onSuccess?: () => void;
   autoFocus?: boolean;
 };
 
-const BULK_PLACEHOLDER = `Groceries, 45.20
-Uber, 12.50
-Dinner, 89`;
+function costPreview(cost: string, currency: string): string | null {
+  const n = Number.parseFloat(cost);
+  if (!cost.trim() || Number.isNaN(n) || n < 0) return null;
+  return formatMoney(n, currency);
+}
 
-export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
+function equalSharePreview(
+  cost: string,
+  participantCount: number,
+  currency: string,
+): string | null {
+  const n = Number.parseFloat(cost);
+  if (!cost.trim() || Number.isNaN(n) || n <= 0 || participantCount <= 0) {
+    return null;
+  }
+  return formatMoney(n / participantCount, currency);
+}
+
+function FormField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className={expenseLabelClass}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SettingsRow({
+  label,
+  value,
+  onClick,
+  expanded,
+}: {
+  label: string;
+  value: string;
+  onClick: () => void;
+  expanded?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expanded}
+      className="border-border hover:bg-hover/50 flex w-full items-center gap-3 border-b py-3.5 text-left transition-colors last:border-b-0"
+    >
+      <span className="text-muted w-20 shrink-0 text-sm">{label}</span>
+      <span className="text-foreground min-w-0 flex-1 truncate text-sm">
+        {value}
+      </span>
+      <IconChevronDown
+        className={`text-muted h-4 w-4 shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : "-rotate-90"}`}
+      />
+    </button>
+  );
+}
+
+export function AddExpenseForm({ autoFocus = false }: Props) {
   const queryClient = useQueryClient();
+  const { show: showToast } = useToast();
   const form = useExpenseFormDefaults();
 
-  const [mode, setMode] = useState<Mode>("single");
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [category, setCategory] = useState("");
   const [date, setDate] = useState(defaultExpenseDateTimeLocal);
   const [details, setDetails] = useState("");
   const [showMore, setShowMore] = useState(false);
-  const [bulkText, setBulkText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [singleSuccess, setSingleSuccess] = useState<{
-    text: string;
-    splitwiseId: number;
-  } | null>(null);
-  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
 
-  const amountRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const costRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  useEffect(() => {
-    if (!autoFocus || form.loading) return;
-    amountRef.current?.focus();
-  }, [autoFocus, form.loading]);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (
-        mode !== "single" ||
-        (e.metaKey || e.ctrlKey) === false ||
-        e.key !== "Enter" ||
-        submitting ||
-        !form.groupId
-      ) {
-        return;
-      }
-      e.preventDefault();
-      formRef.current?.requestSubmit();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [mode, submitting, form.groupId]);
-
-  const topDescriptions = form.suggestions?.descriptions.slice(0, 6) ?? [];
-  const topCategories = useMemo(() => {
+  const categories = useMemo(() => {
     const seen = new Set<number>();
     const out: { id: number; name: string }[] = [];
     for (const c of [
@@ -96,30 +116,43 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
       out.push(c);
-      if (out.length >= 6) break;
     }
     return out;
   }, [form.suggestions?.categories, form.categories]);
 
-  const parsedBulk = useMemo(() => parseBulkExpenseText(bulkText), [bulkText]);
-  const bulkTotal = useMemo(
-    () =>
-      parsedBulk.rows.reduce(
-        (sum, row) => sum + Number.parseFloat(row.cost),
-        0,
-      ),
-    [parsedBulk.rows],
+  const quickDescriptions = useMemo(
+    () => (form.suggestions?.descriptions ?? []).slice(0, 4),
+    [form.suggestions?.descriptions],
   );
 
-  function resetSingleForAnother() {
+  const showCurrency = form.currencies.length > 1;
+  const preview = costPreview(cost, form.currencyCode);
+  const shareEach = equalSharePreview(
+    cost,
+    form.participantIds.length,
+    form.currencyCode,
+  );
+
+  function resolveCategoryId(name: string): number | undefined {
+    const q = name.trim().toLowerCase();
+    if (!q) return undefined;
+    return categories.find((c) => c.name.toLowerCase() === q)?.id;
+  }
+
+  useEffect(() => {
+    if (!autoFocus || form.loading) return;
+    descriptionRef.current?.focus();
+  }, [autoFocus, form.loading]);
+
+  function resetFields() {
     setDescription("");
     setCost("");
     setDetails("");
-    setCategoryId("");
+    setCategory("");
     setDate(defaultExpenseDateTimeLocal());
-    setSingleSuccess(null);
+    setShowMore(false);
     setError(null);
-    amountRef.current?.focus();
+    descriptionRef.current?.focus();
   }
 
   function handleGroupChange(id: string, name: string) {
@@ -127,25 +160,30 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
     setError(null);
   }
 
-  async function submitSingle(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.groupId) {
-      setError("Pick a group first.");
+      setError("Select a group.");
       return;
     }
+    const finalDescription = description.trim();
+    if (!finalDescription) {
+      setError("Enter a description.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
-    setSingleSuccess(null);
     try {
       const res = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           groupId: Number(form.groupId),
-          description,
+          description: finalDescription,
           cost,
           currencyCode: form.currencyCode,
-          categoryId: categoryId ? Number(categoryId) : undefined,
+          categoryId: resolveCategoryId(category),
           date: date ? new Date(date).toISOString() : undefined,
           details: details || undefined,
           ...form.splitPayload,
@@ -170,60 +208,14 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
       }
       if (data.splitwiseId) {
         await invalidateExpenseCaches(queryClient);
-        setSingleSuccess({
-          text:
-            form.participantIds.length > 0
-              ? `Added to ${form.groupName || "group"}.`
-              : `Added to ${form.groupName || "group"} — split equally.`,
-          splitwiseId: data.splitwiseId,
-        });
+        const groupLabel = form.groupName || "group";
+        showToast(
+          preview
+            ? `Added ${preview} to ${groupLabel}`
+            : `Added to ${groupLabel}`,
+        );
+        resetFields();
       }
-    } catch {
-      setError("Something went wrong. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function submitBulk() {
-    if (!form.groupId) {
-      setError("Pick a group first.");
-      return;
-    }
-    if (parsedBulk.rows.length === 0) {
-      setError("Add at least one valid expense line.");
-      return;
-    }
-    if (parsedBulk.errors.length > 0) {
-      setError(
-        `Fix ${parsedBulk.errors.length} invalid line(s) before submitting.`,
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/expenses/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          groupId: Number(form.groupId),
-          currencyCode: form.currencyCode,
-          items: parsedBulk.rows.map((r) => ({
-            description: r.description,
-            cost: r.cost,
-          })),
-          ...form.splitPayload,
-        }),
-      });
-      const data = (await res.json()) as BulkResult & { error?: string };
-      if (!res.ok) {
-        setError(data.error ?? "Could not create expenses.");
-        return;
-      }
-      await invalidateExpenseCaches(queryClient);
-      setBulkResult(data);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -235,381 +227,212 @@ export function AddExpenseForm({ onSuccess, autoFocus = false }: Props) {
     return <AddExpenseFormSkeleton />;
   }
 
-  if (singleSuccess) {
-    return (
-      <div className="space-y-4 py-1">
-        <div className="border-success-border bg-success-bg rounded-lg border px-4 py-3">
-          <p className="text-success-text text-sm font-medium">
-            {singleSuccess.text}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={resetSingleForAnother}
-            className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
-          >
-            Add another
-          </button>
-          <a
-            href={splitwiseExpenseUrl(singleSuccess.splitwiseId)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border-border hover:bg-hover rounded-lg border px-4 py-2 text-sm font-medium"
-          >
-            Open in Splitwise
-          </a>
-          <button
-            type="button"
-            onClick={onSuccess}
-            className="text-muted hover:text-foreground px-2 py-2 text-sm font-medium"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (bulkResult) {
-    return (
-      <div className="space-y-4 py-1">
-        <div
-          className={
-            bulkResult.failed === 0
-              ? "border-success-border bg-success-bg rounded-lg border px-4 py-3"
-              : "border-warn-border bg-warn-bg rounded-lg border px-4 py-3"
-          }
-        >
-          <p className="text-foreground text-sm font-medium">
-            {bulkResult.created} added
-            {bulkResult.failed > 0
-              ? `, ${bulkResult.failed} failed`
-              : ""} in {form.groupName || "group"}.
-          </p>
-        </div>
-        {bulkResult.failed > 0 && (
-          <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
-            {bulkResult.results
-              .filter((r) => !r.ok)
-              .map((r) => (
-                <li key={r.index} className="text-error-text">
-                  {r.description}: {r.error ?? "failed"}
-                </li>
-              ))}
-          </ul>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setBulkResult(null);
-              setBulkText("");
-            }}
-            className="bg-accent text-accent-foreground rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
-          >
-            Add more
-          </button>
-          <button
-            type="button"
-            onClick={onSuccess}
-            className="border-border hover:bg-hover rounded-lg border px-4 py-2 text-sm font-medium"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const groupSection = (
-    <ExpenseFormGroupSection
-      groups={form.groups}
-      topGroups={form.suggestions?.groups.slice(0, 6) ?? []}
-      groupId={form.groupId}
-      onGroupChange={handleGroupChange}
-      participantIds={form.participantIds}
-      onParticipantChange={form.setParticipantIds}
-      paidByUserId={form.paidByUserId}
-      onPaidByChange={form.setPaidByUserId}
-    />
-  );
+  const submitLabel = submitting
+    ? "Adding…"
+    : preview
+      ? `Add ${preview}`
+      : "Add expense";
 
   return (
-    <div className="space-y-4">
-      {groupSection}
+    <form
+      ref={formRef}
+      onSubmit={(e) => void submit(e)}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
+        <div className="space-y-4">
+          <ExpenseFormGroupSection
+            groups={form.groups}
+            topGroups={form.suggestions?.groups.slice(0, 6) ?? []}
+            groupId={form.groupId}
+            onGroupChange={handleGroupChange}
+            participantIds={form.participantIds}
+            onParticipantChange={form.setParticipantIds}
+            paidByUserId={form.paidByUserId}
+            onPaidByChange={form.setPaidByUserId}
+            showSplit={false}
+          />
 
-      {mode === "single" ? (
-        <form
-          ref={formRef}
-          onSubmit={(e) => void submitSingle(e)}
-          className="space-y-4"
-        >
-          <div className="space-y-2">
-            <label htmlFor="expense-desc" className={expenseLabelClass}>
-              Description
-            </label>
+          <FormField label="Description" htmlFor="expense-desc">
             <input
+              ref={descriptionRef}
               id="expense-desc"
               required
-              placeholder="What was it for?"
+              placeholder="Groceries, dinner, rent…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={expenseInputClass}
+              list="expense-desc-suggestions"
+              autoComplete="off"
             />
-            {topDescriptions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {topDescriptions.map((d) => (
+            <datalist id="expense-desc-suggestions">
+              {quickDescriptions.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+            {!description.trim() && quickDescriptions.length > 0 && (
+              <p className="text-muted flex flex-wrap gap-x-2 gap-y-1 text-xs">
+                <span className="text-muted/80">Recent:</span>
+                {quickDescriptions.map((d) => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setDescription(d)}
-                    className="border-border text-muted hover:border-accent hover:text-foreground bg-muted-surface hover:bg-card rounded-full border px-2.5 py-0.5 text-xs"
+                    className="text-accent hover:underline"
                   >
                     {d}
                   </button>
                 ))}
-              </div>
+              </p>
             )}
-          </div>
+          </FormField>
 
-          <div className="grid grid-cols-[1fr_5.5rem] gap-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="expense-cost" className={expenseLabelClass}>
-                Amount
-              </label>
-              <input
-                ref={amountRef}
-                id="expense-cost"
-                required
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                className={`${expenseInputClass} text-lg font-semibold tabular-nums`}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="expense-currency" className={expenseLabelClass}>
-                Currency
-              </label>
-              <ExpenseCurrencySelect
-                currencies={form.currencies}
-                currencyCode={form.currencyCode}
-                onChange={form.setCurrencyCode}
-                compact
-              />
-            </div>
-          </div>
-
-          {topCategories.length > 0 && (
-            <div className="space-y-2">
-              <span className={expenseLabelClass}>
-                Category{" "}
-                <span className="text-muted font-normal">(optional)</span>
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCategoryId("")}
-                  className={
-                    !categoryId
-                      ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
-                      : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
-                  }
-                >
-                  None
-                </button>
-                {topCategories.map((c) => {
-                  const active = categoryId === String(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setCategoryId(active ? "" : String(c.id))}
-                      className={
-                        active
-                          ? "bg-pill-active text-pill-active-fg rounded-md px-2.5 py-1 text-xs font-medium"
-                          : "border-border bg-card hover:bg-hover rounded-md border px-2.5 py-1 text-xs font-medium"
-                      }
-                    >
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowMore((v) => !v)}
-            className="text-muted hover:text-foreground text-xs font-medium"
+          <section
+            aria-labelledby="expense-amount-heading"
+            className="border-border bg-muted-surface overflow-hidden rounded-xl border"
           >
-            {showMore ? "Hide" : "Show"} date & notes
-          </button>
+            <div className="px-4 pt-4 pb-3 sm:px-5 sm:pt-5">
+              <h3 id="expense-amount-heading" className="sr-only">
+                Amount and split
+              </h3>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {showCurrency ? (
+                  <ExpenseCurrencySelect
+                    currencies={form.currencies}
+                    currencyCode={form.currencyCode}
+                    onChange={form.setCurrencyCode}
+                    compact
+                  />
+                ) : (
+                  <span className="text-muted shrink-0 text-sm font-medium tabular-nums">
+                    {form.currencyCode}
+                  </span>
+                )}
+                <input
+                  ref={costRef}
+                  id="expense-cost"
+                  required
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  className={expenseAmountHeroClass}
+                  aria-label="Amount"
+                />
+              </div>
+              {shareEach && form.participantIds.length > 1 ? (
+                <p className="text-muted mt-2 text-sm tabular-nums">
+                  ≈ {shareEach} each · {form.participantIds.length} people
+                </p>
+              ) : preview ? (
+                <p className="text-muted mt-2 text-sm tabular-nums">
+                  {preview}
+                </p>
+              ) : null}
+            </div>
 
-          {showMore && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="expense-date" className={expenseLabelClass}>
-                  Date
-                </label>
+            {form.groupId ? (
+              <ExpenseParticipantPicker
+                key={form.groupId}
+                groupId={form.groupId}
+                selectedIds={form.participantIds}
+                onSelectedChange={form.setParticipantIds}
+                paidByUserId={form.paidByUserId}
+                onPaidByChange={form.setPaidByUserId}
+                embedded
+              />
+            ) : (
+              <p className="text-muted border-border border-t px-4 py-3.5 text-sm sm:px-5">
+                Select a group to configure the split.
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div className="border-border mt-5 border-t">
+          <SettingsRow
+            label="More"
+            value={
+              showMore
+                ? "Hide options"
+                : category || details
+                  ? "Category or notes set"
+                  : "Category, date, notes"
+            }
+            onClick={() => setShowMore((v) => !v)}
+            expanded={showMore}
+          />
+          <div
+            className={`grid transition-[grid-template-rows] duration-200 ease-out ${showMore ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-3 pb-4">
+                {categories.length > 0 && (
+                  <>
+                    <input
+                      id="expense-category"
+                      placeholder="Category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className={expenseInputClass}
+                      list="expense-category-suggestions"
+                      autoComplete="off"
+                    />
+                    <datalist id="expense-category-suggestions">
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name} />
+                      ))}
+                    </datalist>
+                  </>
+                )}
                 <input
                   id="expense-date"
                   type="datetime-local"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   className={expenseInputClass}
+                  aria-label="Date"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label htmlFor="expense-notes" className={expenseLabelClass}>
-                  Notes
-                </label>
                 <textarea
                   id="expense-notes"
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   rows={2}
-                  placeholder="Receipt #, who was there…"
+                  placeholder="Notes"
                   className={expenseInputClass}
                 />
               </div>
             </div>
-          )}
-
-          {error && (
-            <p className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-sm">
-              {error}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={submitting || !form.groupId}
-              className="bg-accent text-accent-foreground rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-            >
-              {submitting ? "Adding…" : "Add expense"}
-            </button>
-            <span className="text-muted text-xs">⌘↵ to save</span>
           </div>
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <div className="grid grid-cols-[1fr_5.5rem] gap-2">
-            <div className="flex flex-col gap-1.5 sm:col-span-2 sm:grid sm:max-w-xs sm:grid-cols-1">
-              <label htmlFor="bulk-currency" className={expenseLabelClass}>
-                Currency
-              </label>
-              <ExpenseCurrencySelect
-                currencies={form.currencies}
-                currencyCode={form.currencyCode}
-                onChange={form.setCurrencyCode}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="bulk-expenses" className={expenseLabelClass}>
-              Expenses
-            </label>
-            <textarea
-              id="bulk-expenses"
-              rows={7}
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              placeholder={BULK_PLACEHOLDER}
-              className={`${expenseInputClass} mt-1.5 font-mono leading-relaxed`}
-            />
-            <p className="text-muted mt-1.5 text-xs">
-              One per line:{" "}
-              <span className="font-mono">description, amount</span>
-            </p>
-          </div>
-
-          {parsedBulk.rows.length > 0 && (
-            <div className="border-border rounded-lg border">
-              <div className="border-border flex items-center justify-between border-b px-3 py-2">
-                <span className="text-foreground text-xs font-medium">
-                  {parsedBulk.rows.length} expense
-                  {parsedBulk.rows.length === 1 ? "" : "s"}
-                </span>
-                <span className="text-muted text-xs tabular-nums">
-                  {formatMoney(bulkTotal, form.currencyCode)} total
-                </span>
-              </div>
-              <ul className="max-h-32 divide-y overflow-y-auto">
-                {parsedBulk.rows.map((row) => (
-                  <li
-                    key={row.lineNumber}
-                    className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-                  >
-                    <span className="min-w-0 truncate">{row.description}</span>
-                    <span className="shrink-0 tabular-nums">
-                      {formatMoney(
-                        Number.parseFloat(row.cost),
-                        form.currencyCode,
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {parsedBulk.errors.length > 0 && (
-            <ul className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-xs">
-              {parsedBulk.errors.slice(0, 5).map((e) => (
-                <li key={e.lineNumber}>
-                  Line {e.lineNumber}: {e.message}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {error && (
-            <p className="bg-error-bg text-error-text rounded-lg px-3 py-2 text-sm">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="button"
-            disabled={
-              submitting ||
-              !form.groupId ||
-              parsedBulk.rows.length === 0 ||
-              parsedBulk.errors.length > 0
-            }
-            onClick={() => void submitBulk()}
-            className="bg-accent text-accent-foreground rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-          >
-            {submitting
-              ? `Adding ${parsedBulk.rows.length}…`
-              : parsedBulk.rows.length > 0
-                ? `Add ${parsedBulk.rows.length} expenses`
-                : "Add expenses"}
-          </button>
         </div>
-      )}
+      </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          setMode(mode === "single" ? "bulk" : "single");
-          setError(null);
-        }}
-        className="text-muted hover:text-foreground text-xs font-medium"
+      <div
+        className="border-border bg-card shrink-0 border-t px-4 py-3 sm:px-5"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {mode === "single"
-          ? "Paste multiple expenses instead"
-          : "Add one expense instead"}
-      </button>
-    </div>
+        {error && (
+          <p className="bg-error-bg text-error-text mb-2 rounded-lg px-3 py-2 text-sm">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={submitting || !form.groupId}
+          className="bg-accent text-accent-foreground flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          {submitting && (
+            <span
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden
+            />
+          )}
+          {submitLabel}
+        </button>
+      </div>
+    </form>
   );
 }

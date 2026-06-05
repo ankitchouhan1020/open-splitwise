@@ -10,6 +10,9 @@ export type GroupListItem = {
   groupType: string | null;
   expenseCount: number;
   myShareTotal: string;
+  myPaidTotal: string;
+  /** Paid minus owed across synced expenses in this group (positive = owed to you). */
+  netBalance: string;
   lastActivityAt: string | null;
 };
 
@@ -27,6 +30,7 @@ export async function listSyncedGroups(): Promise<GroupListItem[]> {
         Number,
       ),
       myShareTotal: sum(schema.expenseShares.owedShare),
+      myPaidTotal: sum(schema.expenseShares.paidShare),
       lastActivityAt: max(schema.expenses.date),
     })
     .from(schema.groups)
@@ -53,12 +57,19 @@ export async function listSyncedGroups(): Promise<GroupListItem[]> {
     )
     .orderBy(desc(max(schema.expenses.date)));
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    groupType: r.groupType,
-    expenseCount: r.expenseCount,
-    myShareTotal: r.myShareTotal ?? "0",
-    lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
-  }));
+  return rows.map((r) => {
+    const myShareTotal = r.myShareTotal ?? "0";
+    const myPaidTotal = r.myPaidTotal ?? "0";
+    const netBalance = String(Number(myPaidTotal) - Number(myShareTotal));
+    return {
+      id: r.id,
+      name: r.name,
+      groupType: r.groupType,
+      expenseCount: r.expenseCount,
+      myShareTotal,
+      myPaidTotal,
+      netBalance,
+      lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
+    };
+  });
 }

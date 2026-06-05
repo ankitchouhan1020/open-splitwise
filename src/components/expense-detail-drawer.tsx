@@ -34,12 +34,12 @@ export function ExpenseDetailDrawer({
     <>
       <button
         type="button"
-        className="bg-overlay fixed inset-0 z-40 backdrop-blur-[1px] lg:hidden"
+        className="bg-overlay fixed inset-0 z-40 backdrop-blur-[1px]"
         aria-label="Close drawer"
         onClick={onClose}
       />
       <aside
-        className="border-border bg-card fixed inset-x-0 bottom-0 z-50 flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-2xl border shadow-2xl sm:inset-x-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:max-h-none sm:max-w-md sm:rounded-none sm:rounded-l-2xl lg:hidden"
+        className="border-border bg-card fixed inset-x-0 bottom-0 z-50 flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-2xl border shadow-2xl sm:inset-x-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:max-h-none sm:max-w-[520px] sm:rounded-none sm:rounded-l-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={initialMode === "edit" ? "Edit expense" : "Expense details"}

@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
+import { ui } from "@/lib/ui-classes";
 
 type FilterOptions = {
   groups: Array<{ id: number; name: string }>;
@@ -13,170 +15,134 @@ type Props = {
   filters: ExpenseFilters;
   options: FilterOptions;
   onChange: (patch: ExpenseFilters) => void;
+  /** Show custom date inputs when no When preset is active. */
+  showCustomDates?: boolean;
 };
 
-export function ExpenseFiltersPanel({ filters, options, onChange }: Props) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">From</span>
-        <input
-          type="date"
-          value={filters.dateFrom?.slice(0, 10) ?? ""}
-          onChange={(e) =>
-            onChange({
-              dateFrom: e.target.value
-                ? new Date(e.target.value).toISOString()
-                : undefined,
-            })
-          }
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">To</span>
-        <input
-          type="date"
-          value={filters.dateTo?.slice(0, 10) ?? ""}
-          onChange={(e) =>
-            onChange({
-              dateTo: e.target.value
-                ? new Date(e.target.value).toISOString()
-                : undefined,
-            })
-          }
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">Group</span>
-        <select
-          value={filters.groupId ?? ""}
-          onChange={(e) =>
-            onChange({
-              groupId: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        >
-          <option value="">All groups</option>
-          {options.groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">Friend</span>
-        <select
-          value={filters.friendId ?? ""}
-          onChange={(e) =>
-            onChange({
-              friendId: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        >
-          <option value="">Any</option>
-          {options.friends.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">Category</span>
-        <select
-          value={filters.categoryId ?? ""}
-          onChange={(e) =>
-            onChange({
-              categoryId: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        >
-          <option value="">All</option>
-          {options.categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">Currency</span>
-        <select
-          value={filters.currency ?? ""}
-          onChange={(e) => onChange({ currency: e.target.value || undefined })}
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        >
-          <option value="">All</option>
-          {options.currencies.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted font-medium">Type</span>
-        <select
-          value={
-            filters.payment === true
-              ? "payment"
-              : filters.payment === false
-                ? "expense"
-                : ""
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            onChange({
-              payment:
-                v === "payment" ? true : v === "expense" ? false : undefined,
-            });
-          }}
-          className="border-border rounded-md border px-2 py-1.5 text-sm"
-        >
-          <option value="">All</option>
-          <option value="expense">Expenses only</option>
-          <option value="payment">Payments only</option>
-        </select>
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">Total min</span>
+    <label className="flex flex-col gap-1 text-xs">
+      <span className="text-muted font-medium">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const fieldClass = `${ui.select} py-1.5 text-sm`;
+
+export function ExpenseFiltersPanel({
+  filters,
+  options,
+  onChange,
+  showCustomDates = true,
+}: Props) {
+  return (
+    <div className="space-y-3">
+      {showCustomDates ? (
+        <div className="flex flex-wrap items-center gap-1.5">
           <input
-            type="number"
-            step="0.01"
-            value={filters.costMin ?? ""}
+            type="date"
+            value={filters.dateFrom?.slice(0, 10) ?? ""}
             onChange={(e) =>
               onChange({
-                costMin: e.target.value ? Number(e.target.value) : undefined,
+                dateFrom: e.target.value
+                  ? new Date(e.target.value).toISOString()
+                  : undefined,
               })
             }
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
+            className={`${ui.input} max-w-[9.5rem] py-1.5 text-sm`}
+            aria-label="From date"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">Total max</span>
+          <span className="text-muted text-xs">–</span>
           <input
-            type="number"
-            step="0.01"
-            value={filters.costMax ?? ""}
+            type="date"
+            value={filters.dateTo?.slice(0, 10) ?? ""}
             onChange={(e) =>
               onChange({
-                costMax: e.target.value ? Number(e.target.value) : undefined,
+                dateTo: e.target.value
+                  ? new Date(e.target.value).toISOString()
+                  : undefined,
               })
             }
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
+            className={`${ui.input} max-w-[9.5rem] py-1.5 text-sm`}
+            aria-label="To date"
           />
-        </label>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">My share min</span>
+        </div>
+      ) : null}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Field label="Friend">
+          <select
+            value={filters.friendId ?? ""}
+            onChange={(e) =>
+              onChange({
+                friendId: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+            className={fieldClass}
+          >
+            <option value="">Any</option>
+            {options.friends.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Group">
+          <select
+            value={filters.groupId ?? ""}
+            onChange={(e) =>
+              onChange({
+                groupId: e.target.value ? Number(e.target.value) : undefined,
+                page: 1,
+              })
+            }
+            className={fieldClass}
+          >
+            <option value="">All</option>
+            {options.groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Category">
+          <select
+            value={filters.categoryId ?? ""}
+            onChange={(e) =>
+              onChange({
+                categoryId: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+            className={fieldClass}
+          >
+            <option value="">All</option>
+            {options.categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Currency">
+          <select
+            value={filters.currency ?? ""}
+            onChange={(e) =>
+              onChange({ currency: e.target.value || undefined })
+            }
+            className={fieldClass}
+          >
+            <option value="">All</option>
+            {options.currencies.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Share min">
           <input
             type="number"
             step="0.01"
@@ -186,11 +152,10 @@ export function ExpenseFiltersPanel({ filters, options, onChange }: Props) {
                 shareMin: e.target.value ? Number(e.target.value) : undefined,
               })
             }
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
+            className={`${ui.input} py-1.5 text-sm`}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted font-medium">My share max</span>
+        </Field>
+        <Field label="Share max">
           <input
             type="number"
             step="0.01"
@@ -200,9 +165,35 @@ export function ExpenseFiltersPanel({ filters, options, onChange }: Props) {
                 shareMax: e.target.value ? Number(e.target.value) : undefined,
               })
             }
-            className="border-border rounded-md border px-2 py-1.5 text-sm"
+            className={`${ui.input} py-1.5 text-sm`}
           />
-        </label>
+        </Field>
+        <Field label="Total min">
+          <input
+            type="number"
+            step="0.01"
+            value={filters.costMin ?? ""}
+            onChange={(e) =>
+              onChange({
+                costMin: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+            className={`${ui.input} py-1.5 text-sm`}
+          />
+        </Field>
+        <Field label="Total max">
+          <input
+            type="number"
+            step="0.01"
+            value={filters.costMax ?? ""}
+            onChange={(e) =>
+              onChange({
+                costMax: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+            className={`${ui.input} py-1.5 text-sm`}
+          />
+        </Field>
       </div>
     </div>
   );

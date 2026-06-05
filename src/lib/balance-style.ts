@@ -25,6 +25,17 @@ export function balanceClasses(tag: BalanceTag) {
   return styles[tag];
 }
 
+/** Left border for rows with no outstanding balance. */
+export const settledRowStripe = "border-l-2 border-l-border";
+
+export type RowStripe = BalanceTag | "settled";
+
+export function rowStripeClass(stripe?: RowStripe): string {
+  if (!stripe) return "";
+  if (stripe === "settled") return settledRowStripe;
+  return balanceClasses(stripe).rowStripe;
+}
+
 export function balanceLabel(tag: BalanceTag): string {
   return tag === "you_owe" ? "To pay" : "To get";
 }

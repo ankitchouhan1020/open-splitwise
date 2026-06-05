@@ -29,20 +29,23 @@ export function ExpenseDetailSkeleton() {
 
 export function AddExpenseFormSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading form">
-      <Shimmer className="h-3 w-24 rounded-md" />
-      <div className="flex flex-wrap gap-1.5">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Shimmer key={i} className="h-6 w-16 rounded-md" />
-        ))}
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      aria-busy="true"
+      aria-label="Loading form"
+    >
+      <div className="flex-1 space-y-4 px-4 py-5 sm:px-5">
+        <Shimmer className="h-10 w-full rounded-lg" />
+        <Shimmer className="h-10 w-full rounded-lg" />
+        <div className="border-border space-y-4 rounded-xl border p-4 sm:p-5">
+          <Shimmer className="h-12 w-2/3 rounded-md" />
+          <Shimmer className="h-4 w-40 rounded-md" />
+          <Shimmer className="border-border h-10 w-full rounded-lg border-t pt-4" />
+        </div>
       </div>
-      <Shimmer className="h-10 w-full rounded-lg" />
-      <div className="grid grid-cols-[1fr_5.5rem] gap-2">
-        <Shimmer className="h-12 rounded-lg" />
-        <Shimmer className="h-10 rounded-lg" />
+      <div className="border-border shrink-0 border-t px-4 py-3 sm:px-5">
+        <Shimmer className="h-11 w-full rounded-lg" />
       </div>
-      <Shimmer className="h-10 w-full rounded-lg" />
-      <Shimmer className="h-9 w-28 rounded-lg" />
     </div>
   );
 }

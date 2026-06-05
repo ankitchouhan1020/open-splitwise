@@ -242,7 +242,7 @@ function buildDynamicInsights(input: {
       id: "top-group",
       headline: `Most active: ${input.topGroup.groupName}`,
       detail: `${input.topGroup.expenseCount} expenses, ${fmt(Number(input.topGroup.myShareTotal))} your share.`,
-      href: `/explore?group=${input.topGroup.groupId}`,
+      href: `/explore?group=${input.topGroup.groupId}&payment=0`,
       tone: "neutral",
     });
   }

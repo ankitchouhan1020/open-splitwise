@@ -281,7 +281,15 @@ export function demoGroupSummary(filters: InsightsFilters, now = new Date()) {
 
 export function demoFriendSummary(filters: InsightsFilters, now = new Date()) {
   const rows = insightsRows(filters, now).filter((r) => !r.groupId);
-  const map = new Map<number, { name: string; total: number; count: number }>();
+  const map = new Map<
+    number,
+    {
+      name: string;
+      total: number;
+      count: number;
+      lastActivityAt: string | null;
+    }
+  >();
   for (const row of rows) {
     const friend = DEMO_FRIENDS.find((f) =>
       row.paidBy.includes(f.name.split(" ")[0]!),
@@ -291,11 +299,18 @@ export function demoFriendSummary(filters: InsightsFilters, now = new Date()) {
       name: friend?.name ?? row.paidBy,
       total: 0,
       count: 0,
+      lastActivityAt: null,
     };
+    const lastActivityAt =
+      !prev.lastActivityAt ||
+      new Date(row.date).getTime() > new Date(prev.lastActivityAt).getTime()
+        ? row.date
+        : prev.lastActivityAt;
     map.set(fid, {
       name: prev.name,
       total: prev.total + Number(row.myShare ?? 0),
       count: prev.count + 1,
+      lastActivityAt,
     });
   }
   return [...map.entries()].map(([friendId, v]) => ({
@@ -303,6 +318,7 @@ export function demoFriendSummary(filters: InsightsFilters, now = new Date()) {
     friendName: v.name,
     myShareTotal: String(v.total),
     expenseCount: v.count,
+    lastActivityAt: v.lastActivityAt,
   }));
 }
 
@@ -581,6 +597,7 @@ export function demoGroupsList(now = new Date()) {
   const groups: GroupListItem[] = DEMO_GROUPS.map((g) => {
     const rows = filterDemoExpenses({ groupId: g.id }, now);
     const myShare = rows.reduce((s, r) => s + Number(r.myShare ?? 0), 0);
+    const myPaid = rows.reduce((s, r) => s + Number(r.myPaidShare ?? 0), 0);
     const last = rows[0]?.date ?? null;
     return {
       id: g.id,
@@ -588,6 +605,8 @@ export function demoGroupsList(now = new Date()) {
       groupType: null,
       expenseCount: rows.length,
       myShareTotal: String(myShare),
+      myPaidTotal: String(myPaid),
+      netBalance: String(myPaid - myShare),
       lastActivityAt: last,
     };
   });

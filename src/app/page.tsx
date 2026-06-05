@@ -1,9 +1,12 @@
 import { HomeDashboard } from "@/app/home-dashboard";
 import { AppShell } from "@/components/app-shell";
 import { DemoModeButton } from "@/components/demo-mode-button";
+import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
+import { PageContainer } from "@/components/page-container";
 import { getConnectedUser } from "@/lib/auth";
 import { isGuestDemoAllowed } from "@/lib/demo/config";
 import Link from "next/link";
+import { Suspense } from "react";
 
 const HIGHLIGHTS = [
   "Search and filter every synced expense",
@@ -20,9 +23,11 @@ export default async function HomePage() {
       [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email;
     return (
       <AppShell>
-        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 md:py-10">
-          <HomeDashboard userName={userName} />
-        </div>
+        <PageContainer>
+          <Suspense fallback={<HomeDashboardSkeleton />}>
+            <HomeDashboard userName={userName} />
+          </Suspense>
+        </PageContainer>
       </AppShell>
     );
   }

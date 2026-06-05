@@ -7,7 +7,7 @@ import {
   expenseActivityHeadline,
   expenseActivitySubline,
 } from "@/lib/expenses/activity-copy";
-import { balanceClasses } from "@/lib/balance-style";
+import { balanceClasses, rowStripeClass } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
 import { isUserInvolvedInExpense } from "@/lib/expenses/involvement";
 import type { ExpenseListItem } from "@/lib/expenses/types";
@@ -51,7 +51,7 @@ function ExpenseDateBlock({ date }: { date: string }) {
 function BalanceLine({ expense }: { expense: ExpenseListItem }) {
   if (expense.payment) {
     return (
-      <p className="text-balance-get text-right text-xs font-medium">
+      <p className="text-balance-get text-right text-xs leading-snug font-medium">
         Settlement
       </p>
     );
@@ -117,11 +117,12 @@ export function ExpenseListItemRow({
 }: Props) {
   const involved = isUserInvolvedInExpense(expense);
   const balance = expenseBalanceTag(expense);
-  const rowTint =
-    involved && balance
-      ? balanceClasses(balance.tag).rowStripe
-      : expense.payment
-        ? "border-l-2 border-l-balance-get-border"
+  const rowTint = expense.payment
+    ? rowStripeClass("you_are_owed")
+    : involved && balance
+      ? rowStripeClass(balance.tag)
+      : involved
+        ? rowStripeClass("settled")
         : "";
 
   const rowInteractive = `border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-hover active:bg-active`;
@@ -148,9 +149,12 @@ export function ExpenseListItemRow({
             />
           </p>
         </div>
-        <span className="text-foreground text-right text-sm leading-snug font-semibold tabular-nums">
-          {formatMoney(Number(expense.cost), expense.currencyCode)}
-        </span>
+        <div className="flex shrink-0 flex-col gap-0.5 text-right leading-snug">
+          <span className="text-foreground text-sm font-semibold tabular-nums">
+            {formatMoney(Number(expense.cost), expense.currencyCode)}
+          </span>
+          <BalanceLine expense={expense} />
+        </div>
       </button>
     );
   }

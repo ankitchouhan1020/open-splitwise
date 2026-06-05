@@ -12,12 +12,14 @@ type Props = {
   fakeDataOn?: boolean;
 };
 
+type MobileNavHref = "/" | "/explore" | "/insights";
+
 function NavTab({
   href,
   label,
   active,
 }: {
-  href: string;
+  href: MobileNavHref;
   label: string;
   active: boolean;
 }) {
@@ -31,10 +33,7 @@ function NavTab({
       }
       aria-current={active ? "page" : undefined}
     >
-      <NavIconForHref
-        href={href as "/" | "/friends" | "/groups" | "/insights"}
-        className="h-6 w-6 shrink-0"
-      />
+      <NavIconForHref href={href} className="h-6 w-6 shrink-0" />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -50,7 +49,7 @@ export function MobileBottomNav({
 
   if (!connected) return null;
 
-  const [home, friends, groups, insights] = MOBILE_NAV_LINKS;
+  const [home, explore, insights] = MOBILE_NAV_LINKS;
 
   return (
     <nav
@@ -60,14 +59,9 @@ export function MobileBottomNav({
     >
       <div className="mx-auto flex max-w-6xl items-end justify-around px-1">
         <NavTab
-          href={home.href}
+          href={home.href as MobileNavHref}
           label={home.label}
           active={isNavActive(pathname, home.href)}
-        />
-        <NavTab
-          href={friends.href}
-          label={friends.label}
-          active={isNavActive(pathname, friends.href)}
         />
 
         {oauthConnected && !fakeDataOn ? (
@@ -97,12 +91,12 @@ export function MobileBottomNav({
         )}
 
         <NavTab
-          href={groups.href}
-          label={groups.label}
-          active={isNavActive(pathname, groups.href)}
+          href={explore.href as MobileNavHref}
+          label={explore.label}
+          active={isNavActive(pathname, explore.href)}
         />
         <NavTab
-          href={insights.href}
+          href={insights.href as MobileNavHref}
           label={insights.shortLabel ?? insights.label}
           active={isNavActive(pathname, insights.href)}
         />

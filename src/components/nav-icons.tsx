@@ -155,8 +155,6 @@ export function NavIconAdd({ className }: IconProps) {
 
 const NAV_ICON_MAP = {
   "/": NavIconHome,
-  "/friends": NavIconFriends,
-  "/groups": NavIconGroups,
   "/explore": NavIconExplore,
   "/insights": NavIconInsights,
   "/settings": NavIconSettings,
