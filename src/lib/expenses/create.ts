@@ -163,7 +163,12 @@ export async function createGroupExpensesBulk(
   groupId: number,
   currencyCode: string,
   items: BulkCreateExpenseItem[],
-  options?: { categoryId?: number; date?: string },
+  options?: {
+    categoryId?: number;
+    date?: string;
+    participantIds?: number[];
+    paidByUserId?: number;
+  },
 ): Promise<
   | BulkCreateExpenseResult
   | { error: string; details?: Record<string, string[]> }
@@ -191,6 +196,8 @@ export async function createGroupExpensesBulk(
       currencyCode,
       categoryId: options?.categoryId,
       date: options?.date,
+      participantIds: options?.participantIds,
+      paidByUserId: options?.paidByUserId,
     });
 
     if ("ok" in result && result.ok) {

@@ -2,6 +2,10 @@
 
 import { ExpenseCurrencySelect } from "@/components/expense-group-picker";
 import { IconCheck } from "@/components/expense-icons";
+import {
+  expenseInputClass,
+  expenseLabelClass,
+} from "@/components/expense-form-styles";
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useExpenseFormOptions } from "@/components/use-expense-form-options";
 import type { ExpenseDetail } from "@/lib/expenses/types";
@@ -14,10 +18,6 @@ type Props = {
   onCancel: () => void;
   onSuccess: () => void;
 };
-
-const inputClass =
-  "border-border focus:border-accent focus:ring-accent/20 w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2";
-const labelClass = "text-foreground text-sm font-medium";
 
 function toDateTimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -108,9 +108,22 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
         <p className="mt-1 text-sm font-medium">{expense.groupName}</p>
       </div>
 
+      <div className="space-y-2">
+        <label htmlFor="edit-expense-desc" className={expenseLabelClass}>
+          Description
+        </label>
+        <input
+          id="edit-expense-desc"
+          required
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className={expenseInputClass}
+        />
+      </div>
+
       <div className="grid grid-cols-[1fr_5.5rem] gap-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="edit-expense-cost" className={labelClass}>
+          <label htmlFor="edit-expense-cost" className={expenseLabelClass}>
             Amount
           </label>
           <input
@@ -122,11 +135,11 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
             min="0"
             value={cost}
             onChange={(e) => setCost(e.target.value)}
-            className={`${inputClass} text-lg font-semibold tabular-nums`}
+            className={`${expenseInputClass} text-lg font-semibold tabular-nums`}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="edit-expense-currency" className={labelClass}>
+          <label htmlFor="edit-expense-currency" className={expenseLabelClass}>
             Currency
           </label>
           <ExpenseCurrencySelect
@@ -142,22 +155,9 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="edit-expense-desc" className={labelClass}>
-          Description
-        </label>
-        <input
-          id="edit-expense-desc"
-          required
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
       {topCategories.length > 0 && (
         <div className="space-y-2">
-          <span className={labelClass}>
+          <span className={expenseLabelClass}>
             Category <span className="text-muted font-normal">(optional)</span>
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -195,7 +195,7 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="edit-expense-date" className={labelClass}>
+          <label htmlFor="edit-expense-date" className={expenseLabelClass}>
             Date
           </label>
           <input
@@ -203,11 +203,11 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
             type="datetime-local"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className={inputClass}
+            className={expenseInputClass}
           />
         </div>
         <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <label htmlFor="edit-expense-notes" className={labelClass}>
+          <label htmlFor="edit-expense-notes" className={expenseLabelClass}>
             Notes
           </label>
           <textarea
@@ -215,7 +215,7 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             rows={2}
-            className={inputClass}
+            className={expenseInputClass}
           />
         </div>
       </div>

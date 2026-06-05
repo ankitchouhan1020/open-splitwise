@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const participantIds = Array.isArray(data.participantIds)
+      ? data.participantIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      : undefined;
+    const paidByUserId =
+      data.paidByUserId != null ? Number(data.paidByUserId) : undefined;
+
     const result = await createGroupExpensesBulk(
       groupId,
       currencyCode,
@@ -51,6 +59,11 @@ export async function POST(request: NextRequest) {
       {
         categoryId: data.categoryId ? Number(data.categoryId) : undefined,
         date: data.date ? String(data.date) : undefined,
+        participantIds,
+        paidByUserId:
+          paidByUserId != null && Number.isFinite(paidByUserId)
+            ? paidByUserId
+            : undefined,
       },
     );
 
