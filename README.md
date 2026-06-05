@@ -4,6 +4,8 @@ I use [Splitwise](https://splitwise.com) constantly — trips, rent, dinners, th
 
 Splitwise has an API. Your expenses are already there. This project pulls them into **your** Postgres database so you can search, filter, export, and chart them from a UI you host yourself. You still add expenses and settle up in Splitwise. This is the read-heavy companion — the spreadsheet brain on top of the social ledger.
 
+![Home dashboard with balances, recent activity, and spending breakdown](docs/images/home-dashboard.jpg)
+
 ## The goal
 
 **You own a queryable copy of your Splitwise data.**
