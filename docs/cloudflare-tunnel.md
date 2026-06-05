@@ -52,12 +52,12 @@ flowchart TB
   style PG fill:#fff3e0
 ```
 
-| Component | Public? | Role |
-| --------- | ------- | ---- |
-| Cloudflare DNS + tunnel | Yes | HTTPS entry; hides Railway IPs |
-| `cloudflared` (Railway) | No inbound | Maintains outbound tunnel to Cloudflare |
-| `open-splitwise` (Railway) | No | Next.js app; reachable only via `*.railway.internal` |
-| Postgres (Railway) | **No** — disable TCP proxy | Data store; `DATABASE_URL` only, never `DATABASE_PUBLIC_URL` |
+| Component                  | Public?                    | Role                                                         |
+| -------------------------- | -------------------------- | ------------------------------------------------------------ |
+| Cloudflare DNS + tunnel    | Yes                        | HTTPS entry; hides Railway IPs                               |
+| `cloudflared` (Railway)    | No inbound                 | Maintains outbound tunnel to Cloudflare                      |
+| `open-splitwise` (Railway) | No                         | Next.js app; reachable only via `*.railway.internal`         |
+| Postgres (Railway)         | **No** — disable TCP proxy | Data store; `DATABASE_URL` only, never `DATABASE_PUBLIC_URL` |
 
 ### Setup sequence
 
@@ -151,14 +151,14 @@ flowchart TB
   app --> data
 ```
 
-| Layer | What it does | Configured in |
-| ----- | ------------ | ------------- |
-| Tunnel | Outbound-only path to the app; blocks direct Railway/Docker exposure | Steps 1, 3–5 |
-| Access (optional) | Login wall for humans | Step 6 |
-| OAuth bypass | Lets Splitwise reach callback without Access JWT | Step 6b / `pnpm cloudflare:access-oauth-bypass` |
-| App session | OAuth token in encrypted cookie; never sent to client JS | `SESSION_SECRET`, Settings → Connect |
-| API middleware | Rejects unauthenticated API calls | Built into app |
-| Sample data | Hides real expenses when mask icon is on | Header toggle / `DEMO_MODE` |
+| Layer             | What it does                                                         | Configured in                                   |
+| ----------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| Tunnel            | Outbound-only path to the app; blocks direct Railway/Docker exposure | Steps 1, 3–5                                    |
+| Access (optional) | Login wall for humans                                                | Step 6                                          |
+| OAuth bypass      | Lets Splitwise reach callback without Access JWT                     | Step 6b / `pnpm cloudflare:access-oauth-bypass` |
+| App session       | OAuth token in encrypted cookie; never sent to client JS             | `SESSION_SECRET`, Settings → Connect            |
+| API middleware    | Rejects unauthenticated API calls                                    | Built into app                                  |
+| Sample data       | Hides real expenses when mask icon is on                             | Header toggle / `DEMO_MODE`                     |
 
 ---
 
@@ -166,12 +166,12 @@ flowchart TB
 
 You will need:
 
-| Item | Notes |
-| ---- | ----- |
+| Item                         | Notes                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | **Domain on Cloudflare DNS** | Nameservers pointed at Cloudflare ([full setup](https://developers.cloudflare.com/dns/zone-setups/full-setup/)) |
-| **SSL/TLS mode** | Cloudflare dashboard → **SSL/TLS** → **Overview** → **Full** (not Flexible) |
-| **Splitwise OAuth app** | [secure.splitwise.com/apps](https://secure.splitwise.com/apps) — you will set the redirect URI in step 8 |
-| **Public hostname** | Example: `split.example.com` — used for `APP_URL` and the tunnel |
+| **SSL/TLS mode**             | Cloudflare dashboard → **SSL/TLS** → **Overview** → **Full** (not Flexible)                                     |
+| **Splitwise OAuth app**      | [secure.splitwise.com/apps](https://secure.splitwise.com/apps) — you will set the redirect URI in step 8        |
+| **Public hostname**          | Example: `split.example.com` — used for `APP_URL` and the tunnel                                                |
 
 Generate a session secret once:
 
@@ -208,17 +208,17 @@ openssl rand -base64 32
 
 **2b. Set environment variables** on the **open-splitwise** service:
 
-| Variable | Value |
-| -------- | ----- |
-| `APP_URL` | `https://split.example.com` (your public hostname — no trailing slash) |
-| `NEXT_PUBLIC_APP_URL` | same as `APP_URL` |
-| `SPLITWISE_REDIRECT_URI` | `https://split.example.com/api/auth/splitwise/callback` |
-| `SPLITWISE_CLIENT_ID` | from Splitwise |
-| `SPLITWISE_CLIENT_SECRET` | from Splitwise |
-| `SESSION_SECRET` | output of `openssl rand -base64 32` |
-| `DATABASE_URL` | reference Postgres: `${{Postgres.DATABASE_URL}}` |
-| `PORT` | `3000` |
-| `HOSTNAME` | `::` |
+| Variable                  | Value                                                                  |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `APP_URL`                 | `https://split.example.com` (your public hostname — no trailing slash) |
+| `NEXT_PUBLIC_APP_URL`     | same as `APP_URL`                                                      |
+| `SPLITWISE_REDIRECT_URI`  | `https://split.example.com/api/auth/splitwise/callback`                |
+| `SPLITWISE_CLIENT_ID`     | from Splitwise                                                         |
+| `SPLITWISE_CLIENT_SECRET` | from Splitwise                                                         |
+| `SESSION_SECRET`          | output of `openssl rand -base64 32`                                    |
+| `DATABASE_URL`            | reference Postgres: `${{Postgres.DATABASE_URL}}`                       |
+| `PORT`                    | `3000`                                                                 |
+| `HOSTNAME`                | `::`                                                                   |
 
 > **Why `PORT=3000`?** Railway injects `PORT=8080` by default, but the tunnel origin in step 4 uses port **3000**. If these do not match, you get **502** errors (`connection refused` in cloudflared logs).
 
@@ -331,13 +331,13 @@ Back on the tunnel page from step 1 (connector should show **Healthy**):
 1. **Configure** → **Public Hostname** → **Add a public hostname**.
 2. Set:
 
-   | Field | Railway | Docker Compose |
-   | ----- | ------- | -------------- |
-   | **Subdomain** | `split` (or your choice) | same |
-   | **Domain** | your zone | same |
-   | **Path** | *(empty)* | *(empty)* |
-   | **Type** | **HTTP** | **HTTP** |
-   | **URL** | `open-splitwise.railway.internal:3000` | `app:3000` |
+   | Field         | Railway                                | Docker Compose |
+   | ------------- | -------------------------------------- | -------------- |
+   | **Subdomain** | `split` (or your choice)               | same           |
+   | **Domain**    | your zone                              | same           |
+   | **Path**      | _(empty)_                              | _(empty)_      |
+   | **Type**      | **HTTP**                               | **HTTP**       |
+   | **URL**       | `open-splitwise.railway.internal:3000` | `app:3000`     |
 
    Use your actual `RAILWAY_PRIVATE_DOMAIN` value for Railway. **Type must be HTTP** — Cloudflare terminates HTTPS; the tunnel talks to the origin in plain HTTP on the private network.
 
@@ -370,7 +370,7 @@ Skip this step if you do not want a login wall in front of the app.
 **6a. Protect the whole site**
 
 1. [Zero Trust](https://one.dash.cloudflare.com/) → **Access** → **Applications** → **Add an application** → **Self-hosted**.
-2. **Application domain:** `split.example.com`, **Path:** *(empty)*
+2. **Application domain:** `split.example.com`, **Path:** _(empty)_
 3. Add an **Allow** policy (e.g. your email, Google, or OTP).
 4. **Save**.
 
@@ -399,9 +399,9 @@ pnpm cloudflare:access-oauth-bypass -- --verify
 
 The script creates (idempotent):
 
-| App | Path | Policy |
-| --- | ---- | ------ |
-| `open-splitwise OAuth start` | `/api/auth/splitwise*` | Bypass + Everyone |
+| App                             | Path                           | Policy            |
+| ------------------------------- | ------------------------------ | ----------------- |
+| `open-splitwise OAuth start`    | `/api/auth/splitwise*`         | Bypass + Everyone |
 | `open-splitwise OAuth callback` | `/api/auth/splitwise/callback` | Bypass + Everyone |
 
 **Verify:** In a private window, `https://split.example.com/api/auth/splitwise/config` returns **JSON** (status 200), not a redirect to `cloudflareaccess.com`. The home page should still require Access login.
@@ -434,28 +434,28 @@ The script creates (idempotent):
 
 ## Step 8 — Test end-to-end
 
-| Check | Expected |
-| ----- | -------- |
-| `curl -sI https://split.example.com/api/health` | 200 or 302 to Access (if step 6 enabled) |
+| Check                                                         | Expected                                                                     |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `curl -sI https://split.example.com/api/health`               | 200 or 302 to Access (if step 6 enabled)                                     |
 | `curl -s https://split.example.com/api/auth/splitwise/config` | JSON with `effective` redirect URI (200; no Access redirect if step 6b done) |
-| App logs | `Network: http://[::]:3000` |
-| cloudflared logs | `Registered tunnel connection`, no `connection refused` |
-| In browser (after Access login) | **Settings** → **Connect Splitwise** completes OAuth |
+| App logs                                                      | `Network: http://[::]:3000`                                                  |
+| cloudflared logs                                              | `Registered tunnel connection`, no `connection refused`                      |
+| In browser (after Access login)                               | **Settings** → **Connect Splitwise** completes OAuth                         |
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| ------- | --- |
-| Tunnel connector offline | Check `TUNNEL_TOKEN` (no extra whitespace); cloudflared container running |
-| **502** on public URL | Origin port mismatch — set `PORT=3000` on Railway app **or** change tunnel URL to `:8080`; confirm app logs show the same port |
-| `connection refused` in cloudflared logs | Set `HOSTNAME=::` on Railway app; confirm `RAILWAY_PRIVATE_DOMAIN:3000` in tunnel hostname |
-| OAuth redirect mismatch | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must all use the same hostname |
-| OAuth fails with Access enabled | Run `pnpm cloudflare:access-oauth-bypass -- --verify` |
-| Wrong service deployed to cloudflared | Redeploy with `railway up deploy/cloudflared --path-as-root` from repo root |
-| Postgres exposed on host | Tunnel compose overlay removes public ports; dev compose binds Postgres to `127.0.0.1` only |
-| Postgres reachable from internet | Railway **Postgres → Networking** — disable TCP proxy; use `DATABASE_URL` (internal), never `DATABASE_PUBLIC_URL` |
+| Symptom                                  | Fix                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Tunnel connector offline                 | Check `TUNNEL_TOKEN` (no extra whitespace); cloudflared container running                                                      |
+| **502** on public URL                    | Origin port mismatch — set `PORT=3000` on Railway app **or** change tunnel URL to `:8080`; confirm app logs show the same port |
+| `connection refused` in cloudflared logs | Set `HOSTNAME=::` on Railway app; confirm `RAILWAY_PRIVATE_DOMAIN:3000` in tunnel hostname                                     |
+| OAuth redirect mismatch                  | `SPLITWISE_REDIRECT_URI`, Splitwise app, and `APP_URL` must all use the same hostname                                          |
+| OAuth fails with Access enabled          | Run `pnpm cloudflare:access-oauth-bypass -- --verify`                                                                          |
+| Wrong service deployed to cloudflared    | Redeploy with `railway up deploy/cloudflared --path-as-root` from repo root                                                    |
+| Postgres exposed on host                 | Tunnel compose overlay removes public ports; dev compose binds Postgres to `127.0.0.1` only                                    |
+| Postgres reachable from internet         | Railway **Postgres → Networking** — disable TCP proxy; use `DATABASE_URL` (internal), never `DATABASE_PUBLIC_URL`              |
 
 **Logs:** Railway service logs, or `docker compose … logs cloudflared`.
 

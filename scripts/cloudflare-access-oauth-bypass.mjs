@@ -83,7 +83,8 @@ async function cf(method, path, body) {
   });
   const data = await res.json();
   if (!data.success) {
-    const detail = data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
+    const detail =
+      data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
     throw new Error(`Cloudflare API ${method} ${path}: ${detail}`);
   }
   return data.result;
@@ -159,7 +160,9 @@ async function ensureBypassApp(existingApps, spec) {
 
   if (existing) {
     if (hasBypassPolicy(existing)) {
-      console.log(`OK  ${spec.name} (already bypasses ${publicUri(appHost, spec.path)})`);
+      console.log(
+        `OK  ${spec.name} (already bypasses ${publicUri(appHost, spec.path)})`,
+      );
       return existing;
     }
     console.log(`UPDATE ${spec.name} — adding bypass policy`);
@@ -176,7 +179,11 @@ async function verifyBypass() {
   const url = `https://${appHost}/api/auth/splitwise/config`;
   const res = await fetch(url, { redirect: "manual" });
   const location = res.headers.get("location") ?? "";
-  if (res.status >= 300 && res.status < 400 && location.includes("cloudflareaccess.com")) {
+  if (
+    res.status >= 300 &&
+    res.status < 400 &&
+    location.includes("cloudflareaccess.com")
+  ) {
     throw new Error(
       `${url} still redirects to Cloudflare Access (${res.status}). Bypass apps may need a minute to propagate.`,
     );
@@ -190,7 +197,9 @@ async function verifyBypass() {
     );
   }
   if (!res.ok) {
-    throw new Error(`${url} returned ${res.status} (expected 200 JSON, not Access redirect)`);
+    throw new Error(
+      `${url} returned ${res.status} (expected 200 JSON, not Access redirect)`,
+    );
   }
   const body = await res.json();
   if (typeof body !== "object" || body === null) {
