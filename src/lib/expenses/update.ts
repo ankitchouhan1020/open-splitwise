@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { requireAccessToken } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
+import { applyGroupSplitToBody } from "@/lib/expenses/split-request";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type {
   SplitwiseCreateExpenseResponse,
@@ -16,6 +17,8 @@ export type UpdateExpenseInput = {
   categoryId?: number;
   date?: string;
   details?: string;
+  participantIds?: number[];
+  paidByUserId?: number;
 };
 
 type ExpenseRow = {
@@ -27,7 +30,10 @@ type ExpenseRow = {
 
 async function resolveGroupExpenseForMutation(
   expenseId: number,
-): Promise<{ ok: true; ownerId: number; row: ExpenseRow } | { error: string }> {
+): Promise<
+  | { ok: true; owner: { id: number; splitwiseId: number }; row: ExpenseRow }
+  | { error: string }
+> {
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) return { error: "not_connected" };
 
@@ -54,7 +60,7 @@ async function resolveGroupExpenseForMutation(
     return { error: "group_expense_only" };
   }
 
-  return { ok: true, ownerId: owner.id, row };
+  return { ok: true, owner, row };
 }
 
 export async function updateGroupExpense(
@@ -74,11 +80,21 @@ export async function updateGroupExpense(
     description: input.description.trim(),
     cost: input.cost,
     currency_code: input.currencyCode,
-    split_equally: true,
   };
   if (input.categoryId) body.category_id = input.categoryId;
   if (input.date) body.date = input.date;
   body.details = input.details?.trim() ?? "";
+
+  const splitResult = await applyGroupSplitToBody(body, {
+    groupId: resolved.row.groupId!,
+    cost: input.cost,
+    ownerSplitwiseId: resolved.owner.splitwiseId,
+    participantIds: input.participantIds,
+    paidByUserId: input.paidByUserId,
+  });
+  if ("error" in splitResult) {
+    return { error: splitResult.error };
+  }
 
   const result = await client.post<SplitwiseCreateExpenseResponse>(
     `update_expense/${resolved.row.splitwiseId}`,
@@ -94,7 +110,7 @@ export async function updateGroupExpense(
     return { error: "no_expense_returned" };
   }
 
-  await upsertExpense(resolved.ownerId, expense);
+  await upsertExpense(resolved.owner.id, expense);
 
   return {
     ok: true,
@@ -134,7 +150,7 @@ export async function deleteGroupExpense(
     .where(
       and(
         eq(schema.expenses.id, resolved.row.id),
-        eq(schema.expenses.accountUserId, resolved.ownerId),
+        eq(schema.expenses.accountUserId, resolved.owner.id),
       ),
     );
 

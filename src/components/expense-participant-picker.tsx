@@ -13,6 +13,9 @@ type Props = {
   onSelectedChange: (ids: number[]) => void;
   paidByUserId: number | null;
   onPaidByChange: (id: number) => void;
+  /** Avoid clobbering pre-filled edit state with group defaults. */
+  skipEmptyDefaults?: boolean;
+  idPrefix?: string;
 };
 
 export function ExpenseParticipantPicker({
@@ -21,6 +24,8 @@ export function ExpenseParticipantPicker({
   onSelectedChange,
   paidByUserId,
   onPaidByChange,
+  skipEmptyDefaults = false,
+  idPrefix = "",
 }: Props) {
   const numericGroupId = groupId ? Number(groupId) : null;
   const { data, isLoading, isError } = useGroupMembers(numericGroupId);
@@ -32,10 +37,10 @@ export function ExpenseParticipantPicker({
 
   useEffect(() => {
     if (!data || members.length === 0) return;
-    if (selectedIds.length === 0) {
+    if (selectedIds.length === 0 && !skipEmptyDefaults) {
       onSelectedChange(members.map((m) => m.id));
     }
-    if (paidByUserId == null && currentUserId != null) {
+    if (paidByUserId == null && currentUserId != null && !skipEmptyDefaults) {
       onPaidByChange(currentUserId);
     }
   }, [
@@ -44,6 +49,7 @@ export function ExpenseParticipantPicker({
     selectedIds.length,
     paidByUserId,
     currentUserId,
+    skipEmptyDefaults,
     onSelectedChange,
     onPaidByChange,
   ]);
@@ -95,11 +101,11 @@ export function ExpenseParticipantPicker({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="expense-paid-by" className={labelClass}>
+        <label htmlFor={`${idPrefix}expense-paid-by`} className={labelClass}>
           Paid by
         </label>
         <select
-          id="expense-paid-by"
+          id={`${idPrefix}expense-paid-by`}
           value={paidByUserId ?? ""}
           onChange={(e) => onPaidByChange(Number(e.target.value))}
           className={selectClass}

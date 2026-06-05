@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpenseCurrencySelect } from "@/components/expense-group-picker";
+import { ExpenseParticipantPicker } from "@/components/expense-participant-picker";
 import { IconCheck } from "@/components/expense-icons";
 import {
   expenseInputClass,
@@ -8,6 +9,7 @@ import {
 } from "@/components/expense-form-styles";
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useExpenseFormOptions } from "@/components/use-expense-form-options";
+import { parseExpenseSplitState } from "@/lib/expenses/splits";
 import type { ExpenseDetail } from "@/lib/expenses/types";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +32,11 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
   const { loading, categories, currencies, suggestions } =
     useExpenseFormOptions();
 
+  const initialSplit = useMemo(
+    () => parseExpenseSplitState(expense.shares),
+    [expense.shares],
+  );
+
   const [description, setDescription] = useState(expense.description);
   const [cost, setCost] = useState(expense.cost);
   const [currencyCode, setCurrencyCode] = useState(expense.currencyCode);
@@ -38,8 +45,26 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
   );
   const [date, setDate] = useState(toDateTimeLocal(expense.date));
   const [details, setDetails] = useState(expense.details ?? "");
+  const [participantIds, setParticipantIds] = useState(
+    initialSplit.participantIds,
+  );
+  const [paidByUserId, setPaidByUserId] = useState<number | null>(
+    initialSplit.paidByUserId,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasPrefilledSplit =
+    initialSplit.participantIds.length > 0 || initialSplit.paidByUserId != null;
+
+  const splitPayload =
+    participantIds.length > 0 || paidByUserId != null
+      ? {
+          participantIds:
+            participantIds.length > 0 ? participantIds : undefined,
+          paidByUserId: paidByUserId ?? undefined,
+        }
+      : {};
 
   const topCategories = useMemo(() => {
     const seen = new Set<number>();
@@ -68,6 +93,7 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
           categoryId: categoryId ? Number(categoryId) : undefined,
           date: date ? new Date(date).toISOString() : undefined,
           details: details || undefined,
+          ...splitPayload,
         }),
       });
       const data = (await res.json()) as {
@@ -99,6 +125,8 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
     return <AddExpenseFormSkeleton />;
   }
 
+  const groupId = expense.groupId ? String(expense.groupId) : "";
+
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-4">
       <div>
@@ -107,6 +135,18 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
         </p>
         <p className="mt-1 text-sm font-medium">{expense.groupName}</p>
       </div>
+
+      {groupId && (
+        <ExpenseParticipantPicker
+          groupId={groupId}
+          selectedIds={participantIds}
+          onSelectedChange={setParticipantIds}
+          paidByUserId={paidByUserId}
+          onPaidByChange={setPaidByUserId}
+          skipEmptyDefaults={hasPrefilledSplit}
+          idPrefix="edit-"
+        />
+      )}
 
       <div className="space-y-2">
         <label htmlFor="edit-expense-desc" className={expenseLabelClass}>
@@ -243,9 +283,6 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
           Cancel
         </button>
       </div>
-      <p className="text-muted text-xs">
-        Split equally · custom splits stay in Splitwise.
-      </p>
     </form>
   );
 }

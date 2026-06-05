@@ -67,3 +67,28 @@ export function canUseSplitEqually(
   const selected = new Set(participantIds);
   return allMemberIds.every((id) => selected.has(id));
 }
+
+export function parseExpenseSplitState(
+  shares: Array<{
+    splitwiseUserId: number;
+    paidShare: string;
+    owedShare: string;
+  }>,
+): { paidByUserId: number | null; participantIds: number[] } {
+  let paidByUserId: number | null = null;
+  let maxPaid = 0;
+
+  for (const share of shares) {
+    const paid = Number.parseFloat(share.paidShare);
+    if (paid > maxPaid) {
+      maxPaid = paid;
+      paidByUserId = share.splitwiseUserId;
+    }
+  }
+
+  const participantIds = shares
+    .filter((s) => Number.parseFloat(s.owedShare) > 0)
+    .map((s) => s.splitwiseUserId);
+
+  return { paidByUserId, participantIds };
+}

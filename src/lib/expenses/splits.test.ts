@@ -4,6 +4,7 @@ import {
   canUseSplitEqually,
   equalOwedShares,
   formatCostAmount,
+  parseExpenseSplitState,
 } from "@/lib/expenses/splits";
 
 describe("formatCostAmount", () => {
@@ -70,5 +71,57 @@ describe("canUseSplitEqually", () => {
 
   it("is false when someone else paid", () => {
     expect(canUseSplitEqually([1, 2, 3], [1, 2, 3], 2, 1)).toBe(false);
+  });
+});
+
+describe("parseExpenseSplitState", () => {
+  it("derives payer and participants from shares", () => {
+    expect(
+      parseExpenseSplitState([
+        {
+          splitwiseUserId: 1,
+          paidShare: "30.00",
+          owedShare: "10.00",
+        },
+        {
+          splitwiseUserId: 2,
+          paidShare: "0.00",
+          owedShare: "10.00",
+        },
+        {
+          splitwiseUserId: 3,
+          paidShare: "0.00",
+          owedShare: "10.00",
+        },
+      ]),
+    ).toEqual({
+      paidByUserId: 1,
+      participantIds: [1, 2, 3],
+    });
+  });
+
+  it("excludes payer from participants when they did not owe", () => {
+    expect(
+      parseExpenseSplitState([
+        {
+          splitwiseUserId: 9,
+          paidShare: "20.00",
+          owedShare: "0.00",
+        },
+        {
+          splitwiseUserId: 2,
+          paidShare: "0.00",
+          owedShare: "10.00",
+        },
+        {
+          splitwiseUserId: 3,
+          paidShare: "0.00",
+          owedShare: "10.00",
+        },
+      ]),
+    ).toEqual({
+      paidByUserId: 9,
+      participantIds: [2, 3],
+    });
   });
 });

@@ -62,6 +62,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
+  const participantIds = Array.isArray(data.participantIds)
+    ? data.participantIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    : undefined;
+  const paidByUserId =
+    data.paidByUserId != null ? Number(data.paidByUserId) : undefined;
+
   try {
     const result = await updateGroupExpense(expenseId, {
       description,
@@ -70,6 +78,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       categoryId: data.categoryId ? Number(data.categoryId) : undefined,
       date: data.date ? String(data.date) : undefined,
       details: data.details ? String(data.details) : undefined,
+      participantIds,
+      paidByUserId:
+        paidByUserId != null && Number.isFinite(paidByUserId)
+          ? paidByUserId
+          : undefined,
     });
 
     if ("error" in result && !("ok" in result)) {

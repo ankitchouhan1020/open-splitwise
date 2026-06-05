@@ -2,11 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { requireAccessToken } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
-import {
-  buildEqualSplitUsersBody,
-  canUseSplitEqually,
-} from "@/lib/expenses/splits";
-import { fetchGroupMembers } from "@/lib/groups/members";
+import { applyGroupSplitToBody } from "@/lib/expenses/split-request";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type { SplitwiseCreateExpenseResponse } from "@/lib/splitwise/types";
 import { upsertExpense } from "@/lib/sync/expenses";
@@ -55,43 +51,15 @@ async function createGroupExpenseForOwner(
   if (input.date) body.date = input.date;
   if (input.details?.trim()) body.details = input.details.trim();
 
-  const hasCustomSplit =
-    (input.participantIds?.length ?? 0) > 0 || input.paidByUserId != null;
-
-  if (hasCustomSplit) {
-    const membersResult = await fetchGroupMembers(input.groupId);
-    if ("error" in membersResult) {
-      return { error: membersResult.error };
-    }
-    const allMemberIds = membersResult.map((m) => m.id);
-    const participantIds =
-      input.participantIds && input.participantIds.length > 0
-        ? input.participantIds
-        : allMemberIds;
-    const paidByUserId = input.paidByUserId ?? owner.splitwiseId;
-
-    if (
-      canUseSplitEqually(
-        allMemberIds,
-        participantIds,
-        paidByUserId,
-        owner.splitwiseId,
-      )
-    ) {
-      body.split_equally = true;
-    } else {
-      try {
-        Object.assign(
-          body,
-          buildEqualSplitUsersBody(paidByUserId, participantIds, input.cost),
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "invalid_split";
-        return { error: message };
-      }
-    }
-  } else {
-    body.split_equally = true;
+  const splitResult = await applyGroupSplitToBody(body, {
+    groupId: input.groupId,
+    cost: input.cost,
+    ownerSplitwiseId: owner.splitwiseId,
+    participantIds: input.participantIds,
+    paidByUserId: input.paidByUserId,
+  });
+  if ("error" in splitResult) {
+    return { error: splitResult.error };
   }
 
   const result = await client.post<SplitwiseCreateExpenseResponse>(
