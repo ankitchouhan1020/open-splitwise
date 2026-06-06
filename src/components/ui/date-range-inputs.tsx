@@ -17,11 +17,7 @@ type Props = {
   }) => void;
 };
 
-export function ExpenseDateRangeInputs({
-  dateFrom,
-  dateTo,
-  onChange,
-}: Props) {
+export function ExpenseDateRangeInputs({ dateFrom, dateTo, onChange }: Props) {
   const fromValue = expenseDateInputValue(dateFrom);
   const toValue = expenseDateInputValue(dateTo);
 
@@ -49,7 +45,9 @@ export function ExpenseDateRangeInputs({
         min={fromValue || undefined}
         onChange={(e) =>
           onChange({
-            dateTo: e.target.value ? expenseDateToIso(e.target.value) : undefined,
+            dateTo: e.target.value
+              ? expenseDateToIso(e.target.value)
+              : undefined,
             page: 1,
           })
         }

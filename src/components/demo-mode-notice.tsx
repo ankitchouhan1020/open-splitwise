@@ -1,7 +1,4 @@
-import {
-  DEMO_MODE_COPY,
-  type DemoModeFeature,
-} from "@/lib/demo/copy";
+import { DEMO_MODE_COPY, type DemoModeFeature } from "@/lib/demo/copy";
 
 type Props = {
   feature: DemoModeFeature;

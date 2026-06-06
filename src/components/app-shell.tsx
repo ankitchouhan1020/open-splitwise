@@ -62,7 +62,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 />
               </div>
             </SyncStatusProvider>
-        </AddExpenseProvider>
+          </AddExpenseProvider>
         </DemoModeProvider>
       </ToastProvider>
     </ThemeProvider>

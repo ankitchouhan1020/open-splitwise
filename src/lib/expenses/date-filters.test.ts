@@ -4,7 +4,6 @@ import {
   expenseDateInputValue,
   expenseDateToIso,
   formatExpenseDateRangeLabel,
-  localDayEndIso,
   localDayStartIso,
 } from "@/lib/expenses/date-filters";
 
@@ -28,7 +27,9 @@ describe("expense date filters", () => {
   it("formats chip labels with local dates", () => {
     const from = expenseDateFromIso("2026-01-15")!;
     const to = expenseDateToIso("2026-03-01")!;
-    expect(formatExpenseDateRangeLabel(from, to)).toBe("2026-01-15 – 2026-03-01");
+    expect(formatExpenseDateRangeLabel(from, to)).toBe(
+      "2026-01-15 – 2026-03-01",
+    );
   });
 
   it("rejects invalid local date strings", () => {

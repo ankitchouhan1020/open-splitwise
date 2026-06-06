@@ -72,9 +72,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             oauthConnected={oauthConnected}
             showSync={showSync}
             showAi={!!user && setup.dbConfigured && !guestDemo}
-            canDeleteSyncedData={
-              !!user && !guestDemo && setup.dbConfigured
-            }
+            canDeleteSyncedData={!!user && !guestDemo && setup.dbConfigured}
             oauthError={params.connected ? null : (params.error ?? null)}
             justConnected={params.connected === "1"}
           />
