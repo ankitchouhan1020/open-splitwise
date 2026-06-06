@@ -31,6 +31,7 @@ export class AiError extends Error {
       | "ai_misconfigured"
       | "ai_provider_error"
       | "ai_parse_error",
+    readonly status?: number,
   ) {
     super(message);
     this.name = "AiError";

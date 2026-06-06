@@ -66,6 +66,7 @@ async function fetchJson(url: string, init: RequestInit): Promise<unknown> {
     throw new AiError(
       body.error?.message ?? `Provider returned ${res.status}`,
       "ai_provider_error",
+      res.status,
     );
   }
   return body;

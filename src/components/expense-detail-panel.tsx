@@ -11,6 +11,7 @@ import {
 } from "@/components/expense-icons";
 import { ExpenseDetailSkeleton } from "@/components/expense-detail-skeleton";
 import type { ExpenseDetail } from "@/lib/expenses/types";
+import { friendlyExpenseError } from "@/lib/api-errors";
 import { isExpenseMutable } from "@/lib/expenses/mutable";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { splitwiseExpenseUrl } from "@/lib/splitwise/urls";
@@ -73,13 +74,12 @@ export function ExpenseDetailPanel({
         details?: Record<string, string[]>;
       };
       if (!res.ok) {
-        const detailText = data.details
-          ? Object.entries(data.details)
-              .map(([k, v]) => `${k}: ${v.join(", ")}`)
-              .join("; ")
-          : "";
         setDeleteError(
-          `${data.error ?? "Could not delete expense"}${detailText ? ` — ${detailText}` : ""}`,
+          friendlyExpenseError(
+            data.error,
+            data.details,
+            "Couldn't delete the expense. Try again.",
+          ),
         );
         return;
       }

@@ -9,6 +9,7 @@ import {
 } from "@/components/expense-form-styles";
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useExpenseFormOptions } from "@/components/use-expense-form-options";
+import { friendlyExpenseError } from "@/lib/api-errors";
 import { parseExpenseSplitState } from "@/lib/expenses/splits";
 import type { ExpenseDetail } from "@/lib/expenses/types";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
@@ -102,13 +103,12 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
         details?: Record<string, string[]>;
       };
       if (!res.ok) {
-        const detailText = data.details
-          ? Object.entries(data.details)
-              .map(([k, v]) => `${k}: ${v.join(", ")}`)
-              .join("; ")
-          : "";
         setError(
-          `${data.error ?? "Could not update expense"}${detailText ? ` — ${detailText}` : ""}`,
+          friendlyExpenseError(
+            data.error,
+            data.details,
+            "Couldn't update the expense. Try again.",
+          ),
         );
         return;
       }

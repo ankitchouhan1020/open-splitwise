@@ -4,6 +4,7 @@ import { isDatabaseConfigured } from "@/lib/db";
 import { createGroupExpense } from "@/lib/expenses/create";
 import { parseExpenseFilters } from "@/lib/expenses/filters";
 import { listExpenses } from "@/lib/expenses/queries";
+import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -76,12 +77,11 @@ export async function POST(request: NextRequest) {
     });
 
     if ("error" in result && !("ok" in result)) {
-      return NextResponse.json(result, { status: 400 });
+      return domainErrorResponse(result);
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "create_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse(err, "create_failed");
   }
 }

@@ -3,6 +3,7 @@ import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { deleteGroupExpense, updateGroupExpense } from "@/lib/expenses/update";
 import { getExpenseDetail } from "@/lib/expenses/queries";
+import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -96,14 +97,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if ("error" in result && !("ok" in result)) {
-      const status = result.error === "not_found" ? 404 : 400;
-      return NextResponse.json(result, { status });
+      return domainErrorResponse(result);
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "update_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse(err, "update_failed");
   }
 }
 
@@ -124,13 +123,11 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const result = await deleteGroupExpense(expenseId);
     if ("error" in result && !("ok" in result)) {
-      const status = result.error === "not_found" ? 404 : 400;
-      return NextResponse.json(result, { status });
+      return domainErrorResponse(result);
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "delete_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse(err, "delete_failed");
   }
 }

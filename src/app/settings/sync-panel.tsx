@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyApiError, friendlySyncError } from "@/lib/api-errors";
 import {
   SettingsAlert,
   SettingsBlock,
@@ -46,24 +47,28 @@ function statusTone(
 
 export function SyncPanel({ dbConfigured, bare = false }: Props) {
   const { status, busy, runSync } = useSyncStatus();
-  const [scopeMessage, setScopeMessage] = useState<string | null>(null);
+  const [scopeNotice, setScopeNotice] = useState<string | null>(null);
+  const [scopeError, setScopeError] = useState<string | null>(null);
 
   async function runScopedSync(scope: "all" | "expenses" | "metadata") {
-    setScopeMessage(null);
+    setScopeNotice(null);
+    setScopeError(null);
     const result = await runSync(scope);
     if (!result.ok) {
-      setScopeMessage(result.error);
+      setScopeError(
+        friendlyApiError(result.error, "Sync failed. Try again in a moment."),
+      );
       return;
     }
     const exp = result.status.expenses;
     if (scope === "metadata") {
-      setScopeMessage("Groups, friends, and categories are up to date.");
+      setScopeNotice("Groups, friends, and categories are up to date.");
     } else if (exp) {
-      setScopeMessage(
+      setScopeNotice(
         `You're all set — ${exp.expenseCount.toLocaleString()} expenses on this server.`,
       );
     } else {
-      setScopeMessage("Sync finished.");
+      setScopeNotice("Sync finished.");
     }
   }
 
@@ -90,10 +95,15 @@ export function SyncPanel({ dbConfigured, bare = false }: Props) {
 
   const content = (
     <div className="space-y-4">
-      {scopeMessage && (
-        <SettingsAlert tone="success">{scopeMessage}</SettingsAlert>
+      {scopeError && <SettingsAlert tone="error">{scopeError}</SettingsAlert>}
+      {scopeNotice && (
+        <SettingsAlert tone="success">{scopeNotice}</SettingsAlert>
       )}
-      {exp?.error && <SettingsAlert tone="error">{exp.error}</SettingsAlert>}
+      {exp?.error && (
+        <SettingsAlert tone="error">
+          {friendlySyncError(exp.error) ?? "Expense sync failed. Try again."}
+        </SettingsAlert>
+      )}
 
       {exp && (
         <div className="grid gap-3 sm:grid-cols-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyApiError } from "@/lib/api-errors";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -26,7 +27,13 @@ export function DeleteSyncedDataButton() {
           message?: string;
           error?: string;
         };
-        alert(body.message ?? body.error ?? "Could not delete synced data");
+        alert(
+          body.message ??
+            friendlyApiError(
+              body.error,
+              "Couldn't delete synced data. Try again.",
+            ),
+        );
         return;
       }
       router.refresh();

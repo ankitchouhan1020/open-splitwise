@@ -18,6 +18,7 @@ import {
   useAiStatus,
   useGenerateAiNarrative,
 } from "@/lib/query/hooks";
+import { friendlyAiError, friendlyApiError } from "@/lib/api-errors";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { balanceClasses, balanceNetLabel } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
@@ -113,12 +114,14 @@ export function HomeDashboard({ userName }: { userName: string }) {
     if (tab) setFeedTab(tab);
   }, [searchParams]);
 
-  const error =
-    isError && queryError instanceof FetchJsonError
-      ? queryError.message
-      : isError
-        ? "Failed to load dashboard"
-        : null;
+  const error = isError
+    ? queryError instanceof FetchJsonError
+      ? friendlyApiError(
+          queryError.message,
+          "Couldn't load your dashboard. Try syncing from the header.",
+        )
+      : "Couldn't load your dashboard. Try syncing from the header."
+    : null;
 
   const exploreHref = useMemo(() => {
     if (!data) return "/explore";
@@ -147,13 +150,7 @@ export function HomeDashboard({ userName }: { userName: string }) {
     <div className="space-y-4">
       {loading && <HomeDashboardSkeleton />}
 
-      {error && !loading && (
-        <p className={ui.errorBoxLg}>
-          {error === "database_not_configured"
-            ? "Database not configured. Set DATABASE_URL and run migrations in Settings."
-            : error}
-        </p>
-      )}
+      {error && !loading && <p className={ui.errorBoxLg}>{error}</p>}
 
       {!loading && data && (
         <div className="space-y-6">
@@ -168,8 +165,11 @@ export function HomeDashboard({ userName }: { userName: string }) {
               narrativeError={
                 generateNarrative.isError
                   ? generateNarrative.error instanceof FetchJsonError
-                    ? generateNarrative.error.message
-                    : "Could not generate summary"
+                    ? friendlyAiError(
+                        generateNarrative.error.message,
+                        "narrative",
+                      )
+                    : friendlyAiError(undefined, "narrative")
                   : null
               }
               onGenerateNarrative={() =>

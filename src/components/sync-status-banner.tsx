@@ -4,6 +4,7 @@ import {
   useSyncStatus,
   type SyncStatus,
 } from "@/components/sync-status-provider";
+import { friendlySyncError } from "@/lib/api-errors";
 
 const STALE_MS = 86400000;
 
@@ -32,6 +33,7 @@ export function SyncStatusBanner({ connected, dbConfigured }: Props) {
 
   const exp = status!.expenses!;
   const hasError = exp.status === "error";
+  const syncErrorDetail = friendlySyncError(exp.error);
   const lastSyncLabel = exp.lastSyncAt
     ? new Date(exp.lastSyncAt).toLocaleString()
     : "Never";
@@ -62,14 +64,14 @@ export function SyncStatusBanner({ connected, dbConfigured }: Props) {
         >
           <span className="hidden sm:inline">
             Last sync: {lastSyncLabel} · {exp.expenseCount} expenses stored
-            {exp.error ? ` · ${exp.error}` : null}
+            {syncErrorDetail ? ` · ${syncErrorDetail}` : null}
             {" · "}
             Use <span className="font-medium">Sync</span> in the header to
             refresh.
           </span>
           <span className="sm:hidden">
             Tap sync in the header to refresh · {exp.expenseCount} stored
-            {exp.error ? ` · ${exp.error}` : null}
+            {syncErrorDetail ? ` · ${syncErrorDetail}` : null}
           </span>
         </p>
       </div>

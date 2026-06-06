@@ -13,6 +13,7 @@ import {
 } from "@/app/settings/settings-ui";
 import { AI_PROVIDERS, defaultModelForProvider } from "@/lib/ai/providers";
 import type { AiProvider, AiSettingsPublic } from "@/lib/ai/types";
+import { friendlyFetchError } from "@/lib/api-errors";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { useAiModels } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
@@ -68,7 +69,7 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
       applySettings(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load AI settings",
+        friendlyFetchError(err, "Couldn't load AI settings. Try again."),
       );
     } finally {
       setLoading(false);
@@ -126,7 +127,7 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
       setNotice("Settings saved.");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to save AI settings",
+        friendlyFetchError(err, "Couldn't save AI settings. Try again."),
       );
     } finally {
       setSaving(false);
@@ -158,7 +159,9 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
       setNotice("API key removed.");
       await qc.invalidateQueries({ queryKey: queryKeys.ai.status() });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove API key");
+      setError(
+        friendlyFetchError(err, "Couldn't remove the API key. Try again."),
+      );
     } finally {
       setClearing(false);
     }

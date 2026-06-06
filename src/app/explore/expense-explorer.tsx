@@ -21,7 +21,7 @@ import { ExploreAiCard } from "@/app/explore/explore-ai-card";
 import { ExploreFiltersCard } from "@/app/explore/explore-filters-card";
 import { ExploreSummaryBar } from "@/app/explore/explore-summary-bar";
 import { detectDatePreset } from "@/app/explore/explore-toolbar";
-import { friendlyAiError } from "@/lib/ai/ui-errors";
+import { friendlyAiError, friendlyApiError } from "@/lib/api-errors";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { useExpenseFilters } from "@/app/explore/use-expense-filters";
 import {
@@ -318,12 +318,12 @@ export function ExpenseExplorer() {
     placeholderData: keepPreviousData,
   });
 
-  const error =
-    listError instanceof Error
-      ? listError.message
-      : listError
-        ? "Load failed"
-        : null;
+  const error = listError
+    ? friendlyApiError(
+        listError instanceof Error ? listError.message : undefined,
+        "Couldn't load expenses. Try syncing from the header.",
+      )
+    : null;
 
   useEffect(() => {
     if (page1 && !listIsPlaceholder) {

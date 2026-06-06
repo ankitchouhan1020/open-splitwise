@@ -13,6 +13,7 @@ import {
 import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useToast } from "@/components/toast-provider";
 import { useExpenseFormDefaults } from "@/components/use-expense-form-defaults";
+import { friendlyExpenseError } from "@/lib/api-errors";
 import { formatMoney } from "@/lib/format";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { useQueryClient } from "@tanstack/react-query";
@@ -196,13 +197,12 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
         details?: Record<string, string[]>;
       };
       if (!res.ok) {
-        const detailText = data.details
-          ? Object.entries(data.details)
-              .map(([k, v]) => `${k}: ${v.join(", ")}`)
-              .join("; ")
-          : "";
         setError(
-          `${data.error ?? "Could not create expense"}${detailText ? ` — ${detailText}` : ""}`,
+          friendlyExpenseError(
+            data.error,
+            data.details,
+            "Couldn't create the expense. Try again.",
+          ),
         );
         return;
       }

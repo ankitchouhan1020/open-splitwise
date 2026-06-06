@@ -1,7 +1,7 @@
 import "server-only";
 
 import { isAiAvailable } from "@/lib/ai/availability";
-import { AiError } from "@/lib/ai/types";
+import { aiErrorResponse } from "@/lib/http-errors";
 import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
@@ -49,19 +49,4 @@ export async function requireAiAccount(): Promise<RequireAiAccountResult> {
   return { owner };
 }
 
-export function aiErrorResponse(err: unknown) {
-  if (err instanceof AiError) {
-    const status =
-      err.code === "ai_disabled"
-        ? 403
-        : err.code === "ai_misconfigured"
-          ? 503
-          : 502;
-    return NextResponse.json(
-      { error: err.code, message: err.message },
-      { status },
-    );
-  }
-  const message = err instanceof Error ? err.message : "ai_error";
-  return NextResponse.json({ error: "ai_error", message }, { status: 502 });
-}
+export { aiErrorResponse };

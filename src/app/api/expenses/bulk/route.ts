@@ -1,5 +1,6 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { createGroupExpensesBulk } from "@/lib/expenses/create";
+import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
 
 type BulkItem = { description: string; cost: string };
@@ -68,13 +69,11 @@ export async function POST(request: NextRequest) {
     );
 
     if ("error" in result && !("ok" in result)) {
-      const status = result.error === "batch_too_large" ? 400 : 400;
-      return NextResponse.json(result, { status });
+      return domainErrorResponse(result);
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "bulk_create_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse(err, "bulk_create_failed");
   }
 }

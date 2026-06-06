@@ -1,21 +1,14 @@
 import { isDatabaseConfigured } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { requireAccessToken } from "@/lib/auth";
-import {
-  assertSyncCanStart,
-  runSyncJob,
-  SyncAlreadyInProgressError,
-} from "@/lib/sync/run";
-import { SplitwiseApiError, SplitwiseAuthError } from "@/lib/splitwise/errors";
+import { jsonError, routeErrorResponse } from "@/lib/http-errors";
+import { assertSyncCanStart, runSyncJob } from "@/lib/sync/run";
 import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
-    return NextResponse.json(
-      { error: "database_not_configured" },
-      { status: 503 },
-    );
+    return jsonError("database_not_configured", { status: 503 });
   }
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -26,13 +19,7 @@ export async function POST(request: Request) {
   try {
     const owner = await getAuthenticatedAccountOwner();
     if (!owner) {
-      return NextResponse.json(
-        {
-          error: "account_not_found",
-          message: "Reconnect Splitwise in Settings",
-        },
-        { status: 400 },
-      );
+      return jsonError("account_not_found", { status: 400 });
     }
 
     const accessToken = await requireAccessToken();
@@ -49,22 +36,6 @@ export async function POST(request: Request) {
       { status: 202 },
     );
   } catch (err) {
-    if (err instanceof SyncAlreadyInProgressError) {
-      return NextResponse.json({ error: err.message }, { status: 409 });
-    }
-    if (err instanceof SplitwiseAuthError) {
-      return NextResponse.json(
-        { error: "splitwise_auth_required" },
-        { status: 401 },
-      );
-    }
-    if (err instanceof SplitwiseApiError) {
-      return NextResponse.json(
-        { error: err.message, code: err.code },
-        { status: 502 },
-      );
-    }
-    const message = err instanceof Error ? err.message : "sync_failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse(err, "sync_failed");
   }
 }

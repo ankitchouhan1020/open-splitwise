@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncStatusQuery } from "@/lib/query/hooks";
-import { fetchJson, FetchJsonError } from "@/lib/query/fetch-json";
+import { friendlyFetchError } from "@/lib/api-errors";
+import { fetchJson } from "@/lib/query/fetch-json";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { waitForSyncComplete } from "@/lib/query/wait-for-sync";
 import { useQueryClient } from "@tanstack/react-query";
@@ -95,13 +96,10 @@ export function SyncStatusProvider({
         return { ok: true, status: finalStatus };
       } catch (err) {
         await refetch();
-        const message =
-          err instanceof FetchJsonError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "Sync request failed";
-        return { ok: false, error: message };
+        return {
+          ok: false,
+          error: friendlyFetchError(err, "Sync failed. Try again in a moment."),
+        };
       } finally {
         setSyncing(false);
       }

@@ -105,6 +105,7 @@ async function completeJsonOpenAiChat<T extends z.ZodType>(
     throw new AiError(
       providerErrorMessage(body, res.status),
       "ai_provider_error",
+      res.status,
     );
   }
 
@@ -158,6 +159,7 @@ async function completeJsonClaude<T extends z.ZodType>(
     throw new AiError(
       providerErrorMessage(body, res.status),
       "ai_provider_error",
+      res.status,
     );
   }
 
@@ -206,6 +208,7 @@ async function completeJsonGemini<T extends z.ZodType>(
     throw new AiError(
       providerErrorMessage(body, res.status),
       "ai_provider_error",
+      res.status,
     );
   }
 
@@ -243,7 +246,7 @@ export async function completeJson<T extends z.ZodType>(
   } catch (err) {
     if (err instanceof AiError) throw err;
     if (err instanceof Error && err.name === "AbortError") {
-      throw new AiError("AI request timed out", "ai_provider_error");
+      throw new AiError("AI request timed out", "ai_provider_error", 408);
     }
     const message = err instanceof Error ? err.message : "AI request failed";
     throw new AiError(message, "ai_provider_error");

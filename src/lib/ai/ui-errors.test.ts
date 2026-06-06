@@ -8,8 +8,9 @@ describe("friendlyAiError", () => {
   });
 
   it("falls back for unknown codes", () => {
-    expect(friendlyAiError("unknown_code")).toBe(
+    expect(friendlyAiError("unknown_code", "filter")).toBe(
       "Couldn't apply that filter. Try rephrasing.",
     );
+    expect(friendlyAiError("unknown_code", "narrative")).toContain("summary");
   });
 });
