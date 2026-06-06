@@ -41,6 +41,7 @@ export const queryKeys = {
   ai: {
     status: () => [...queryKeys.all, "ai", "status"] as const,
     settings: () => [...queryKeys.all, "ai", "settings"] as const,
+    narrative: () => [...queryKeys.all, "ai", "narrative"] as const,
     models: (provider: string, keyScope: string) =>
       [...queryKeys.all, "ai", "models", provider, keyScope] as const,
   },

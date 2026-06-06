@@ -12,5 +12,6 @@ export async function invalidateExpenseCaches(qc: QueryClient) {
     qc.invalidateQueries({ queryKey: queryKeys.friends.balances() }),
     qc.invalidateQueries({ queryKey: queryKeys.groups.list() }),
     qc.invalidateQueries({ queryKey: queryKeys.sync.status() }),
+    qc.invalidateQueries({ queryKey: queryKeys.ai.narrative() }),
   ]);
 }

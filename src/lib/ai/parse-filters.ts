@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildCatalogHints } from "@/lib/ai/catalog-hints";
 import { completeJson } from "@/lib/ai/client";
 import { getAiClientConfig } from "@/lib/ai/availability";
 import { buildParseFiltersPrompt } from "@/lib/ai/prompts";
@@ -15,6 +16,8 @@ export type ParseFiltersResult = {
   warnings: string[];
 };
 
+const PARSE_FILTERS_MAX_TOKENS = 256;
+
 export async function parseNaturalLanguageFilters(
   accountUserId: number,
   query: string,
@@ -27,11 +30,12 @@ export async function parseNaturalLanguageFilters(
   const options = await getFilterOptions();
 
   const today = new Date().toISOString().slice(0, 10);
+  const hints = buildCatalogHints(query, options);
   const { system, user } = buildParseFiltersPrompt({
     query,
     today,
-    catalog: options,
     ownerName: options.ownerName,
+    hints,
   });
 
   const draft = await completeJson({
@@ -41,6 +45,7 @@ export async function parseNaturalLanguageFilters(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
+    maxTokens: PARSE_FILTERS_MAX_TOKENS,
   });
 
   return resolveParsedFilters(draft, options, {

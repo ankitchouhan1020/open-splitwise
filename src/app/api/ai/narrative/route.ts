@@ -1,33 +1,41 @@
 import { aiErrorResponse, requireAiAccount } from "@/lib/ai/guard";
-import { generateDashboardNarrative } from "@/lib/ai/narrative";
+import {
+  generateDashboardNarrative,
+  getCachedDashboardNarrative,
+} from "@/lib/ai/narrative";
 import { getDashboardSummary } from "@/lib/expenses/dashboard";
 import { NextRequest, NextResponse } from "next/server";
 
-async function handleNarrative(refresh: boolean) {
+async function loadSummary() {
   const auth = await requireAiAccount();
-  if ("error" in auth) return auth.error;
+  if ("error" in auth) return { error: auth.error };
 
   const summary = await getDashboardSummary();
   if (!summary) {
-    return NextResponse.json({ error: "not_connected" }, { status: 401 });
+    return {
+      error: NextResponse.json({ error: "not_connected" }, { status: 401 }),
+    };
   }
 
-  try {
-    const narrative = await generateDashboardNarrative(auth.owner.id, summary, {
-      refresh,
-    });
-    return NextResponse.json({ narrative });
-  } catch (err) {
-    return aiErrorResponse(err);
-  }
+  return { auth, summary };
 }
 
-export async function GET(request: NextRequest) {
-  const refresh = request.nextUrl.searchParams.get("refresh") === "1";
-  return handleNarrative(refresh);
+/** Returns a cached summary only — never calls the LLM. */
+export async function GET() {
+  const loaded = await loadSummary();
+  if ("error" in loaded) return loaded.error;
+
+  const narrative = await getCachedDashboardNarrative(
+    loaded.auth.owner.id,
+    loaded.summary,
+  );
+  return NextResponse.json({ narrative });
 }
 
 export async function POST(request: NextRequest) {
+  const loaded = await loadSummary();
+  if ("error" in loaded) return loaded.error;
+
   let refresh = false;
   try {
     const body = (await request.json()) as { refresh?: boolean };
@@ -35,5 +43,21 @@ export async function POST(request: NextRequest) {
   } catch {
     /* empty body is fine */
   }
-  return handleNarrative(refresh);
+
+  try {
+    const narrative = await generateDashboardNarrative(
+      loaded.auth.owner.id,
+      loaded.summary,
+      { refresh },
+    );
+    return NextResponse.json({ narrative });
+  } catch (err) {
+    if (err instanceof Error && err.message === "narrative_insufficient_data") {
+      return NextResponse.json(
+        { error: "narrative_insufficient_data" },
+        { status: 422 },
+      );
+    }
+    return aiErrorResponse(err);
+  }
 }

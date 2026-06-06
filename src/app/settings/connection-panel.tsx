@@ -10,7 +10,9 @@ import {
   StatusBadge,
 } from "@/app/settings/settings-ui";
 import { SetupGuide } from "@/app/settings/setup-guide";
+import { DemoModeNotice } from "@/components/demo-mode-notice";
 import { FakeDataToggle } from "@/components/fake-data-toggle";
+import { DEMO_USER } from "@/lib/demo/user";
 import type { SetupStatus } from "@/lib/setup/status";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -92,6 +94,15 @@ export function ConnectionPanel({
     fakeDataOn,
     oauthConfigured,
   );
+  const displayUser = fakeDataOn
+    ? {
+        first_name: DEMO_USER.first_name,
+        last_name: DEMO_USER.last_name,
+        email: DEMO_USER.email,
+        default_currency: DEMO_USER.default_currency,
+      }
+    : user;
+  const signOutDisabled = fakeDataOn && oauthConnected;
 
   async function logout() {
     const message = guestDemo
@@ -110,7 +121,7 @@ export function ConnectionPanel({
 
   const content = (
     <div className="space-y-4">
-      {justConnected && (
+      {justConnected && !fakeDataOn && (
         <SettingsAlert tone="success">
           You&apos;re connected to Splitwise.
           {showSyncTab ? (
@@ -138,25 +149,35 @@ export function ConnectionPanel({
         </SettingsAlert>
       )}
 
-      {oauthConfigured && connected && user ? (
+      {oauthConfigured && connected && displayUser ? (
         <>
+          {fakeDataOn && (
+            <SettingsAlert tone="info">
+              <DemoModeNotice feature="identity" />
+            </SettingsAlert>
+          )}
+
           <SettingsProfileStrip
-            initials={userInitials(user)}
-            name={`${user.first_name} ${user.last_name}`}
-            email={user.email}
+            initials={userInitials(displayUser)}
+            name={`${displayUser.first_name} ${displayUser.last_name}`}
+            email={displayUser.email}
             badge={<StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
           />
 
           <SettingsBlock
             title="Preferences"
-            description="Read-only details from your Splitwise profile."
+            description={
+              fakeDataOn
+                ? "Sample profile details shown while demo mode is on."
+                : "Read-only details from your Splitwise profile."
+            }
           >
             <SettingsRow
               label="Default currency"
               description="Shown on balances and summaries here."
             >
               <span className="text-foreground text-sm font-medium tabular-nums">
-                {user.default_currency}
+                {displayUser.default_currency}
               </span>
             </SettingsRow>
             {oauthConnected && (
@@ -173,25 +194,33 @@ export function ConnectionPanel({
             description={
               guestDemo
                 ? "Leave the guest demo and return to the public home page."
-                : "Sign out on this device. This does not delete expenses on Splitwise or on this server."
+                : signOutDisabled
+                  ? "Account actions are paused while sample data is on."
+                  : "Sign out on this device. This does not delete expenses on Splitwise or on this server."
             }
           >
-            <SettingsRow label={guestDemo ? "Exit demo" : "Sign out"}>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                disabled={loggingOut}
-                className="border-error-border text-error-text hover:bg-error-bg rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-              >
-                {loggingOut
-                  ? guestDemo
-                    ? "Leaving…"
-                    : "Signing out…"
-                  : guestDemo
-                    ? "Exit demo"
-                    : "Sign out"}
-              </button>
-            </SettingsRow>
+            {signOutDisabled ? (
+              <SettingsRow label="Sign out">
+                <DemoModeNotice feature="signOut" />
+              </SettingsRow>
+            ) : (
+              <SettingsRow label={guestDemo ? "Exit demo" : "Sign out"}>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  disabled={loggingOut}
+                  className="border-error-border text-error-text hover:bg-error-bg rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                >
+                  {loggingOut
+                    ? guestDemo
+                      ? "Leaving…"
+                      : "Signing out…"
+                    : guestDemo
+                      ? "Exit demo"
+                      : "Sign out"}
+                </button>
+              </SettingsRow>
+            )}
           </SettingsDangerZone>
         </>
       ) : oauthConfigured ? (

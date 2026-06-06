@@ -1,5 +1,9 @@
 import { validateAiEnablement } from "@/lib/ai/availability";
-import { DEFAULT_AI_PROVIDER } from "@/lib/ai/providers";
+import { isFakeDataRequest } from "@/lib/demo/session";
+import {
+  DEFAULT_AI_PROVIDER,
+  defaultModelForProvider,
+} from "@/lib/ai/providers";
 import {
   getAiSettingsForAccount,
   getAiSettingsRecord,
@@ -11,6 +15,17 @@ import { getAuthenticatedAccountOwner } from "@/lib/db/account";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
+  if (await isFakeDataRequest()) {
+    return NextResponse.json({
+      enabled: false,
+      provider: DEFAULT_AI_PROVIDER,
+      model: defaultModelForProvider(DEFAULT_AI_PROVIDER),
+      baseUrl: null,
+      hasKey: false,
+      keyPreview: null,
+    });
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "database_not_configured" },

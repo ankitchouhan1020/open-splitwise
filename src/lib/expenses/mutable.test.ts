@@ -7,6 +7,7 @@ function expense(overrides: Partial<ExpenseDetail> = {}): ExpenseDetail {
     id: 1,
     splitwiseId: 100,
     date: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
     description: "Test",
     details: null,
     groupName: "Trip",

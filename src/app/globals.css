@@ -186,6 +186,18 @@ body {
     background-color: var(--card);
     color: var(--foreground);
   }
+  input[type="date"] {
+    font-family: inherit;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.55;
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
+  }
 }
 
 h1,

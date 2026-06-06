@@ -5,15 +5,18 @@ import {
   SettingsRow,
   SettingsSection,
 } from "@/app/settings/settings-ui";
+import { DemoModeNotice } from "@/components/demo-mode-notice";
 import Link from "next/link";
 
 type Props = {
   canDeleteSyncedData?: boolean;
+  demoMode?: boolean;
   bare?: boolean;
 };
 
 export function PrivacySection({
   canDeleteSyncedData = false,
+  demoMode = false,
   bare = false,
 }: Props) {
   const content = (
@@ -39,12 +42,18 @@ export function PrivacySection({
 
       {canDeleteSyncedData && (
         <SettingsDangerZone description="Permanently removes your synced copy from this server. You can sync again afterward.">
-          <SettingsRow
-            label="Delete all synced data"
-            description="Removes expenses, groups, friends, and categories stored for your account on this server."
-          >
-            <DeleteSyncedDataButton />
-          </SettingsRow>
+          {demoMode ? (
+            <SettingsRow label="Delete all synced data">
+              <DemoModeNotice feature="deleteData" />
+            </SettingsRow>
+          ) : (
+            <SettingsRow
+              label="Delete all synced data"
+              description="Removes expenses, groups, friends, and categories stored for your account on this server."
+            >
+              <DeleteSyncedDataButton />
+            </SettingsRow>
+          )}
         </SettingsDangerZone>
       )}
     </div>

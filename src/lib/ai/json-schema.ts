@@ -2,11 +2,6 @@
 
 type JsonSchemaObject = Record<string, unknown>;
 
-function nullable(type: string | string[]): JsonSchemaObject {
-  const types = Array.isArray(type) ? type : [type];
-  return { type: [...types, "null"] };
-}
-
 /** Object schema with all keys required; unused fields should be returned as null. */
 export function strictObjectSchema(
   properties: Record<string, JsonSchemaObject>,
@@ -20,52 +15,38 @@ export function strictObjectSchema(
   };
 }
 
-export const parseFiltersResponseJsonSchema = strictObjectSchema(
-  {
-    q: nullable("string"),
-    dateFrom: nullable("string"),
-    dateTo: nullable("string"),
-    groupName: nullable("string"),
-    friendName: nullable("string"),
-    paidByName: nullable("string"),
-    paidToName: nullable("string"),
-    categoryName: nullable("string"),
-    currency: nullable("string"),
-    payment: nullable("boolean"),
-    costMin: nullable("number"),
-    costMax: nullable("number"),
-    shareMin: nullable("number"),
-    shareMax: nullable("number"),
-    sort: {
-      type: ["string", "null"],
-      enum: ["date", "cost", "description", null],
-    },
-    order: {
-      type: ["string", "null"],
-      enum: ["asc", "desc", null],
-    },
-    explanation: { type: "string" },
+/** Parser output — omit fields that do not apply. */
+export function optionalObjectSchema(
+  properties: Record<string, JsonSchemaObject>,
+): JsonSchemaObject {
+  return {
+    type: "object",
+    properties,
+    additionalProperties: false,
+  };
+}
+
+export const parseFiltersResponseJsonSchema = optionalObjectSchema({
+  q: { type: "string" },
+  dateFrom: { type: "string" },
+  dateTo: { type: "string" },
+  groupName: { type: "string" },
+  friendName: { type: "string" },
+  paidByName: { type: "string" },
+  paidToName: { type: "string" },
+  categoryName: { type: "string" },
+  currency: { type: "string" },
+  payment: { type: "boolean" },
+  costMin: { type: "number" },
+  costMax: { type: "number" },
+  shareMin: { type: "number" },
+  shareMax: { type: "number" },
+  sort: {
+    type: "string",
+    enum: ["date", "expenseDate", "cost", "description"],
   },
-  [
-    "q",
-    "dateFrom",
-    "dateTo",
-    "groupName",
-    "friendName",
-    "paidByName",
-    "paidToName",
-    "categoryName",
-    "currency",
-    "payment",
-    "costMin",
-    "costMax",
-    "shareMin",
-    "shareMax",
-    "sort",
-    "order",
-    "explanation",
-  ],
-);
+  order: { type: "string", enum: ["asc", "desc"] },
+});
 
 export const narrativeResponseJsonSchema = strictObjectSchema(
   {

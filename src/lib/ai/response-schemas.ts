@@ -20,15 +20,14 @@ export const parsedFilterDraftSchema = z.object({
   costMax: z.number().optional(),
   shareMin: z.number().optional(),
   shareMax: z.number().optional(),
-  sort: z.enum(["date", "cost", "description"]).optional(),
+  sort: z.enum(["date", "expenseDate", "cost", "description"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
-  explanation: z.string().min(1),
 });
 
 export type ParsedFilterDraft = z.infer<typeof parsedFilterDraftSchema>;
 
 export const narrativeResponseSchema = z.object({
-  narrative: z.string().min(1).max(2000),
+  narrative: z.string().min(1).max(800),
 });
 
 export type NarrativeResponse = z.infer<typeof narrativeResponseSchema>;
@@ -38,12 +37,15 @@ export type AiResponseSchema<T extends z.ZodType = z.ZodType> = {
   name: string;
   zod: T;
   jsonSchema: Record<string, unknown>;
+  /** OpenAI strict mode; false for sparse parser output. */
+  strict?: boolean;
 };
 
 export const parseFiltersResponseSchema = {
   name: "parse_filters_response",
   zod: parsedFilterDraftSchema,
   jsonSchema: parseFiltersResponseJsonSchema,
+  strict: false,
 } satisfies AiResponseSchema<typeof parsedFilterDraftSchema>;
 
 export const narrativeAiResponseSchema = {

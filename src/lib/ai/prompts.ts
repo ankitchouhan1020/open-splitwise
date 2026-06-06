@@ -1,4 +1,5 @@
 import type { ParsedFilterDraft } from "@/lib/ai/schema";
+import type { CatalogHints } from "@/lib/ai/catalog-hints";
 
 export type FilterCatalog = {
   groups: Array<{ id: number; name: string }>;
@@ -10,48 +11,27 @@ export type FilterCatalog = {
 export function buildParseFiltersPrompt(input: {
   query: string;
   today: string;
-  catalog: FilterCatalog;
   ownerName?: string;
+  hints?: CatalogHints | null;
 }): { system: string; user: string } {
-  const catalogJson = JSON.stringify(
-    {
-      ownerName: input.ownerName,
-      groups: input.catalog.groups,
-      friends: input.catalog.friends,
-      categories: input.catalog.categories,
-      currencies: input.catalog.currencies,
-    },
-    null,
-    2,
-  );
+  const owner = input.ownerName?.trim() || "the account owner";
 
-  const system = `You translate natural-language expense search requests into structured filters for a Splitwise expense explorer.
+  const system = `Parse expense search queries into structured filter JSON. Today is ${input.today} (ISO).
 
-Today's date is ${input.today} (ISO). Use it to resolve relative dates like "last month", "this quarter", "last 30 days".
+Grammar (omit unused fields):
+- q: free-text search
+- dateFrom/dateTo: inclusive YYYY-MM-DD; resolve relative dates from today
+- groupName, friendName, categoryName: strings as written in the query
+- paidByName/paidToName: payer → payee ("Alex paid me" → paidBy Alex, paidTo me). Use "me"/"I" for ${owner}
+- friendName: person involved in any role — not for "X paid Y"
+- payment: true = settlements only; false = non-settlements; omit for regular "who paid" on expenses
+- costMin/costMax: total amount; shareMin/shareMax: user's share
+- sort: date|expenseDate|cost|description; order: asc|desc ("biggest first" → cost desc; "recent" → date desc)
+- "last year": rolling 365 days unless clearly the previous calendar year`;
 
-Return JSON matching the provided response schema. Rules:
-- Prefer exact catalog names for group/friend/category; do not invent IDs.
-- dateFrom/dateTo are inclusive calendar dates (YYYY-MM-DD).
-- Use null for filter fields that do not apply.
-- costMin/costMax filter total expense amount; shareMin/shareMax filter the user's share.
-- sort: "date" | "cost" | "description"; order: "asc" | "desc".
-  Examples: "biggest first" → sort cost, order desc; "oldest first" → sort date, order asc.
-- explanation: short, user-facing phrase for what they'll see (e.g. "Paid to Alex · last year").
-  Never say "filters", "filtering", or describe system mechanics.
-- friendName: expenses involving that person in any role. Do NOT use for "X paid Y".
-- paidByName / paidToName: who paid whom on an expense (primary payer → primary payee). Use "me" or ownerName for the account owner; first names can match full names in the catalog.
-- paidByName alone ("paid by Alex") → only paidByName; omit paidToName unless the user names a payee.
-- "I paid Alex", "Alex paid me", "Alex paid Jordan" → set paidByName/paidToName; do NOT set payment unless the user asks for settlements.
-- payment: true ONLY for settlement/payment records ("settlements", "paid back", "settled up"). payment: false for regular expenses only.
-- payment is separate from paidByName/paidToName — who paid a dinner bill is NOT a settlement.
-- Do not set friendName when paidByName/paidToName capture the relationship.
-- "how much", "total", "sum": pick the best filters; totals appear above the expense list.
-- "last year": rolling 365 days ending today unless the user clearly means the previous calendar year.`;
-
-  const user = `Catalog (groups, friends, categories, currencies):
-${catalogJson}
-
-User query: ${JSON.stringify(input.query)}`;
+  const hintLine =
+    input.hints != null ? `\nHints: ${JSON.stringify(input.hints)}` : "";
+  const user = `${JSON.stringify(input.query)}${hintLine}`;
 
   return { system, user };
 }
@@ -59,59 +39,32 @@ User query: ${JSON.stringify(input.query)}`;
 export type NarrativePromptData = {
   today: string;
   currency: string;
-  thisMonth: {
-    total: string;
-    count: number;
-    daysElapsed: number;
-    daysInMonth: number;
-  };
-  lastMonth: { total: string; count: number };
-  change: { amount: number; percent: number | null };
-  projectedMonthTotal: number | null;
-  topCategories: Array<{ name: string; total: string; count: number }>;
-  topGroups: Array<{
-    name: string;
-    count: number;
-    share: string;
-    percentOfTotal: number;
-  }>;
-  monthlyTrend: Array<{ month: string; total: string; count: number }>;
-  balances: {
-    youAreOwed: number;
-    youOwe: number;
-    net: number;
-    topOwedToYou: Array<{ name: string; amount: number }>;
-    topYouOwe: Array<{ name: string; amount: number }>;
-  } | null;
-  recentHighlights: Array<{
-    description: string;
-    amount: string;
-    date: string;
-    group: string;
-    category: string | null;
-  }>;
-  signals: Array<{ headline: string; detail: string }>;
+  /** Analytical facts not shown on insight cards — synthesize these, don't restate card copy. */
+  facts: string[];
+  refresh?: boolean;
 };
 
 export function buildNarrativePrompt(summary: NarrativePromptData): {
   system: string;
   user: string;
 } {
-  const system = `You write brief personal finance observations (2-3 sentences) for a Splitwise user's home dashboard.
+  const regenerateRule = summary.refresh
+    ? "\n- This is a regenerate request: lead with a different angle than spending % or top category. Connect or contrast two facts if you can."
+    : "";
 
-Today's date is ${summary.today}. All amounts use currency ${summary.currency}.
+  const system = `Write 2-3 sentences synthesizing this month's spending for a Splitwise home dashboard. Today is ${summary.today}; currency ${summary.currency}.
 
-Rules:
-- Use ONLY numbers and names from the JSON data. Never invent figures.
-- Do NOT lead with the month total — the user already sees it on screen.
-- Pick 1-2 specific, interesting signals: month-over-month change, category or group concentration, spending pace vs projection, balance with named friends, or a notable recent expense.
-- Prefer concrete comparisons ("up 18% vs last month", "Groceries is 40% of spend") over vague statements.
-- Avoid generic advice ("keep tracking", "review your budget", "stay mindful") and empty platitudes.
-- Plain prose only — no bullet lists.
+The user already sees insight cards (spend trend, top category, largest expense). Your job is NOT to paraphrase those cards.
+Use the provided facts — analytical observations they have NOT seen. Connect or contrast two facts when possible (pace vs last month, category shift, recent acceleration, balances).
+Use ONLY numbers and names from the facts. Do not lead with the month total. No bullet lists, advice, or platitudes.${regenerateRule}
 
-Return JSON matching the provided response schema with a single "narrative" field.`;
+Return JSON with a single "narrative" field.`;
 
-  const user = JSON.stringify(summary, null, 2);
+  const user = JSON.stringify({
+    today: summary.today,
+    currency: summary.currency,
+    facts: summary.facts,
+  });
   return { system, user };
 }
 

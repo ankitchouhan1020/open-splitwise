@@ -4,6 +4,7 @@ import { filtersToSearchParams } from "@/lib/expenses/filters";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import { HomeInsightsSection } from "@/components/home-insights-section";
 import { AddExpenseButton } from "@/components/add-expense-drawer";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
 import { ExpenseListItemRow } from "@/components/expense-list-item";
 import { HomePeopleFeed } from "@/components/home-people-feed";
@@ -16,9 +17,11 @@ import {
   useDashboard,
   useExpenseDetail,
   useAiStatus,
+  useAiNarrative,
   useGenerateAiNarrative,
 } from "@/lib/query/hooks";
-import { friendlyAiError, friendlyApiError } from "@/lib/api-errors";
+import { DEMO_MODE_COPY } from "@/lib/demo/copy";
+import { friendlyApiError, friendlyFetchError } from "@/lib/api-errors";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { balanceClasses, balanceNetLabel } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
@@ -94,6 +97,7 @@ function HomeHero({
 }
 
 export function HomeDashboard({ userName }: { userName: string }) {
+  const demoMode = useDemoMode();
   const searchParams = useSearchParams();
   const {
     data,
@@ -101,7 +105,15 @@ export function HomeDashboard({ userName }: { userName: string }) {
     isError,
     error: queryError,
   } = useDashboard();
-  const { data: aiAvailable = false } = useAiStatus();
+  const { data: aiAvailable = false, isPending: aiStatusPending } =
+    useAiStatus();
+  const narrativeQueryEnabled = aiAvailable && !loading && Boolean(data);
+  const {
+    data: cachedNarrative,
+    isError: cachedNarrativeError,
+    error: cachedNarrativeQueryError,
+    isLoading: cachedNarrativeLoading,
+  } = useAiNarrative(narrativeQueryEnabled);
   const generateNarrative = useGenerateAiNarrative();
   const [feedTab, setFeedTab] = useState<FeedTab>("activity");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -126,8 +138,6 @@ export function HomeDashboard({ userName }: { userName: string }) {
   const exploreHref = useMemo(() => {
     if (!data) return "/explore";
     const params = filtersToSearchParams({
-      dateFrom: data.thisMonth.dateFrom,
-      dateTo: data.thisMonth.dateTo,
       payment: false,
       currency: data.currency,
     });
@@ -135,6 +145,22 @@ export function HomeDashboard({ userName }: { userName: string }) {
   }, [data]);
 
   const currency = data?.currency ?? "USD";
+  const narrative =
+    generateNarrative.data?.narrative ?? cachedNarrative?.narrative ?? null;
+  const narrativeCacheLoading =
+    narrativeQueryEnabled && cachedNarrativeLoading && narrative == null;
+  const narrativeGenerating = generateNarrative.isPending;
+  const narrativeError = generateNarrative.isError
+    ? friendlyFetchError(
+        generateNarrative.error,
+        "Couldn't generate a summary. Try again.",
+      )
+    : cachedNarrativeError
+      ? friendlyFetchError(
+          cachedNarrativeQueryError,
+          "Couldn't generate a summary. Try again.",
+        )
+      : null;
 
   const seeAllHref = feedTab === "activity" ? exploreHref : undefined;
 
@@ -156,29 +182,21 @@ export function HomeDashboard({ userName }: { userName: string }) {
         <div className="space-y-6">
           <HomeHero userName={userName} data={data} currency={currency} />
 
-          {(data.insights.length > 0 || aiAvailable) && (
-            <HomeInsightsSection
-              insights={data.insights}
-              aiAvailable={aiAvailable}
-              narrative={generateNarrative.data?.narrative ?? null}
-              narrativeLoading={generateNarrative.isPending}
-              narrativeError={
-                generateNarrative.isError
-                  ? generateNarrative.error instanceof FetchJsonError
-                    ? friendlyAiError(
-                        generateNarrative.error.message,
-                        "narrative",
-                      )
-                    : friendlyAiError(undefined, "narrative")
-                  : null
-              }
-              onGenerateNarrative={() =>
-                void generateNarrative.mutate({
-                  refresh: Boolean(generateNarrative.data?.narrative),
-                })
-              }
-            />
-          )}
+          <HomeInsightsSection
+            insights={data.insights}
+            aiAvailable={aiAvailable}
+            aiStatusPending={aiStatusPending}
+            demoMode={demoMode}
+            narrative={narrative}
+            narrativeCacheLoading={narrativeCacheLoading}
+            narrativeGenerating={narrativeGenerating}
+            narrativeError={narrativeError}
+            onGenerateNarrative={() =>
+              void generateNarrative.mutate({
+                refresh: Boolean(narrative),
+              })
+            }
+          />
 
           <section>
             <SegmentTabs
@@ -216,12 +234,16 @@ export function HomeDashboard({ userName }: { userName: string }) {
               ) : (
                 <EmptyState
                   action={
-                    <AddExpenseButton className="text-accent text-sm font-medium hover:underline">
+                    <AddExpenseButton
+                      disabled={demoMode}
+                      title={demoMode ? DEMO_MODE_COPY.addExpense : undefined}
+                      className="text-accent text-sm font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    >
                       Add expense
                     </AddExpenseButton>
                   }
                 >
-                  No expenses this month.
+                  No recent activity.
                 </EmptyState>
               )}
             </div>

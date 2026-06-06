@@ -10,23 +10,24 @@ import {
 } from "@/lib/ai/response-schemas";
 
 describe("json-schema", () => {
-  it("builds strict parse-filters schema with nullable optional fields", () => {
+  it("builds optional parse-filters schema without required fields", () => {
     expect(parseFiltersResponseJsonSchema.additionalProperties).toBe(false);
-    expect(parseFiltersResponseJsonSchema.required).toContain("explanation");
+    expect(parseFiltersResponseJsonSchema.required).toBeUndefined();
     expect(parseFiltersResponseJsonSchema.properties).toHaveProperty("q");
+    expect(parseFiltersResponseSchema.strict).toBe(false);
   });
 
   it("strips null fields before Zod validation", () => {
     const normalized = normalizeStructuredJson({
       q: null,
-      explanation: "Food last month",
+      dateFrom: "2025-02-01",
       costMin: null,
     });
 
     const result = parseFiltersResponseSchema.zod.safeParse(normalized);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toEqual({ explanation: "Food last month" });
+      expect(result.data).toEqual({ dateFrom: "2025-02-01" });
     }
   });
 

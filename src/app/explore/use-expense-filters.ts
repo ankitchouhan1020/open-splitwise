@@ -85,7 +85,7 @@ export function useExpenseFilters() {
     startTransition(() => router.push(pathname));
   }, [pathname, router]);
 
-  const applySavedView = useCallback(
+  const applyFilters = useCallback(
     (viewFilters: ExpenseFilters) => {
       const params = filtersToSearchParams(viewFilters);
       const qs = params.toString();
@@ -101,7 +101,7 @@ export function useExpenseFilters() {
     setFilters,
     clearFilter,
     clearAll,
-    applySavedView,
+    applyFilters,
     activeFilterChips,
   };
 }

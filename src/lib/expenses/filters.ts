@@ -1,4 +1,10 @@
-export type ExpenseListSort = "date" | "cost" | "description";
+import {
+  expenseDateFromIso,
+  expenseDateToIso,
+  formatExpenseDateRangeLabel,
+} from "@/lib/expenses/date-filters";
+
+export type ExpenseListSort = "date" | "expenseDate" | "cost" | "description";
 export type ExpenseListOrder = "asc" | "desc";
 
 export type ExpenseFilters = {
@@ -27,7 +33,12 @@ export type ExpenseFilters = {
 
 export type SerializedExpenseFilters = Record<string, string>;
 
-const SORT_KEYS: ExpenseListSort[] = ["date", "cost", "description"];
+const SORT_KEYS: ExpenseListSort[] = [
+  "date",
+  "expenseDate",
+  "cost",
+  "description",
+];
 
 function parseNumber(value: string | null): number | undefined {
   if (value == null || value === "") return undefined;
@@ -35,10 +46,19 @@ function parseNumber(value: string | null): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function parseDateParam(value: string | null): string | undefined {
+function parseDateParam(
+  value: string | null,
+  bound: "from" | "to",
+): string | undefined {
   if (!value) return undefined;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? undefined : value;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return bound === "from"
+      ? expenseDateFromIso(trimmed)
+      : expenseDateToIso(trimmed);
+  }
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? undefined : trimmed;
 }
 
 export function parseExpenseFilters(params: URLSearchParams): ExpenseFilters {
@@ -52,8 +72,8 @@ export function parseExpenseFilters(params: URLSearchParams): ExpenseFilters {
 
   return {
     q: params.get("q")?.trim() || undefined,
-    dateFrom: parseDateParam(params.get("from")),
-    dateTo: parseDateParam(params.get("to")),
+    dateFrom: parseDateParam(params.get("from"), "from"),
+    dateTo: parseDateParam(params.get("to"), "to"),
     groupId: parseNumber(params.get("group")),
     friendId: parseNumber(params.get("friend")),
     paidByUserId: parseNumber(params.get("paidBy")),
@@ -193,7 +213,7 @@ export function activeFilterChips(
   if (filters.dateFrom || filters.dateTo) {
     chips.push({
       key: "date",
-      label: `Date: ${filters.dateFrom ?? "…"} – ${filters.dateTo ?? "…"}`,
+      label: `Date: ${formatExpenseDateRangeLabel(filters.dateFrom, filters.dateTo)}`,
     });
   }
   if (filters.groupId !== undefined) {

@@ -37,8 +37,8 @@ export function ExploreSummaryBar({
 
   return (
     <div className="border-border bg-card overflow-hidden rounded-lg border px-3 py-2.5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span className="text-foreground font-medium tabular-nums">
             {count.toLocaleString()} expenses
           </span>
@@ -47,6 +47,9 @@ export function ExploreSummaryBar({
           </span>
           {pending ? (
             <span className="text-muted font-normal">· updating…</span>
+          ) : null}
+          {loadingMore ? (
+            <span className="text-muted font-normal">· loading more…</span>
           ) : null}
         </div>
 
@@ -60,8 +63,10 @@ export function ExploreSummaryBar({
             }}
             className={ui.select}
           >
-            <option value="date:desc">Newest</option>
-            <option value="date:asc">Oldest</option>
+            <option value="date:desc">Recent</option>
+            <option value="date:asc">Recent (oldest)</option>
+            <option value="expenseDate:desc">Expense date (newest)</option>
+            <option value="expenseDate:asc">Expense date (oldest)</option>
             <option value="cost:desc">Highest share</option>
             <option value="cost:asc">Lowest share</option>
             <option value="description:asc">A → Z</option>
@@ -70,7 +75,7 @@ export function ExploreSummaryBar({
         </label>
       </div>
 
-      {(chips.length > 0 || loadingMore) && (
+      {chips.length > 0 ? (
         <div className="border-border mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2">
           {chips.map((chip) => (
             <button
@@ -82,20 +87,15 @@ export function ExploreSummaryBar({
               {chip.label} ×
             </button>
           ))}
-          {chips.length > 0 ? (
-            <button
-              type="button"
-              onClick={onClearAll}
-              className="text-accent text-xs font-medium hover:underline"
-            >
-              Clear all
-            </button>
-          ) : null}
-          {loadingMore ? (
-            <span className="text-muted text-xs">Loading more…</span>
-          ) : null}
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="text-accent text-xs font-medium hover:underline"
+          >
+            Clear all
+          </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

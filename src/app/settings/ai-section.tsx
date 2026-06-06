@@ -11,6 +11,7 @@ import {
   settingsControlClass,
   settingsFieldClass,
 } from "@/app/settings/settings-ui";
+import { DemoModeNotice } from "@/components/demo-mode-notice";
 import { AI_PROVIDERS, defaultModelForProvider } from "@/lib/ai/providers";
 import type { AiProvider, AiSettingsPublic } from "@/lib/ai/types";
 import { friendlyFetchError } from "@/lib/api-errors";
@@ -24,6 +25,7 @@ type Props = {
   bare?: boolean;
   dbConfigured: boolean;
   connected: boolean;
+  demoMode?: boolean;
 };
 
 const PROVIDER_OPTIONS = (
@@ -32,7 +34,12 @@ const PROVIDER_OPTIONS = (
   >
 ).map(([id, def]) => ({ id, label: def.label }));
 
-export function AiSection({ bare = false, dbConfigured, connected }: Props) {
+export function AiSection({
+  bare = false,
+  dbConfigured,
+  connected,
+  demoMode = false,
+}: Props) {
   const qc = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,7 +65,7 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
   }, []);
 
   const loadSettings = useCallback(async () => {
-    if (!dbConfigured || !connected) {
+    if (!dbConfigured || !connected || demoMode) {
       setLoading(false);
       return;
     }
@@ -74,7 +81,7 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [applySettings, connected, dbConfigured]);
+  }, [applySettings, connected, dbConfigured, demoMode]);
 
   useEffect(() => {
     void loadSettings();
@@ -167,7 +174,7 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
     }
   }
 
-  const disabled = !dbConfigured || !connected;
+  const disabled = !dbConfigured || !connected || demoMode;
   const providerDef = AI_PROVIDERS[provider];
   const savedProvider = savedSnapshot?.provider;
   const savedProviderDef = savedProvider
@@ -244,7 +251,12 @@ export function AiSection({ bare = false, dbConfigured, connected }: Props) {
 
   const content = (
     <div className="space-y-4">
-      {disabled && (
+      {demoMode && (
+        <SettingsAlert tone="info">
+          <DemoModeNotice feature="ai" />
+        </SettingsAlert>
+      )}
+      {!demoMode && disabled && (
         <SettingsAlert tone="info">
           Connect Splitwise and configure a database to use AI features.
         </SettingsAlert>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ExploreFilterRow } from "@/app/explore/explore-filter-row";
 import type { ReactNode } from "react";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
 import { ui } from "@/lib/ui-classes";
@@ -17,74 +18,93 @@ type Props = {
   filters: ExpenseFilters;
   options: FilterOptions;
   onChange: (patch: ExpenseFilters) => void;
-  /** Show custom date inputs when no When preset is active. */
-  showCustomDates?: boolean;
 };
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function InlineSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="text-muted font-medium">{label}</span>
-      {children}
+    <label className="flex items-center gap-1.5 text-xs">
+      <span className="text-muted shrink-0 font-medium">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={ui.filterSelect}
+      >
+        {children}
+      </select>
     </label>
   );
 }
 
-const fieldClass = `${ui.select} py-1.5 text-sm`;
-
-export function ExpenseFiltersPanel({
-  filters,
-  options,
-  onChange,
-  showCustomDates = true,
-}: Props) {
+function AmountRange({
+  label,
+  minValue,
+  maxValue,
+  onMinChange,
+  onMaxChange,
+}: {
+  label: string;
+  minValue?: number;
+  maxValue?: number;
+  onMinChange: (value: number | undefined) => void;
+  onMaxChange: (value: number | undefined) => void;
+}) {
   return (
-    <div className="space-y-3">
-      {showCustomDates ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <input
-            type="date"
-            value={filters.dateFrom?.slice(0, 10) ?? ""}
-            onChange={(e) =>
-              onChange({
-                dateFrom: e.target.value
-                  ? new Date(e.target.value).toISOString()
-                  : undefined,
-              })
-            }
-            className={`${ui.input} max-w-[9.5rem] py-1.5 text-sm`}
-            aria-label="From date"
-          />
-          <span className="text-muted text-xs">–</span>
-          <input
-            type="date"
-            value={filters.dateTo?.slice(0, 10) ?? ""}
-            onChange={(e) =>
-              onChange({
-                dateTo: e.target.value
-                  ? new Date(e.target.value).toISOString()
-                  : undefined,
-              })
-            }
-            className={`${ui.input} max-w-[9.5rem] py-1.5 text-sm`}
-            aria-label="To date"
-          />
-        </div>
-      ) : null}
+    <div className="flex items-center gap-1.5 text-xs">
+      <span className="text-muted shrink-0 font-medium">{label}</span>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        placeholder="Min"
+        value={minValue ?? ""}
+        onChange={(e) =>
+          onMinChange(e.target.value ? Number(e.target.value) : undefined)
+        }
+        className={ui.filterNumber}
+        aria-label={`${label} minimum`}
+      />
+      <span className="text-muted shrink-0">–</span>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        placeholder="Max"
+        value={maxValue ?? ""}
+        onChange={(e) =>
+          onMaxChange(e.target.value ? Number(e.target.value) : undefined)
+        }
+        className={ui.filterNumber}
+        aria-label={`${label} maximum`}
+      />
+    </div>
+  );
+}
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Paid by">
-          <select
+export function ExpenseFiltersPanel({ filters, options, onChange }: Props) {
+  const patch = (next: ExpenseFilters) => onChange({ ...next, page: 1 });
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <ExploreFilterRow label="People">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <InlineSelect
+            label="Paid by"
             value={filters.paidByUserId ?? ""}
-            onChange={(e) =>
-              onChange({
-                paidByUserId: e.target.value
-                  ? Number(e.target.value)
-                  : undefined,
-                page: 1,
+            onChange={(value) =>
+              patch({
+                paidByUserId: value ? Number(value) : undefined,
               })
             }
-            className={fieldClass}
           >
             <option value="">Any</option>
             <option value={options.ownerUserId}>
@@ -95,20 +115,15 @@ export function ExpenseFiltersPanel({
                 {f.name}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Paid to">
-          <select
+          </InlineSelect>
+          <InlineSelect
+            label="Paid to"
             value={filters.paidToUserId ?? ""}
-            onChange={(e) =>
-              onChange({
-                paidToUserId: e.target.value
-                  ? Number(e.target.value)
-                  : undefined,
-                page: 1,
+            onChange={(value) =>
+              patch({
+                paidToUserId: value ? Number(value) : undefined,
               })
             }
-            className={fieldClass}
           >
             <option value="">Any</option>
             <option value={options.ownerUserId}>
@@ -119,17 +134,15 @@ export function ExpenseFiltersPanel({
                 {f.name}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Friend">
-          <select
+          </InlineSelect>
+          <InlineSelect
+            label="Friend"
             value={filters.friendId ?? ""}
-            onChange={(e) =>
-              onChange({
-                friendId: e.target.value ? Number(e.target.value) : undefined,
+            onChange={(value) =>
+              patch({
+                friendId: value ? Number(value) : undefined,
               })
             }
-            className={fieldClass}
           >
             <option value="">Any</option>
             {options.friends.map((f) => (
@@ -137,18 +150,20 @@ export function ExpenseFiltersPanel({
                 {f.name}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Group">
-          <select
+          </InlineSelect>
+        </div>
+      </ExploreFilterRow>
+
+      <ExploreFilterRow label="Details">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <InlineSelect
+            label="Group"
             value={filters.groupId ?? ""}
-            onChange={(e) =>
-              onChange({
-                groupId: e.target.value ? Number(e.target.value) : undefined,
-                page: 1,
+            onChange={(value) =>
+              patch({
+                groupId: value ? Number(value) : undefined,
               })
             }
-            className={fieldClass}
           >
             <option value="">All</option>
             {options.groups.map((g) => (
@@ -156,17 +171,15 @@ export function ExpenseFiltersPanel({
                 {g.name}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Category">
-          <select
+          </InlineSelect>
+          <InlineSelect
+            label="Category"
             value={filters.categoryId ?? ""}
-            onChange={(e) =>
-              onChange({
-                categoryId: e.target.value ? Number(e.target.value) : undefined,
+            onChange={(value) =>
+              patch({
+                categoryId: value ? Number(value) : undefined,
               })
             }
-            className={fieldClass}
           >
             <option value="">All</option>
             {options.categories.map((c) => (
@@ -174,15 +187,11 @@ export function ExpenseFiltersPanel({
                 {c.name}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Currency">
-          <select
+          </InlineSelect>
+          <InlineSelect
+            label="Currency"
             value={filters.currency ?? ""}
-            onChange={(e) =>
-              onChange({ currency: e.target.value || undefined })
-            }
-            className={fieldClass}
+            onChange={(value) => patch({ currency: value || undefined })}
           >
             <option value="">All</option>
             {options.currencies.map((c) => (
@@ -190,61 +199,28 @@ export function ExpenseFiltersPanel({
                 {c}
               </option>
             ))}
-          </select>
-        </Field>
-        <Field label="Share min">
-          <input
-            type="number"
-            step="0.01"
-            value={filters.shareMin ?? ""}
-            onChange={(e) =>
-              onChange({
-                shareMin: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-            className={`${ui.input} py-1.5 text-sm`}
+          </InlineSelect>
+        </div>
+      </ExploreFilterRow>
+
+      <ExploreFilterRow label="Amount">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <AmountRange
+            label="Share"
+            minValue={filters.shareMin}
+            maxValue={filters.shareMax}
+            onMinChange={(shareMin) => patch({ shareMin })}
+            onMaxChange={(shareMax) => patch({ shareMax })}
           />
-        </Field>
-        <Field label="Share max">
-          <input
-            type="number"
-            step="0.01"
-            value={filters.shareMax ?? ""}
-            onChange={(e) =>
-              onChange({
-                shareMax: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-            className={`${ui.input} py-1.5 text-sm`}
+          <AmountRange
+            label="Total"
+            minValue={filters.costMin}
+            maxValue={filters.costMax}
+            onMinChange={(costMin) => patch({ costMin })}
+            onMaxChange={(costMax) => patch({ costMax })}
           />
-        </Field>
-        <Field label="Total min">
-          <input
-            type="number"
-            step="0.01"
-            value={filters.costMin ?? ""}
-            onChange={(e) =>
-              onChange({
-                costMin: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-            className={`${ui.input} py-1.5 text-sm`}
-          />
-        </Field>
-        <Field label="Total max">
-          <input
-            type="number"
-            step="0.01"
-            value={filters.costMax ?? ""}
-            onChange={(e) =>
-              onChange({
-                costMax: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-            className={`${ui.input} py-1.5 text-sm`}
-          />
-        </Field>
-      </div>
+        </div>
+      </ExploreFilterRow>
     </div>
   );
 }

@@ -163,31 +163,6 @@ export const expenseShares = pgTable(
   ],
 );
 
-export const savedFilterViews = pgTable(
-  "saved_filter_views",
-  {
-    id: serial("id").primaryKey(),
-    accountUserId: integer("account_user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    filters: jsonb("filters").notNull().default({}),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    unique("saved_filter_views_account_name_unique").on(
-      table.accountUserId,
-      table.name,
-    ),
-    index("saved_filter_views_account_user_id_idx").on(table.accountUserId),
-  ],
-);
-
 /** Per-user BYOK AI settings (API key stored encrypted). */
 export const userAiSettings = pgTable("user_ai_settings", {
   accountUserId: integer("account_user_id")

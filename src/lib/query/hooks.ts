@@ -7,10 +7,10 @@ import type { ExpenseDetail } from "@/lib/expenses/types";
 import type { ExploreGroupStat } from "@/lib/expenses/explore-context";
 import type { FriendsBalancePage } from "@/lib/splitwise/balances";
 import { fetchSplitwiseCategoryIconMap } from "@/lib/splitwise/category-icon";
-import { fetchJson } from "@/lib/query/fetch-json";
+import { fetchJson, FetchJsonError } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 import type { SyncStatus } from "@/components/sync-status-provider";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export type FilterOptions = {
   ownerUserId: number;
@@ -291,14 +291,33 @@ export function useAiModels(input: {
   });
 }
 
+const NARRATIVE_CACHE_STALE_MS = 30 * 60_000;
+
+export function useAiNarrative(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.ai.narrative(),
+    queryFn: () => fetchJson<{ narrative: string | null }>("/api/ai/narrative"),
+    enabled,
+    staleTime: NARRATIVE_CACHE_STALE_MS,
+    retry(failureCount, error) {
+      if (error instanceof FetchJsonError && error.status === 429) return false;
+      return failureCount < 1;
+    },
+  });
+}
+
 export function useGenerateAiNarrative() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input?: { refresh?: boolean }) =>
+    mutationFn: (input: { refresh: boolean }) =>
       fetchJson<{ narrative: string }>("/api/ai/narrative", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: input?.refresh ?? false }),
+        body: JSON.stringify({ refresh: input.refresh }),
       }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.ai.narrative(), data);
+    },
   });
 }
 

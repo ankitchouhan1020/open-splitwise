@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { buildNarrativePrompt } from "@/lib/ai/prompts";
 import { narrativeCacheKey, narrativeDataFingerprint } from "@/lib/ai/cache";
+import {
+  buildNarrativeFacts,
+  selectNarrativeFacts,
+} from "@/lib/ai/narrative-facts";
 import { buildNarrativePromptData } from "@/lib/ai/narrative";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 
@@ -21,7 +26,7 @@ function sampleSummary(
       {
         categoryId: 1,
         categoryName: "Groceries",
-        total: "180.00",
+        total: "200.00",
         count: 5,
       },
     ],
@@ -35,7 +40,7 @@ function sampleSummary(
       },
     ],
     monthlySparkline: [
-      { month: "2026-01", total: "200", count: 8 },
+      { month: "2026-05", total: "300", count: 9 },
       { month: "2026-06", total: "420.50", count: 12 },
     ],
     balances: {
@@ -54,28 +59,7 @@ function sampleSummary(
         tone: "alert",
       },
     ],
-    recentExpenses: [
-      {
-        id: 1,
-        splitwiseId: 1,
-        date: "2026-06-05T00:00:00.000Z",
-        description: "Trader Joe's",
-        details: null,
-        groupId: 10,
-        groupName: "Apartment",
-        categoryId: 1,
-        categoryName: "Groceries",
-        categoryIconUrl: null,
-        categoryIconBg: null,
-        cost: "85.00",
-        currencyCode: "USD",
-        myShare: "42.50",
-        myPaidShare: "85.00",
-        paidBy: "You",
-        paidTo: "",
-        payment: false,
-      },
-    ],
+    recentExpenses: [],
     projectedMonthTotal: 2100,
     sync: {
       status: "ok",
@@ -115,15 +99,51 @@ describe("narrativeCacheKey", () => {
 });
 
 describe("buildNarrativePromptData", () => {
-  it("includes trend, balances, and recent highlights", () => {
-    const data = buildNarrativePromptData(
-      sampleSummary(),
-      new Date("2026-06-06T12:00:00.000Z"),
+  it("passes analytical facts instead of insight card copy", () => {
+    const facts = buildNarrativeFacts(sampleSummary(), {
+      now: new Date("2026-06-06T12:00:00.000Z"),
+    });
+    const data = buildNarrativePromptData(facts, {
+      currency: "USD",
+      now: new Date("2026-06-06T12:00:00.000Z"),
+    });
+
+    expect(data.facts.length).toBeGreaterThan(0);
+    expect(data.facts[0]).not.toContain("Spending is up this month");
+  });
+});
+
+describe("buildNarrativePrompt", () => {
+  it("uses compact JSON and tells the model not to paraphrase cards", () => {
+    const facts = buildNarrativeFacts(sampleSummary(), {
+      now: new Date("2026-06-06T12:00:00.000Z"),
+    });
+    const data = buildNarrativePromptData(facts, {
+      currency: "USD",
+      refresh: true,
+    });
+    const { system, user } = buildNarrativePrompt(data);
+
+    expect(system).toContain("NOT to paraphrase those cards");
+    expect(system).toContain("regenerate request");
+    expect(JSON.parse(user)).toMatchObject({
+      facts: expect.arrayContaining([expect.any(String)]),
+    });
+  });
+
+  it("rotates facts for regenerate prompts", () => {
+    const facts = buildNarrativeFacts(sampleSummary(), {
+      now: new Date("2026-06-06T12:00:00.000Z"),
+    });
+    const initial = buildNarrativePromptData(facts, { currency: "USD" }).facts;
+    const refreshed = buildNarrativePromptData(facts, {
+      currency: "USD",
+      refresh: true,
+    }).facts;
+
+    expect(selectNarrativeFacts(facts, true).map((fact) => fact.text)).toEqual(
+      refreshed,
     );
-    expect(data.monthlyTrend).toHaveLength(2);
-    expect(data.balances?.topOwedToYou[0]?.name).toBe("Alex");
-    expect(data.recentHighlights[0]?.description).toBe("Trader Joe's");
-    expect(data.signals[0]?.headline).toContain("Spending is up");
-    expect(data.thisMonth.daysElapsed).toBe(6);
+    expect(refreshed).not.toEqual(initial);
   });
 });

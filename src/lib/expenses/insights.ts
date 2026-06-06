@@ -378,7 +378,7 @@ export async function getFriendSummary(filters: InsightsFilters): Promise<
       lastName: schema.friends.lastName,
       myShareTotal: sum(schema.expenseShares.owedShare),
       expenseCount: count(),
-      lastActivityAt: max(schema.expenses.date),
+      lastActivityAt: max(schema.expenses.updatedAt),
     })
     .from(schema.expenses)
     .innerJoin(

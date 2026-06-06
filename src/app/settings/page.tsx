@@ -53,7 +53,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     oauthConfigured: setup.oauthConfigured,
     dbConfigured: setup.dbConfigured,
   });
-  const showSync = !fakeDataOn && (!!user || setup.dbConfigured);
+  const showSync = !!user || setup.dbConfigured;
   const oauthConnected = !!user && !guestDemo && !showcase;
 
   return (
@@ -71,9 +71,9 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             guestDemo={guestDemo}
             oauthConnected={oauthConnected}
             showSync={showSync}
-            showAi={!!user && setup.dbConfigured && !fakeDataOn && !guestDemo}
+            showAi={!!user && setup.dbConfigured && !guestDemo}
             canDeleteSyncedData={
-              !!user && !guestDemo && setup.dbConfigured && !fakeDataOn
+              !!user && !guestDemo && setup.dbConfigured
             }
             oauthError={params.connected ? null : (params.error ?? null)}
             justConnected={params.connected === "1"}

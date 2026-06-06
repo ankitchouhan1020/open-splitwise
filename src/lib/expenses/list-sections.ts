@@ -17,6 +17,7 @@ export function monthSectionLabel(iso: string): string {
 export function buildExpenseListSections(
   expenses: ExpenseListItem[],
   groupByMonth = true,
+  groupBy: "updated" | "expense" = "updated",
 ): ExpenseListSection[] {
   if (!groupByMonth) {
     return expenses.map((expense) => ({
@@ -30,13 +31,17 @@ export function buildExpenseListSections(
   let lastMonthKey = "";
 
   for (const expense of expenses) {
-    const d = new Date(expense.date);
+    const sectionDate =
+      groupBy === "expense"
+        ? expense.date
+        : (expense.updatedAt ?? expense.date);
+    const d = new Date(sectionDate);
     const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
     if (monthKey !== lastMonthKey) {
       sections.push({
         kind: "month",
         key: monthKey,
-        label: monthSectionLabel(expense.date),
+        label: monthSectionLabel(sectionDate),
       });
       lastMonthKey = monthKey;
     }

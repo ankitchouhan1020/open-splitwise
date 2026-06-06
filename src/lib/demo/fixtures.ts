@@ -854,6 +854,7 @@ function refreshCache(now = new Date()) {
       id: seed.id,
       splitwiseId: seed.splitwiseId,
       date: seed.date,
+      updatedAt: seed.date,
       description: seed.description,
       details: seed.details ?? null,
       groupId: seed.groupId,

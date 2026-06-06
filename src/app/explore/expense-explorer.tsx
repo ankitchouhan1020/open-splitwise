@@ -1,5 +1,6 @@
 "use client";
 
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
 import { ExpenseTableSkeleton } from "@/components/expense-table-skeleton";
@@ -91,7 +92,7 @@ export function ExpenseExplorer() {
     setFilters,
     clearFilter,
     clearAll,
-    applySavedView,
+    applyFilters,
     activeFilterChips,
   } = useExpenseFilters();
 
@@ -111,7 +112,9 @@ export function ExpenseExplorer() {
   const [aiError, setAiError] = useState<string | null>(null);
   const searchQ = debouncedSearch.trim() || undefined;
 
+  const demoMode = useDemoMode();
   const { data: aiAvailable = false } = useAiStatus();
+  const aiInteractive = aiAvailable && !demoMode;
   const parseFilters = useParseFilters();
 
   const { data: filterOptions } = useFilterOptions();
@@ -153,16 +156,6 @@ export function ExpenseExplorer() {
     clearAll();
   }, [clearAll]);
 
-  const handleApplySavedView = useCallback(
-    (viewFilters: Parameters<typeof applySavedView>[0]) => {
-      setSearchDraft(viewFilters.q ?? "");
-      const urlFilters = { ...viewFilters };
-      delete urlFilters.q;
-      applySavedView(urlFilters);
-    },
-    [applySavedView],
-  );
-
   const handleClearFilter = useCallback(
     (key: string) => {
       if (key === "q") setSearchDraft("");
@@ -192,7 +185,7 @@ export function ExpenseExplorer() {
 
   const handleSmartFilter = useCallback(async () => {
     const query = aiPrompt.trim();
-    if (!query || !aiAvailable) return;
+    if (!query || !aiInteractive) return;
     setAiError(null);
     setAiExplanation(null);
     setAiWarnings([]);
@@ -208,7 +201,7 @@ export function ExpenseExplorer() {
       }
       const urlFilters = { ...result.filters };
       delete urlFilters.q;
-      applySavedView({ ...urlFilters, page: 1 });
+      applyFilters({ ...urlFilters, page: 1 });
     } catch (err) {
       setAiExplanation(null);
       setAiWarnings([]);
@@ -219,7 +212,7 @@ export function ExpenseExplorer() {
           : friendlyAiError(undefined),
       );
     }
-  }, [aiAvailable, aiPrompt, applySavedView, parseFilters]);
+  }, [aiInteractive, aiPrompt, applyFilters, parseFilters]);
 
   const handleExampleQuery = useCallback(
     (query: string) => {
@@ -355,7 +348,12 @@ export function ExpenseExplorer() {
   }, [fetchPage, hasMore, loadedPages, loadingMore]);
 
   const listSections = useMemo(
-    () => buildExpenseListSections(rows, sort === "date"),
+    () =>
+      buildExpenseListSections(
+        rows,
+        sort === "date" || sort === "expenseDate",
+        sort === "expenseDate" ? "expense" : "updated",
+      ),
     [rows, sort],
   );
 
@@ -447,23 +445,23 @@ export function ExpenseExplorer() {
   const listColumn = (
     <>
       <div className="shrink-0 space-y-2">
-        {aiAvailable ? (
-          <ExploreAiCard
-            prompt={aiPrompt}
-            onPromptChange={handleAiPromptChange}
-            onAskAi={() => void handleSmartFilter()}
-            onExampleQuery={handleExampleQuery}
-            pending={parseFilters.isPending}
-            groupStats={groupStats}
-            topCategories={topCategories}
-            friends={options.friends}
-            explanation={aiExplanation}
-            warnings={aiWarnings}
-            totalLine={aiTotalLine}
-            error={aiError}
-            onDismissResult={dismissAiResult}
-          />
-        ) : null}
+        <ExploreAiCard
+          prompt={aiPrompt}
+          onPromptChange={handleAiPromptChange}
+          onAskAi={() => void handleSmartFilter()}
+          onExampleQuery={handleExampleQuery}
+          pending={parseFilters.isPending}
+          groupStats={groupStats}
+          topCategories={topCategories}
+          friends={options.friends}
+          explanation={aiExplanation}
+          warnings={aiWarnings}
+          totalLine={aiTotalLine}
+          error={aiError}
+          onDismissResult={dismissAiResult}
+          disabled={!aiInteractive}
+          demoMode={demoMode}
+        />
 
         <ExploreFiltersCard
           filters={filters}
@@ -475,8 +473,6 @@ export function ExpenseExplorer() {
           refineOpen={refineOpen}
           onToggleRefine={() => setRefineOpen((v) => !v)}
           onExport={exportCsv}
-          onApplySavedView={handleApplySavedView}
-          onClearAll={handleClearAll}
           groupStats={groupStats}
           options={options}
         />
@@ -495,7 +491,7 @@ export function ExpenseExplorer() {
           order={order}
           onSortChange={(s, o) =>
             setFilters({
-              sort: s as "date" | "cost" | "description",
+              sort: s as "date" | "expenseDate" | "cost" | "description",
               order: o as "asc" | "desc",
             })
           }
@@ -525,11 +521,7 @@ export function ExpenseExplorer() {
           >
             <div
               ref={parentRef}
-              className={`min-h-0 flex-1 overflow-auto ${
-                aiAvailable
-                  ? "max-h-[calc(100dvh-16rem-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-12rem)]"
-                  : "max-h-[calc(100dvh-14rem-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-11rem)]"
-              }`}
+              className="max-h-[calc(100dvh-16rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100dvh-12rem)]"
             >
               <div
                 style={{

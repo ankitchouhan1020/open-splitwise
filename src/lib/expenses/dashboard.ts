@@ -306,7 +306,8 @@ export async function getDashboardSummary(): Promise<DashboardSummary | null> {
       currency,
     ),
     listExpenses({
-      ...filtersWithCurrency(thisRange, currency),
+      currency,
+      payment: false,
       sort: "date",
       order: "desc",
       page: 1,

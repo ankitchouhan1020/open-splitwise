@@ -9,6 +9,7 @@ import {
   SettingsStat,
   StatusBadge,
 } from "@/app/settings/settings-ui";
+import { DemoModeNotice } from "@/components/demo-mode-notice";
 import {
   useSyncStatus,
   type SyncStatus,
@@ -20,6 +21,7 @@ import { useState } from "react";
 
 type Props = {
   dbConfigured: boolean;
+  demoMode?: boolean;
   bare?: boolean;
 };
 
@@ -45,7 +47,11 @@ function statusTone(
   return "neutral";
 }
 
-export function SyncPanel({ dbConfigured, bare = false }: Props) {
+export function SyncPanel({
+  dbConfigured,
+  demoMode = false,
+  bare = false,
+}: Props) {
   const { status, busy, runSync } = useSyncStatus();
   const [scopeNotice, setScopeNotice] = useState<string | null>(null);
   const [scopeError, setScopeError] = useState<string | null>(null);
@@ -93,8 +99,15 @@ export function SyncPanel({ dbConfigured, bare = false }: Props) {
   const exp = status?.expenses;
   const expenseStatus = busy ? "syncing" : (exp?.status ?? "idle");
 
+  const syncDisabled = busy || demoMode;
+
   const content = (
     <div className="space-y-4">
+      {demoMode && (
+        <SettingsAlert tone="info">
+          <DemoModeNotice feature="sync" />
+        </SettingsAlert>
+      )}
       {scopeError && <SettingsAlert tone="error">{scopeError}</SettingsAlert>}
       {scopeNotice && (
         <SettingsAlert tone="success">{scopeNotice}</SettingsAlert>
@@ -153,7 +166,7 @@ export function SyncPanel({ dbConfigured, bare = false }: Props) {
           <button
             type="button"
             onClick={() => void runScopedSync("all")}
-            disabled={busy}
+            disabled={syncDisabled}
             className={btnPrimary}
           >
             {busy ? "Syncing…" : "Sync now"}
@@ -166,7 +179,7 @@ export function SyncPanel({ dbConfigured, bare = false }: Props) {
           <button
             type="button"
             onClick={() => void runScopedSync("expenses")}
-            disabled={busy}
+            disabled={syncDisabled}
             className={btnSecondary}
           >
             Sync expenses
@@ -179,7 +192,7 @@ export function SyncPanel({ dbConfigured, bare = false }: Props) {
           <button
             type="button"
             onClick={() => void runScopedSync("metadata")}
-            disabled={busy}
+            disabled={syncDisabled}
             className={btnSecondary}
           >
             Sync names

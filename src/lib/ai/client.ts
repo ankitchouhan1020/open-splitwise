@@ -22,6 +22,7 @@ type CompleteJsonInput<T extends z.ZodType> = {
   messages: ChatMessage[];
   signal: AbortSignal;
   temperature?: number;
+  maxTokens?: number;
 };
 
 function validateStructuredResponse<T extends z.ZodType>(
@@ -61,7 +62,7 @@ function openAiJsonSchemaBody(responseSchema: AiResponseSchema) {
     type: "json_schema",
     json_schema: {
       name: responseSchema.name,
-      strict: true,
+      strict: responseSchema.strict ?? true,
       schema: responseSchema.jsonSchema,
     },
   };
@@ -92,6 +93,7 @@ async function completeJsonOpenAiChat<T extends z.ZodType>(
       messages: input.messages,
       response_format: openAiJsonSchemaBody(input.responseSchema),
       temperature: input.temperature ?? 0.2,
+      ...(input.maxTokens != null ? { max_tokens: input.maxTokens } : {}),
     }),
     signal: input.signal,
   });
@@ -135,7 +137,7 @@ async function completeJsonClaude<T extends z.ZodType>(
     },
     body: JSON.stringify({
       model: input.config.model,
-      max_tokens: 2048,
+      max_tokens: input.maxTokens ?? 2048,
       system,
       messages: conversation.map((m) => ({
         role: m.role === "assistant" ? "assistant" : "user",
@@ -192,6 +194,9 @@ async function completeJsonGemini<T extends z.ZodType>(
         responseMimeType: "application/json",
         responseJsonSchema: input.responseSchema.jsonSchema,
         temperature: input.temperature ?? 0.2,
+        ...(input.maxTokens != null
+          ? { maxOutputTokens: input.maxTokens }
+          : {}),
       },
     }),
     signal: input.signal,
@@ -221,7 +226,10 @@ async function completeJsonGemini<T extends z.ZodType>(
 }
 
 export async function completeJson<T extends z.ZodType>(
-  input: Omit<CompleteJsonInput<T>, "signal"> & { temperature?: number },
+  input: Omit<CompleteJsonInput<T>, "signal"> & {
+    temperature?: number;
+    maxTokens?: number;
+  },
 ): Promise<z.infer<T>> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

@@ -6,18 +6,11 @@ import {
 } from "@/components/sync-status-provider";
 import { friendlySyncError } from "@/lib/api-errors";
 
-const STALE_MS = 86400000;
-
-function isStale(lastSyncAt: string | null): boolean {
-  if (!lastSyncAt) return true;
-  return Date.now() - new Date(lastSyncAt).getTime() > STALE_MS;
-}
-
 function shouldShowBanner(status: SyncStatus | null): boolean {
   if (!status?.configured || !status.connected) return false;
   const exp = status.expenses;
   if (!exp) return false;
-  return exp.status === "error" || isStale(exp.lastSyncAt);
+  return exp.status === "error";
 }
 
 type Props = {
@@ -32,36 +25,16 @@ export function SyncStatusBanner({ connected, dbConfigured }: Props) {
   if (!enabled || !shouldShowBanner(status)) return null;
 
   const exp = status!.expenses!;
-  const hasError = exp.status === "error";
   const syncErrorDetail = friendlySyncError(exp.error);
   const lastSyncLabel = exp.lastSyncAt
     ? new Date(exp.lastSyncAt).toLocaleString()
     : "Never";
 
   return (
-    <div
-      role="status"
-      className={
-        hasError
-          ? "border-error-border bg-error-bg border-b"
-          : "border-warn-border bg-warn-bg border-b"
-      }
-    >
+    <div role="status" className="border-error-border bg-error-bg border-b">
       <div className="mx-auto max-w-6xl px-4 py-2 text-xs sm:px-6 sm:text-sm">
-        <p
-          className={
-            hasError
-              ? "text-error-text font-medium"
-              : "text-warn-text font-medium"
-          }
-        >
-          {hasError
-            ? "Expense sync failed"
-            : "Your expense data may be out of date"}
-        </p>
-        <p
-          className={`mt-0.5 opacity-90 ${hasError ? "text-error-text" : "text-warn-text"}`}
-        >
+        <p className="text-error-text font-medium">Expense sync failed</p>
+        <p className="text-error-text mt-0.5 opacity-90">
           <span className="hidden sm:inline">
             Last sync: {lastSyncLabel} · {exp.expenseCount} expenses stored
             {syncErrorDetail ? ` · ${syncErrorDetail}` : null}

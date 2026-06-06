@@ -37,6 +37,8 @@ const API_ERROR_MESSAGES: Record<string, string> = {
     "Couldn't reach your AI provider. Check your API key in Settings → AI.",
   ai_parse_error:
     "Couldn't understand the AI response. Try rephrasing your question.",
+  narrative_insufficient_data:
+    "Not enough spending data yet for a summary. Sync and try again later.",
   ai_error: "Something went wrong with AI. Try again.",
   ai_key_required: "Add an API key in Settings → AI.",
   ai_base_url_required: "Enter a base URL for your custom AI provider.",

@@ -10,6 +10,7 @@ function settlement(overrides: Partial<ExpenseListItem> = {}): ExpenseListItem {
     id: 1,
     splitwiseId: 1,
     date: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     description: "Cash",
     details: null,
     groupId: null,

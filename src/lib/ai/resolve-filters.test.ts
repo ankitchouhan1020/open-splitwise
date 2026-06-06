@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveParsedFilters } from "@/lib/ai/resolve-filters";
+import {
+  buildFilterExplanation,
+  resolveParsedFilters,
+} from "@/lib/ai/resolve-filters";
 import type { FilterCatalog } from "@/lib/ai/prompts";
 
 const catalog: FilterCatalog = {
@@ -33,7 +36,6 @@ describe("resolveParsedFilters", () => {
         costMin: 50,
         sort: "cost",
         order: "desc",
-        explanation: "Food with Alex in Q1 over $50, highest first",
       },
       catalog,
       ownerContext,
@@ -53,7 +55,7 @@ describe("resolveParsedFilters", () => {
       order: "desc",
     });
     expect(result.explanation).toBe(
-      "Food with Alex in Q1 over $50, highest first",
+      "coffee · With Alex Johnson · Roommates · Food & Drink · 2025-01-01 – 2025-03-31 · Expenses only · USD · Total over 50 · Biggest first",
     );
     expect(result.warnings).toEqual([]);
   });
@@ -62,13 +64,13 @@ describe("resolveParsedFilters", () => {
     const result = resolveParsedFilters(
       {
         groupName: "Nonexistent Group",
-        explanation: "No group match",
       },
       catalog,
       ownerContext,
     );
 
     expect(result.filters.groupId).toBeUndefined();
+    expect(result.explanation).toBe("Matching expenses");
     expect(result.warnings).toContain('Group "Nonexistent Group" not found');
   });
 
@@ -76,13 +78,13 @@ describe("resolveParsedFilters", () => {
     const result = resolveParsedFilters(
       {
         friendName: "Alex",
-        explanation: "With Alex",
       },
       catalog,
       ownerContext,
     );
 
     expect(result.filters.friendId).toBeUndefined();
+    expect(result.explanation).toBe("Matching expenses");
     expect(result.warnings[0]).toMatch(/Friend "Alex" matches multiple/);
   });
 
@@ -91,7 +93,6 @@ describe("resolveParsedFilters", () => {
       {
         dateFrom: "not-a-date",
         currency: "XYZ",
-        explanation: "Partial",
       },
       catalog,
       ownerContext,
@@ -99,6 +100,7 @@ describe("resolveParsedFilters", () => {
 
     expect(result.filters.dateFrom).toBeUndefined();
     expect(result.filters.currency).toBeUndefined();
+    expect(result.explanation).toBe("Matching expenses");
     expect(result.warnings).toContain('Start date "not-a-date" is invalid');
     expect(result.warnings).toContain('Currency "XYZ" not in your data');
   });
@@ -110,7 +112,6 @@ describe("resolveParsedFilters", () => {
         paidToName: "Nikhil",
         dateFrom: "2025-01-01",
         dateTo: "2025-12-31",
-        explanation: "You paid Nikhil Moghe last year",
       },
       catalog,
       ownerContext,
@@ -124,19 +125,22 @@ describe("resolveParsedFilters", () => {
     });
     expect(result.filters.payment).toBeUndefined();
     expect(result.filters.friendId).toBeUndefined();
+    expect(result.explanation).toBe(
+      "You paid Nikhil Moghe · 2025-01-01 – 2025-12-31",
+    );
   });
 
   it("matches owner by first name for payer/payee", () => {
     const result = resolveParsedFilters(
       {
         paidByName: "Ankit",
-        explanation: "Paid by Ankit",
       },
       catalog,
       ownerContext,
     );
 
     expect(result.filters.paidByUserId).toBe(9001);
+    expect(result.explanation).toBe("Paid by you");
     expect(result.warnings).toEqual([]);
   });
 
@@ -145,23 +149,31 @@ describe("resolveParsedFilters", () => {
       {
         paidByName: "Alex Johnson",
         payment: true,
-        explanation: "Settlements Alex paid",
       },
       catalog,
       ownerContext,
     );
     expect(settlements.filters.payment).toBe(true);
     expect(settlements.filters.paidByUserId).toBe(20);
+    expect(settlements.explanation).toBe("Paid by Alex Johnson · Settlements");
 
     const paidByOnly = resolveParsedFilters(
       {
         paidByName: "Alex Johnson",
-        explanation: "Paid by Alex",
       },
       catalog,
       ownerContext,
     );
     expect(paidByOnly.filters.paidByUserId).toBe(20);
     expect(paidByOnly.filters.payment).toBeUndefined();
+    expect(paidByOnly.explanation).toBe("Paid by Alex Johnson");
+  });
+});
+
+describe("buildFilterExplanation", () => {
+  it("falls back when no filters apply", () => {
+    expect(buildFilterExplanation({}, catalog, ownerContext)).toBe(
+      "Matching expenses",
+    );
   });
 });

@@ -31,7 +31,7 @@ export async function listSyncedGroups(): Promise<GroupListItem[]> {
       ),
       myShareTotal: sum(schema.expenseShares.owedShare),
       myPaidTotal: sum(schema.expenseShares.paidShare),
-      lastActivityAt: max(schema.expenses.date),
+      lastActivityAt: max(schema.expenses.updatedAt),
     })
     .from(schema.groups)
     .leftJoin(
@@ -55,7 +55,7 @@ export async function listSyncedGroups(): Promise<GroupListItem[]> {
       schema.groups.name,
       schema.groups.groupType,
     )
-    .orderBy(desc(max(schema.expenses.date)));
+    .orderBy(desc(max(schema.expenses.updatedAt)));
 
   return rows.map((r) => {
     const myShareTotal = r.myShareTotal ?? "0";

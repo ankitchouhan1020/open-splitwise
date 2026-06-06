@@ -9,6 +9,12 @@ export const ui = {
     "text-muted hover:text-foreground hover:bg-hover inline-flex items-center justify-center rounded-md",
   input:
     "border-border bg-input text-foreground focus:border-accent focus:ring-accent/20 w-full rounded-lg border outline-none focus:ring-2",
+  dateInput:
+    "border-border bg-input text-foreground focus:border-accent focus:ring-accent/20 h-7 w-[8.5rem] max-w-full shrink-0 rounded-md border px-2.5 py-1 text-xs font-normal outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:light] dark:[color-scheme:dark]",
+  filterSelect:
+    "border-border bg-input text-foreground focus:border-accent focus:ring-accent/20 w-[10.5rem] max-w-full shrink-0 rounded-md border px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-accent/20",
+  filterNumber:
+    "border-border bg-input text-foreground focus:border-accent focus:ring-accent/20 w-[4.75rem] max-w-full shrink-0 rounded-md border px-2 py-1 text-xs tabular-nums outline-none focus:ring-2 focus:ring-accent/20",
   select:
     "border-border bg-input text-foreground rounded border px-2 py-1 text-xs",
   pill: "border-border bg-card hover:bg-hover shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium",

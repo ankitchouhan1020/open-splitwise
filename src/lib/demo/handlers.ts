@@ -124,7 +124,12 @@ function filterDemoExpenses(
     if (sort === "description") {
       return a.description.localeCompare(b.description) * dir;
     }
-    return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+    if (sort === "expenseDate") {
+      return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+    }
+    const aUpdated = new Date(a.updatedAt ?? a.date).getTime();
+    const bUpdated = new Date(b.updatedAt ?? b.date).getTime();
+    return (aUpdated - bUpdated) * dir;
   });
 
   return rows;
@@ -351,8 +356,9 @@ export function demoFriendSummary(filters: InsightsFilters, now = new Date()) {
     };
     const lastActivityAt =
       !prev.lastActivityAt ||
-      new Date(row.date).getTime() > new Date(prev.lastActivityAt).getTime()
-        ? row.date
+      new Date(row.updatedAt ?? row.date).getTime() >
+        new Date(prev.lastActivityAt).getTime()
+        ? (row.updatedAt ?? row.date)
         : prev.lastActivityAt;
     map.set(fid, {
       name: prev.name,
@@ -532,7 +538,6 @@ export function demoDashboardSummary(now = new Date()): DashboardSummary {
   );
   const recentList = demoListExpenses(
     {
-      ...thisRange,
       currency,
       payment: false,
       sort: "date",
@@ -646,7 +651,12 @@ export function demoGroupsList(now = new Date()) {
     const rows = filterDemoExpenses({ groupId: g.id }, now);
     const myShare = rows.reduce((s, r) => s + Number(r.myShare ?? 0), 0);
     const myPaid = rows.reduce((s, r) => s + Number(r.myPaidShare ?? 0), 0);
-    const last = rows[0]?.date ?? null;
+    const sorted = [...rows].sort(
+      (a, b) =>
+        new Date(b.updatedAt ?? b.date).getTime() -
+        new Date(a.updatedAt ?? a.date).getTime(),
+    );
+    const last = sorted[0]?.updatedAt ?? sorted[0]?.date ?? null;
     return {
       id: g.id,
       name: g.name,

@@ -1,10 +1,11 @@
 "use client";
 
 import { AddExpenseButton } from "@/components/add-expense-drawer";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { FakeDataToggle } from "@/components/fake-data-toggle";
 import { NavIconAdd, NavIconSync } from "@/components/nav-icons";
-import { SyncProgressIndicator } from "@/components/sync-progress-indicator";
 import { useSyncStatus } from "@/components/sync-status-provider";
+import { DEMO_MODE_COPY } from "@/lib/demo/copy";
 import Link from "next/link";
 
 type Props = {
@@ -27,7 +28,8 @@ export function AppNavActions({
   dbConfigured,
   fakeDataOn = false,
 }: Props) {
-  const syncEnabled = oauthConnected && dbConfigured && !fakeDataOn;
+  const demoMode = useDemoMode() || fakeDataOn;
+  const canSync = oauthConnected && dbConfigured;
   const { status, busy, runSync } = useSyncStatus();
 
   if (!connected) {
@@ -45,43 +47,37 @@ export function AppNavActions({
     <div className="flex shrink-0 items-center gap-1.5">
       {oauthConnected && <FakeDataToggle enabled={fakeDataOn} compact />}
 
-      {syncEnabled && (
+      {canSync && (
         <button
           type="button"
           onClick={() => void runSync("all")}
-          disabled={busy}
+          disabled={busy || demoMode}
           aria-label={busy ? "Sync in progress" : "Sync from Splitwise"}
           title={
-            busy
-              ? undefined
-              : status?.expenses?.lastSyncAt
-                ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
-                : "Sync from Splitwise"
+            demoMode
+              ? DEMO_MODE_COPY.sync
+              : busy
+                ? "Syncing…"
+                : status?.expenses?.lastSyncAt
+                  ? `Last sync: ${new Date(status.expenses.lastSyncAt).toLocaleString()}`
+                  : "Sync from Splitwise"
           }
           className={
             status?.expenses?.status === "error"
-              ? `${btnSecondary} ${iconBtn} text-error-text hover:bg-error-bg border-red-300 md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
-              : `${btnSecondary} ${iconBtn} md:h-auto md:w-auto md:px-3 md:py-1.5 md:text-sm`
+              ? `${btnSecondary} ${iconBtn} text-error-text hover:bg-error-bg border-red-300`
+              : `${btnSecondary} ${iconBtn}`
           }
         >
-          {busy ? (
-            <>
-              <span className="hidden md:inline">
-                <SyncProgressIndicator progress={status?.progress} compact />
-              </span>
-              <NavIconSync className="h-[17px] w-[17px] animate-spin md:hidden" />
-            </>
-          ) : (
-            <>
-              <NavIconSync className="h-[17px] w-[17px] md:hidden" />
-              <span className="hidden md:inline">Sync</span>
-            </>
-          )}
+          <NavIconSync
+            className={`h-[17px] w-[17px] ${busy ? "animate-spin" : ""}`}
+          />
         </button>
       )}
 
-      {oauthConnected && !fakeDataOn && (
+      {oauthConnected && (
         <AddExpenseButton
+          disabled={demoMode}
+          title={demoMode ? DEMO_MODE_COPY.addExpense : undefined}
           className={`${btnPrimary} hidden gap-1.5 px-3 py-1.5 text-sm md:inline-flex`}
         >
           <NavIconAdd className="h-4 w-4" />

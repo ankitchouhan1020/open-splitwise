@@ -2,6 +2,8 @@ export type ExpenseListItem = {
   id: number;
   splitwiseId: number;
   date: string;
+  /** Last change from Splitwise sync (used for activity ordering). */
+  updatedAt: string;
   description: string;
   details: string | null;
   groupId: number | null;

@@ -25,7 +25,7 @@ type Props = {
   onClearPreset: () => void;
 };
 
-const dateInputClass = `${ui.input} max-w-[9.5rem] py-1.5 text-sm`;
+const dateInputClass = ui.dateInput;
 const groupSelectClass = `${ui.select} w-full shrink-0 py-1.5 text-sm sm:w-auto sm:max-w-[10rem]`;
 
 export function InsightsFiltersCard({

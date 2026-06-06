@@ -8,6 +8,18 @@ export class FetchJsonError extends Error {
   }
 }
 
+function errorCodeFromResponse(
+  body: { error?: string },
+  status: number,
+): string {
+  const code = body.error?.trim();
+  if (code) return code;
+  if (status === 429) return "rate_limited";
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  return "request_failed";
+}
+
 export async function fetchJson<T>(
   url: string,
   init?: RequestInit,
@@ -17,7 +29,10 @@ export async function fetchJson<T>(
     error?: string;
   };
   if (!res.ok) {
-    throw new FetchJsonError(body.error ?? "request_failed", res.status);
+    throw new FetchJsonError(
+      errorCodeFromResponse(body, res.status),
+      res.status,
+    );
   }
   return body as T;
 }

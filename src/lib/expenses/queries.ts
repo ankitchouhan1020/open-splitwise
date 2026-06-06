@@ -30,8 +30,10 @@ function sortColumn(sort: ExpenseListSort) {
       return sql`coalesce(${schema.expenseShares.owedShare}::numeric, 0)`;
     case "description":
       return schema.expenses.description;
-    default:
+    case "expenseDate":
       return schema.expenses.date;
+    default:
+      return schema.expenses.updatedAt;
   }
 }
 
@@ -236,9 +238,7 @@ export function buildExpenseWhere(
     parts.push(gte(schema.expenses.date, new Date(filters.dateFrom)));
   }
   if (filters.dateTo) {
-    const end = new Date(filters.dateTo);
-    end.setHours(23, 59, 59, 999);
-    parts.push(lte(schema.expenses.date, end));
+    parts.push(lte(schema.expenses.date, new Date(filters.dateTo)));
   }
   if (filters.groupId !== undefined) {
     if (filters.groupId === 0) {
@@ -319,6 +319,7 @@ function mapListRow(r: {
   id: number;
   splitwiseId: number;
   date: Date;
+  updatedAt: Date;
   description: string;
   details: string | null;
   cost: string;
@@ -338,6 +339,7 @@ function mapListRow(r: {
     id: r.id,
     splitwiseId: r.splitwiseId,
     date: r.date.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
     description: r.description,
     details: r.details,
     groupId: r.groupId,
@@ -364,6 +366,7 @@ const listSelect = {
   id: schema.expenses.id,
   splitwiseId: schema.expenses.splitwiseId,
   date: schema.expenses.date,
+  updatedAt: schema.expenses.updatedAt,
   description: schema.expenses.description,
   details: schema.expenses.details,
   cost: schema.expenses.cost,

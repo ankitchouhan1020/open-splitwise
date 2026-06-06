@@ -11,14 +11,13 @@ describe("ai schema", () => {
     const result = parsedFilterDraftSchema.safeParse({
       q: "uber",
       dateFrom: "2025-01-01",
-      explanation: "Uber rides in January",
     });
     expect(result.success).toBe(true);
   });
 
-  it("rejects draft without explanation", () => {
-    const result = parsedFilterDraftSchema.safeParse({ q: "uber" });
-    expect(result.success).toBe(false);
+  it("accepts an empty parse filter draft", () => {
+    const result = parsedFilterDraftSchema.safeParse({});
+    expect(result.success).toBe(true);
   });
 
   it("validates parse-filters request", () => {

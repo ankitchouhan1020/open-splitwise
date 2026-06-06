@@ -118,15 +118,24 @@ export function SettingsLayout({
             bare
             dbConfigured={setup.dbConfigured}
             connected={connected}
+            demoMode={fakeDataOn}
           />
         )}
 
         {activeTab === "sync" && showSync && (
-          <SyncPanel dbConfigured={setup.dbConfigured} bare />
+          <SyncPanel
+            dbConfigured={setup.dbConfigured}
+            demoMode={fakeDataOn}
+            bare
+          />
         )}
 
         {activeTab === "data" && (
-          <PrivacySection canDeleteSyncedData={canDeleteSyncedData} bare />
+          <PrivacySection
+            canDeleteSyncedData={canDeleteSyncedData}
+            demoMode={fakeDataOn}
+            bare
+          />
         )}
 
         {activeTab === "setup" && (
