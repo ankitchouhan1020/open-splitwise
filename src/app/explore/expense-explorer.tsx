@@ -17,8 +17,12 @@ import {
   buildExpenseListSections,
   sectionHeight,
 } from "@/lib/expenses/list-sections";
+import { ExploreAiCard } from "@/app/explore/explore-ai-card";
 import { ExploreFiltersCard } from "@/app/explore/explore-filters-card";
+import { ExploreSummaryBar } from "@/app/explore/explore-summary-bar";
 import { detectDatePreset } from "@/app/explore/explore-toolbar";
+import { friendlyAiError } from "@/lib/ai/ui-errors";
+import { FetchJsonError } from "@/lib/query/fetch-json";
 import { useExpenseFilters } from "@/app/explore/use-expense-filters";
 import {
   useExploreContext,
@@ -28,7 +32,6 @@ import {
   useParseFilters,
 } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
-import { ui } from "@/lib/ui-classes";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -99,10 +102,13 @@ export function ExpenseExplorer() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
+  const [aiPrompt, setAiPrompt] = useState("");
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiWarnings, setAiWarnings] = useState<string[]>([]);
   const [aiShowTotal, setAiShowTotal] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const searchQ = debouncedSearch.trim() || undefined;
 
   const { data: aiAvailable = false } = useAiStatus();
@@ -121,7 +127,9 @@ export function ExpenseExplorer() {
       },
     [filterOptions],
   );
-  const { data: groupStats = [] } = useExploreContext();
+  const { data: exploreContext } = useExploreContext();
+  const groupStats = exploreContext?.groups ?? [];
+  const topCategories = exploreContext?.topCategories ?? [];
   const { data: detail, isLoading: detailLoading } =
     useExpenseDetail(selectedId);
 
@@ -137,8 +145,11 @@ export function ExpenseExplorer() {
 
   const handleClearAll = useCallback(() => {
     setSearchDraft("");
+    setAiPrompt("");
     setAiExplanation(null);
+    setAiWarnings([]);
     setAiShowTotal(false);
+    setAiError(null);
     clearAll();
   }, [clearAll]);
 
@@ -162,27 +173,60 @@ export function ExpenseExplorer() {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchDraft(value);
+  }, []);
+
+  const handleAiPromptChange = useCallback((value: string) => {
+    setAiPrompt(value);
     setAiExplanation(null);
+    setAiWarnings([]);
     setAiShowTotal(false);
+    setAiError(null);
+  }, []);
+
+  const dismissAiResult = useCallback(() => {
+    setAiExplanation(null);
+    setAiWarnings([]);
+    setAiShowTotal(false);
+    setAiError(null);
   }, []);
 
   const handleSmartFilter = useCallback(async () => {
-    const query = searchDraft.trim();
+    const query = aiPrompt.trim();
     if (!query || !aiAvailable) return;
+    setAiError(null);
+    setAiExplanation(null);
+    setAiWarnings([]);
+    setAiShowTotal(false);
     try {
       const result = await parseFilters.mutateAsync(query);
-      const notice = [result.explanation, ...result.warnings].join(" · ");
-      setAiExplanation(notice);
+      setAiExplanation(result.explanation);
+      setAiWarnings(result.warnings);
       setAiShowTotal(isAggregateQuery(query));
-      setSearchDraft(result.filters.q ?? "");
+      const textQuery = result.filters.q?.trim();
+      if (textQuery) {
+        setSearchDraft(textQuery);
+      }
       const urlFilters = { ...result.filters };
       delete urlFilters.q;
-      setFilters({ ...urlFilters, page: 1 });
-    } catch {
+      applySavedView({ ...urlFilters, page: 1 });
+    } catch (err) {
       setAiExplanation(null);
+      setAiWarnings([]);
       setAiShowTotal(false);
+      setAiError(
+        err instanceof FetchJsonError
+          ? friendlyAiError(err.message)
+          : friendlyAiError(undefined),
+      );
     }
-  }, [aiAvailable, parseFilters, searchDraft, setFilters]);
+  }, [aiAvailable, aiPrompt, applySavedView, parseFilters]);
+
+  const handleExampleQuery = useCallback(
+    (query: string) => {
+      handleAiPromptChange(query);
+    },
+    [handleAiPromptChange],
+  );
 
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
@@ -368,9 +412,8 @@ export function ExpenseExplorer() {
 
   const count = summary?.count ?? total;
 
-  const aiChipText = useMemo(() => {
-    if (!aiExplanation) return null;
-    if (!aiShowTotal || !summary || summaryFetching) return aiExplanation;
+  const aiTotalLine = useMemo(() => {
+    if (!aiShowTotal || !summary || summaryFetching) return null;
 
     const directional = hasDirectionalFilters(filters);
     const field =
@@ -383,15 +426,8 @@ export function ExpenseExplorer() {
         ? "you paid"
         : "my share";
     const amounts = currencySummary(summary.byCurrency, field, formatMoney);
-    return `${aiExplanation} · ${summary.count} expenses · ${amountLabel} ${amounts}`;
-  }, [
-    aiExplanation,
-    aiShowTotal,
-    summary,
-    summaryFetching,
-    filters,
-    options.ownerUserId,
-  ]);
+    return `${summary.count.toLocaleString()} expenses · ${amountLabel} ${amounts}`;
+  }, [aiShowTotal, summary, summaryFetching, filters, options.ownerUserId]);
 
   const summaryAmountLabel = useMemo(() => {
     if (hasDirectionalFilters(filters)) {
@@ -411,6 +447,24 @@ export function ExpenseExplorer() {
   const listColumn = (
     <>
       <div className="shrink-0 space-y-2">
+        {aiAvailable ? (
+          <ExploreAiCard
+            prompt={aiPrompt}
+            onPromptChange={handleAiPromptChange}
+            onAskAi={() => void handleSmartFilter()}
+            onExampleQuery={handleExampleQuery}
+            pending={parseFilters.isPending}
+            groupStats={groupStats}
+            topCategories={topCategories}
+            friends={options.friends}
+            explanation={aiExplanation}
+            warnings={aiWarnings}
+            totalLine={aiTotalLine}
+            error={aiError}
+            onDismissResult={dismissAiResult}
+          />
+        ) : null}
+
         <ExploreFiltersCard
           filters={filters}
           searchInput={searchDraft}
@@ -425,83 +479,31 @@ export function ExpenseExplorer() {
           onClearAll={handleClearAll}
           groupStats={groupStats}
           options={options}
-          aiAvailable={aiAvailable}
-          onSmartFilter={() => void handleSmartFilter()}
-          smartFilterPending={parseFilters.isPending}
         />
 
-        {(chips.length > 0 || !showInitialSkeleton) && (
-          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1">
-            {!showInitialSkeleton && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-foreground font-medium tabular-nums">
-                  {count.toLocaleString()} expenses
-                </span>
-                <span className="text-muted font-normal">
-                  · {summaryAmountLabel}{" "}
-                  {currencySummary(
-                    summary?.byCurrency ?? [],
-                    summaryAmountField,
-                    formatMoney,
-                  )}
-                </span>
-                {(searchPending || listRefreshing) && (
-                  <span className="text-muted font-normal">· searching…</span>
-                )}
-              </div>
-            )}
-            {!showInitialSkeleton && (
-              <label className="text-muted flex items-center gap-1.5 font-normal sm:ml-auto">
-                Sort
-                <select
-                  value={`${sort}:${order}`}
-                  onChange={(e) => {
-                    const [s, o] = e.target.value.split(":");
-                    setFilters({
-                      sort: s as "date" | "cost" | "description",
-                      order: o as "asc" | "desc",
-                    });
-                  }}
-                  className="border-border text-foreground bg-card rounded border px-2 py-1 text-xs"
-                >
-                  <option value="date:desc">Newest</option>
-                  <option value="date:asc">Oldest</option>
-                  <option value="cost:desc">Highest share</option>
-                  <option value="cost:asc">Lowest share</option>
-                  <option value="description:asc">A → Z</option>
-                  <option value="description:desc">Z → A</option>
-                </select>
-              </label>
-            )}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {aiChipText && (
-                <span className={`${ui.chip} text-xs`} title="Ask AI">
-                  AI: {aiChipText}
-                </span>
-              )}
-              {chips.map((chip) => (
-                <button
-                  key={chip.key}
-                  type="button"
-                  onClick={() => handleClearFilter(chip.key)}
-                  className={`${ui.chip} text-xs`}
-                >
-                  {chip.label} ×
-                </button>
-              ))}
-              {chips.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAll}
-                  className="text-accent hover:underline"
-                >
-                  Clear
-                </button>
-              )}
-              {loadingMore && <span className="text-muted">Loading more…</span>}
-            </div>
-          </div>
-        )}
+        <ExploreSummaryBar
+          hidden={showInitialSkeleton}
+          count={count}
+          amountLabel={summaryAmountLabel}
+          amounts={currencySummary(
+            summary?.byCurrency ?? [],
+            summaryAmountField,
+            formatMoney,
+          )}
+          pending={searchPending || listRefreshing || summaryFetching}
+          sort={sort}
+          order={order}
+          onSortChange={(s, o) =>
+            setFilters({
+              sort: s as "date" | "cost" | "description",
+              order: o as "asc" | "desc",
+            })
+          }
+          chips={chips}
+          onClearFilter={handleClearFilter}
+          onClearAll={handleClearAll}
+          loadingMore={loadingMore}
+        />
 
         {error && (
           <p className="bg-error-bg text-error-text rounded-md px-2 py-1 text-xs">
@@ -523,7 +525,11 @@ export function ExpenseExplorer() {
           >
             <div
               ref={parentRef}
-              className="max-h-[calc(100dvh-14rem-env(safe-area-inset-bottom))] min-h-0 flex-1 overflow-auto md:max-h-[calc(100dvh-11rem)]"
+              className={`min-h-0 flex-1 overflow-auto ${
+                aiAvailable
+                  ? "max-h-[calc(100dvh-16rem-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-12rem)]"
+                  : "max-h-[calc(100dvh-14rem-env(safe-area-inset-bottom))] md:max-h-[calc(100dvh-11rem)]"
+              }`}
             >
               <div
                 style={{

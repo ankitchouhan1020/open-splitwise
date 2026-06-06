@@ -1,4 +1,5 @@
 import { HomeDashboard } from "@/app/home-dashboard";
+import { AppLogo } from "@/components/app-logo";
 import { AppShell } from "@/components/app-shell";
 import { DemoModeButton } from "@/components/demo-mode-button";
 import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
@@ -38,8 +39,11 @@ export default async function HomePage() {
     <AppShell>
       <main className="mx-auto flex min-h-0 max-w-xl flex-col justify-center gap-6 px-4 py-10 sm:gap-8 sm:px-6 sm:py-16">
         <div className="space-y-2 sm:space-y-3">
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl md:text-[2.75rem]">
-            open-splitwise
+          <h1 className="tracking-tight">
+            <AppLogo
+              markClassName="h-10 w-10 sm:h-11 sm:w-11"
+              wordmarkClassName="text-3xl sm:text-4xl md:text-[2.75rem]"
+            />
           </h1>
           <p className="text-muted text-base leading-relaxed sm:text-lg">
             A companion app for Splitwise — sync your expenses, then search,

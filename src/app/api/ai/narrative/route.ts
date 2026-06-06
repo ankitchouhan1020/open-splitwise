@@ -1,9 +1,9 @@
 import { aiErrorResponse, requireAiAccount } from "@/lib/ai/guard";
 import { generateDashboardNarrative } from "@/lib/ai/narrative";
 import { getDashboardSummary } from "@/lib/expenses/dashboard";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+async function handleNarrative(refresh: boolean) {
   const auth = await requireAiAccount();
   if ("error" in auth) return auth.error;
 
@@ -13,9 +13,27 @@ export async function GET() {
   }
 
   try {
-    const narrative = await generateDashboardNarrative(auth.owner.id, summary);
+    const narrative = await generateDashboardNarrative(auth.owner.id, summary, {
+      refresh,
+    });
     return NextResponse.json({ narrative });
   } catch (err) {
     return aiErrorResponse(err);
   }
+}
+
+export async function GET(request: NextRequest) {
+  const refresh = request.nextUrl.searchParams.get("refresh") === "1";
+  return handleNarrative(refresh);
+}
+
+export async function POST(request: NextRequest) {
+  let refresh = false;
+  try {
+    const body = (await request.json()) as { refresh?: boolean };
+    refresh = body.refresh === true;
+  } catch {
+    /* empty body is fine */
+  }
+  return handleNarrative(refresh);
 }

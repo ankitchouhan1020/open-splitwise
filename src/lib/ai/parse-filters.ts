@@ -24,13 +24,14 @@ export async function parseNaturalLanguageFilters(
   if (!owner) {
     throw new Error("not_connected");
   }
-  const catalog = await getFilterOptions();
+  const options = await getFilterOptions();
 
   const today = new Date().toISOString().slice(0, 10);
   const { system, user } = buildParseFiltersPrompt({
     query,
     today,
-    catalog,
+    catalog: options,
+    ownerName: options.ownerName,
   });
 
   const draft = await completeJson({
@@ -42,7 +43,8 @@ export async function parseNaturalLanguageFilters(
     ],
   });
 
-  return resolveParsedFilters(draft, catalog, {
+  return resolveParsedFilters(draft, options, {
     ownerSplitwiseId: owner.splitwiseId,
+    ownerName: options.ownerName,
   });
 }

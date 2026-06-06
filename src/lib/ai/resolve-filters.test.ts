@@ -13,7 +13,10 @@ const catalog: FilterCatalog = {
   currencies: ["USD", "EUR"],
 };
 
-const ownerContext = { ownerSplitwiseId: 9001 };
+const ownerContext = {
+  ownerSplitwiseId: 9001,
+  ownerName: "Ankit Chouhan",
+};
 
 describe("resolveParsedFilters", () => {
   it("maps names to ids and keyword search", () => {
@@ -100,7 +103,7 @@ describe("resolveParsedFilters", () => {
     expect(result.warnings).toContain('Currency "XYZ" not in your data');
   });
 
-  it("maps directional payments and me to owner id", () => {
+  it("maps directional payer/payee without forcing settlements", () => {
     const result = resolveParsedFilters(
       {
         paidByName: "me",
@@ -116,10 +119,49 @@ describe("resolveParsedFilters", () => {
     expect(result.filters).toMatchObject({
       paidByUserId: 9001,
       paidToUserId: 30,
-      payment: true,
       dateFrom: "2025-01-01",
       dateTo: "2025-12-31",
     });
+    expect(result.filters.payment).toBeUndefined();
     expect(result.filters.friendId).toBeUndefined();
+  });
+
+  it("matches owner by first name for payer/payee", () => {
+    const result = resolveParsedFilters(
+      {
+        paidByName: "Ankit",
+        explanation: "Paid by Ankit",
+      },
+      catalog,
+      ownerContext,
+    );
+
+    expect(result.filters.paidByUserId).toBe(9001);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("sets payment only when the draft explicitly requests it", () => {
+    const settlements = resolveParsedFilters(
+      {
+        paidByName: "Alex Johnson",
+        payment: true,
+        explanation: "Settlements Alex paid",
+      },
+      catalog,
+      ownerContext,
+    );
+    expect(settlements.filters.payment).toBe(true);
+    expect(settlements.filters.paidByUserId).toBe(20);
+
+    const paidByOnly = resolveParsedFilters(
+      {
+        paidByName: "Alex Johnson",
+        explanation: "Paid by Alex",
+      },
+      catalog,
+      ownerContext,
+    );
+    expect(paidByOnly.filters.paidByUserId).toBe(20);
+    expect(paidByOnly.filters.payment).toBeUndefined();
   });
 });

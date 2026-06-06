@@ -21,6 +21,7 @@ type CompleteJsonInput<T extends z.ZodType> = {
   responseSchema: AiResponseSchema<T>;
   messages: ChatMessage[];
   signal: AbortSignal;
+  temperature?: number;
 };
 
 function validateStructuredResponse<T extends z.ZodType>(
@@ -90,7 +91,7 @@ async function completeJsonOpenAiChat<T extends z.ZodType>(
       model: input.config.model,
       messages: input.messages,
       response_format: openAiJsonSchemaBody(input.responseSchema),
-      temperature: 0.2,
+      temperature: input.temperature ?? 0.2,
     }),
     signal: input.signal,
   });
@@ -143,7 +144,7 @@ async function completeJsonClaude<T extends z.ZodType>(
         type: "json_schema",
         schema: input.responseSchema.jsonSchema,
       },
-      temperature: 0.2,
+      temperature: input.temperature ?? 0.2,
     }),
     signal: input.signal,
   });
@@ -188,7 +189,7 @@ async function completeJsonGemini<T extends z.ZodType>(
       generationConfig: {
         responseMimeType: "application/json",
         responseJsonSchema: input.responseSchema.jsonSchema,
-        temperature: 0.2,
+        temperature: input.temperature ?? 0.2,
       },
     }),
     signal: input.signal,
@@ -217,7 +218,7 @@ async function completeJsonGemini<T extends z.ZodType>(
 }
 
 export async function completeJson<T extends z.ZodType>(
-  input: Omit<CompleteJsonInput<T>, "signal">,
+  input: Omit<CompleteJsonInput<T>, "signal"> & { temperature?: number },
 ): Promise<z.infer<T>> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

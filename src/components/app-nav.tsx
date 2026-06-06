@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLogo } from "@/components/app-logo";
 import { AppNavActions } from "@/components/app-nav-actions";
 import { NAV_LINKS, isNavActive } from "@/lib/nav";
 import Link from "next/link";
@@ -23,11 +24,8 @@ export function AppNav({
   return (
     <header className="border-border bg-card sticky top-0 z-30 border-b">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 md:px-6 md:py-2.5">
-        <Link
-          href="/"
-          className="text-foreground shrink-0 text-[15px] font-semibold tracking-tight"
-        >
-          Open Splitwise
+        <Link href="/" className="shrink-0">
+          <AppLogo />
         </Link>
 
         {connected && (

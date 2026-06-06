@@ -455,7 +455,7 @@ export function demoExploreContext(now = new Date()) {
     .filter((g) => g.groupId > 0)
     .slice(0, 12);
   const categories = demoCategoryBreakdown({ excludePayments: true }, 6, now);
-  return { groups, categories };
+  return { groups, topCategories: categories };
 }
 
 export function demoSyncStatus() {

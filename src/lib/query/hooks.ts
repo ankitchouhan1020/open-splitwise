@@ -107,9 +107,16 @@ export function useExploreContext() {
   return useQuery({
     queryKey: queryKeys.explore.context(),
     queryFn: () =>
-      fetchJson<{ groups: ExploreGroupStat[] }>("/api/explore/context"),
+      fetchJson<{
+        groups: ExploreGroupStat[];
+        topCategories: Array<{
+          categoryId: number | null;
+          categoryName: string;
+          total: string;
+          count: number;
+        }>;
+      }>("/api/explore/context"),
     staleTime: FILTER_OPTIONS_STALE,
-    select: (data) => data.groups ?? [],
   });
 }
 
@@ -286,7 +293,12 @@ export function useAiModels(input: {
 
 export function useGenerateAiNarrative() {
   return useMutation({
-    mutationFn: () => fetchJson<{ narrative: string }>("/api/ai/narrative"),
+    mutationFn: (input?: { refresh?: boolean }) =>
+      fetchJson<{ narrative: string }>("/api/ai/narrative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: input?.refresh ?? false }),
+      }),
   });
 }
 

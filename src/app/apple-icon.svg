@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    .bg {
+      fill: #0d9488;
+    }
+    .fg {
+      fill: #ffffff;
+    }
+    .slit {
+      stroke: #0d9488;
+    }
+    @media (prefers-color-scheme: dark) {
+      .bg {
+        fill: #2dd4bf;
+      }
+      .fg {
+        fill: #042f2e;
+      }
+      .slit {
+        stroke: #2dd4bf;
+      }
+    }
+  </style>
+  <rect width="180" height="180" rx="44" class="bg" />
+  <path d="M90 39 141 90 90 141 39 90" class="fg" />
+  <path d="M90 39 141 90 90 141 90 90" class="bg" opacity="0.28" />
+  <path
+    d="M62 56 118 124"
+    class="slit"
+    stroke-width="12"
+    stroke-linecap="round"
+  />
+</svg>

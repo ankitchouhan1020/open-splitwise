@@ -172,7 +172,11 @@ export function HomeDashboard({ userName }: { userName: string }) {
                     : "Could not generate summary"
                   : null
               }
-              onGenerateNarrative={() => void generateNarrative.mutate()}
+              onGenerateNarrative={() =>
+                void generateNarrative.mutate({
+                  refresh: Boolean(generateNarrative.data?.narrative),
+                })
+              }
             />
           )}
 

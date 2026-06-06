@@ -7,7 +7,7 @@ import type { ParsedFilterDraft } from "@/lib/ai/schema";
 import type { FilterCatalog } from "@/lib/ai/prompts";
 
 const SORT_KEYS: ExpenseListSort[] = ["date", "cost", "description"];
-const SELF_NAME = /^(me|i|myself|my)$/i;
+const SELF_NAME = /^(me|i|myself|my|you)$/i;
 
 function normalize(s: string): string {
   return s.trim().toLowerCase();
@@ -48,7 +48,39 @@ function matchByName(
     };
   }
 
+  const wordMatch = items.filter((item) =>
+    normalize(item.name)
+      .split(/\s+/)
+      .filter(Boolean)
+      .some((part) => part === needle || part.startsWith(needle)),
+  );
+  if (wordMatch.length === 1)
+    return { status: "matched", id: wordMatch[0]!.id };
+  if (wordMatch.length > 1) {
+    return {
+      status: "ambiguous",
+      names: wordMatch.map((item) => item.name),
+    };
+  }
+
   return { status: "not_found" };
+}
+
+function participantItems(
+  catalog: FilterCatalog,
+  context: ResolveFilterContext,
+): Array<{ id: number; name: string }> {
+  const items = [...catalog.friends];
+  if (context.ownerSplitwiseId != null && context.ownerName?.trim()) {
+    const owner = {
+      id: context.ownerSplitwiseId,
+      name: context.ownerName.trim(),
+    };
+    if (!items.some((f) => f.id === owner.id)) {
+      items.unshift(owner);
+    }
+  }
+  return items;
 }
 
 function resolveNamedId(
@@ -76,15 +108,20 @@ function resolveNamedId(
 function resolveParticipantId(
   name: string | undefined,
   catalog: FilterCatalog,
-  ownerSplitwiseId: number | undefined,
+  context: ResolveFilterContext,
   label: string,
   warnings: string[],
 ): number | undefined {
   if (!name?.trim()) return undefined;
-  if (ownerSplitwiseId && SELF_NAME.test(name.trim())) {
-    return ownerSplitwiseId;
+  if (context.ownerSplitwiseId && SELF_NAME.test(name.trim())) {
+    return context.ownerSplitwiseId;
   }
-  return resolveNamedId(name, catalog.friends, label, warnings);
+  return resolveNamedId(
+    name,
+    participantItems(catalog, context),
+    label,
+    warnings,
+  );
 }
 
 function parseIsoDate(value: string | undefined): string | undefined {
@@ -120,6 +157,7 @@ function parseOrder(value: string | undefined): ExpenseListOrder | undefined {
 
 export type ResolveFilterContext = {
   ownerSplitwiseId?: number;
+  ownerName?: string;
 };
 
 export function resolveParsedFilters(
@@ -155,7 +193,7 @@ export function resolveParsedFilters(
   const paidByUserId = resolveParticipantId(
     draft.paidByName,
     catalog,
-    context.ownerSplitwiseId,
+    context,
     "Payer",
     warnings,
   );
@@ -164,7 +202,7 @@ export function resolveParsedFilters(
   const paidToUserId = resolveParticipantId(
     draft.paidToName,
     catalog,
-    context.ownerSplitwiseId,
+    context,
     "Payee",
     warnings,
   );
@@ -195,8 +233,6 @@ export function resolveParsedFilters(
 
   if (draft.payment === true || draft.payment === false) {
     filters.payment = draft.payment;
-  } else if (hasDirection) {
-    filters.payment = true;
   }
 
   if (typeof draft.costMin === "number" && Number.isFinite(draft.costMin)) {
