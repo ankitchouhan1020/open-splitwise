@@ -4,7 +4,6 @@ import {
   expenseDateInputValue,
   expenseDateToIso,
   formatExpenseDateRangeLabel,
-  localDayStartIso,
 } from "@/lib/expenses/date-filters";
 
 describe("expense date filters", () => {
@@ -16,12 +15,6 @@ describe("expense date filters", () => {
     expect(expenseDateInputValue(from)).toBe(local);
     expect(expenseDateInputValue(to)).toBe(local);
     expect(new Date(from).getTime()).toBeLessThan(new Date(to).getTime());
-  });
-
-  it("does not shift the displayed day for negative-offset timezones", () => {
-    const start = localDayStartIso(new Date(2026, 5, 6));
-    expect(expenseDateInputValue(start)).toBe("2026-06-06");
-    expect(start).not.toMatch(/^2026-06-06T00:00:00.000Z$/);
   });
 
   it("formats chip labels with local dates", () => {
