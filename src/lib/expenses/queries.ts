@@ -191,6 +191,34 @@ function ftsCondition(query: string): SQL {
   return sql`to_tsvector('english', coalesce(${schema.expenses.description}, '') || ' ' || coalesce(${schema.expenses.details}, '') || ' ' || coalesce(${schema.expenses.searchText}, '')) @@ plainto_tsquery('english', ${query})`;
 }
 
+function userIsPrimaryPayer(userId: number): SQL {
+  return sql`exists (
+    select 1 from ${schema.expenseShares} payer
+    where payer.expense_id = ${schema.expenses.id}
+      and payer.splitwise_user_id = ${userId}
+      and payer.paid_share::numeric > 0.005
+      and payer.paid_share::numeric >= (
+        select coalesce(max(s.paid_share::numeric), 0)
+        from ${schema.expenseShares} s
+        where s.expense_id = ${schema.expenses.id}
+      ) - 0.005
+  )`;
+}
+
+function userIsPrimaryPayee(userId: number): SQL {
+  return sql`exists (
+    select 1 from ${schema.expenseShares} payee
+    where payee.expense_id = ${schema.expenses.id}
+      and payee.splitwise_user_id = ${userId}
+      and payee.owed_share::numeric > 0.005
+      and payee.owed_share::numeric >= (
+        select coalesce(max(s.owed_share::numeric), 0)
+        from ${schema.expenseShares} s
+        where s.expense_id = ${schema.expenses.id}
+      ) - 0.005
+  )`;
+}
+
 export function buildExpenseWhere(
   accountUserId: number,
   ownerSplitwiseId: number,
@@ -255,6 +283,12 @@ export function buildExpenseWhere(
         exists(friendShare),
       )!,
     );
+  }
+  if (filters.paidByUserId !== undefined) {
+    parts.push(userIsPrimaryPayer(filters.paidByUserId));
+  }
+  if (filters.paidToUserId !== undefined) {
+    parts.push(userIsPrimaryPayee(filters.paidToUserId));
   }
   if (filters.shareMin !== undefined || filters.shareMax !== undefined) {
     const shareParts: SQL[] = [
@@ -361,7 +395,13 @@ function listJoins(owner: { id: number; splitwiseId: number }) {
 
 export type ExpenseSummary = {
   count: number;
-  byCurrency: Array<{ currency: string; myShareTotal: string }>;
+  byCurrency: Array<{
+    currency: string;
+    myShareTotal: string;
+    myPaidShareTotal: string;
+    /** paid_share total for paidByUserId when set, else the account owner. */
+    payerTotal: string;
+  }>;
 };
 
 export async function getExpenseSummary(
@@ -378,6 +418,7 @@ export async function getExpenseSummary(
     eq(schema.expenseShares.expenseId, schema.expenses.id),
     eq(schema.expenseShares.splitwiseUserId, owner.splitwiseId),
   );
+  const payerUserId = filters.paidByUserId ?? owner.splitwiseId;
 
   const [{ count: expenseCount }] = await db
     .select({ count: count() })
@@ -388,6 +429,13 @@ export async function getExpenseSummary(
     .select({
       currency: schema.expenses.currencyCode,
       myShareTotal: sum(schema.expenseShares.owedShare),
+      myPaidShareTotal: sum(schema.expenseShares.paidShare),
+      payerTotal: sql<string>`coalesce(sum((
+        select ${schema.expenseShares.paidShare}::numeric
+        from ${schema.expenseShares}
+        where ${schema.expenseShares.expenseId} = ${schema.expenses.id}
+          and ${schema.expenseShares.splitwiseUserId} = ${payerUserId}
+      )), 0)`,
     })
     .from(schema.expenses)
     .leftJoin(schema.expenseShares, shareJoin)
@@ -400,6 +448,8 @@ export async function getExpenseSummary(
     byCurrency: currencyRows.map((r) => ({
       currency: r.currency,
       myShareTotal: r.myShareTotal ?? "0",
+      myPaidShareTotal: r.myPaidShareTotal ?? "0",
+      payerTotal: r.payerTotal ?? "0",
     })),
   };
 }
@@ -533,6 +583,8 @@ export async function getExpenseDetail(
 }
 
 export async function getFilterOptions(): Promise<{
+  ownerUserId: number;
+  ownerName: string;
   groups: Array<{ id: number; name: string }>;
   friends: Array<{ id: number; name: string }>;
   categories: Array<{ id: number; name: string }>;
@@ -540,7 +592,14 @@ export async function getFilterOptions(): Promise<{
 }> {
   const owner = await getAuthenticatedAccountOwner();
   if (!owner) {
-    return { groups: [], friends: [], categories: [], currencies: [] };
+    return {
+      ownerUserId: 0,
+      ownerName: "You",
+      groups: [],
+      friends: [],
+      categories: [],
+      currencies: [],
+    };
   }
 
   const db = getDb();
@@ -582,6 +641,9 @@ export async function getFilterOptions(): Promise<{
   );
 
   return {
+    ownerUserId: owner.splitwiseId,
+    ownerName:
+      [owner.firstName, owner.lastName].filter(Boolean).join(" ") || "You",
     groups: [
       { id: 0, name: "No group" },
       ...groupRows.filter((g) => g.id !== 0),

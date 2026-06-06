@@ -7,6 +7,10 @@ export type ExpenseFilters = {
   dateTo?: string;
   groupId?: number;
   friendId?: number;
+  /** Splitwise user id of who paid (primary payer on the expense). */
+  paidByUserId?: number;
+  /** Splitwise user id of who received (primary payee / max owed share). */
+  paidToUserId?: number;
   categoryId?: number;
   currency?: string;
   /** When set, filter payment vs non-payment expenses. */
@@ -52,6 +56,8 @@ export function parseExpenseFilters(params: URLSearchParams): ExpenseFilters {
     dateTo: parseDateParam(params.get("to")),
     groupId: parseNumber(params.get("group")),
     friendId: parseNumber(params.get("friend")),
+    paidByUserId: parseNumber(params.get("paidBy")),
+    paidToUserId: parseNumber(params.get("paidTo")),
     categoryId: parseNumber(params.get("category")),
     currency: params.get("currency")?.trim() || undefined,
     payment,
@@ -80,6 +86,8 @@ export function filtersToSearchParams(
   set("to", filters.dateTo);
   if (filters.groupId !== undefined) set("group", filters.groupId);
   set("friend", filters.friendId);
+  set("paidBy", filters.paidByUserId);
+  set("paidTo", filters.paidToUserId);
   set("category", filters.categoryId);
   set("currency", filters.currency);
   if (filters.payment === true) params.set("payment", "1");
@@ -156,6 +164,10 @@ export function filtersFromJson(value: unknown): ExpenseFilters {
     dateTo: typeof o.dateTo === "string" ? o.dateTo : undefined,
     groupId: typeof o.groupId === "number" ? o.groupId : undefined,
     friendId: typeof o.friendId === "number" ? o.friendId : undefined,
+    paidByUserId:
+      typeof o.paidByUserId === "number" ? o.paidByUserId : undefined,
+    paidToUserId:
+      typeof o.paidToUserId === "number" ? o.paidToUserId : undefined,
     categoryId: typeof o.categoryId === "number" ? o.categoryId : undefined,
     currency: typeof o.currency === "string" ? o.currency : undefined,
     payment: typeof o.payment === "boolean" ? o.payment : undefined,
@@ -195,6 +207,18 @@ export function activeFilterChips(
     chips.push({
       key: "friend",
       label: `Friend: ${labels.friends.get(filters.friendId) ?? filters.friendId}`,
+    });
+  }
+  if (filters.paidByUserId !== undefined) {
+    chips.push({
+      key: "paidBy",
+      label: `Paid by: ${labels.friends.get(filters.paidByUserId) ?? filters.paidByUserId}`,
+    });
+  }
+  if (filters.paidToUserId !== undefined) {
+    chips.push({
+      key: "paidTo",
+      label: `Paid to: ${labels.friends.get(filters.paidToUserId) ?? filters.paidToUserId}`,
     });
   }
   if (filters.categoryId !== undefined) {

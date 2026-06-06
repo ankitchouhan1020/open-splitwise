@@ -2,6 +2,10 @@ import type { GroupDetail } from "@/lib/groups/detail";
 import type { GroupListItem } from "@/lib/groups/list";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
+import {
+  expenseShareDirection,
+  matchesShareDirection,
+} from "@/lib/expenses/share-direction";
 import type { InsightsFilters } from "@/lib/expenses/insights";
 import type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/types";
 import { formatMoney } from "@/lib/format";
@@ -54,6 +58,15 @@ function inDateRange(dateIso: string, from?: string, to?: string): boolean {
   return true;
 }
 
+function demoExpenseDirection(
+  expenseId: number,
+  now = new Date(),
+): ReturnType<typeof expenseShareDirection> {
+  const detail = getDemoExpenseDetail(expenseId, now);
+  if (!detail) return { paidByUserId: null, paidToUserId: null };
+  return expenseShareDirection(detail.shares);
+}
+
 function filterDemoExpenses(
   filters: ExpenseFilters = {},
   now = new Date(),
@@ -66,6 +79,24 @@ function filterDemoExpenses(
     if (filters.categoryId != null && e.categoryId !== filters.categoryId)
       return false;
     if (!inDateRange(e.date, filters.dateFrom, filters.dateTo)) return false;
+    if (filters.friendId != null) {
+      const detail = getDemoExpenseDetail(e.id, now);
+      const involved = detail?.shares.some(
+        (s) => s.splitwiseUserId === filters.friendId,
+      );
+      if (!involved) return false;
+    }
+    if (filters.paidByUserId != null || filters.paidToUserId != null) {
+      const direction = demoExpenseDirection(e.id, now);
+      if (
+        !matchesShareDirection(direction, {
+          paidByUserId: filters.paidByUserId,
+          paidToUserId: filters.paidToUserId,
+        })
+      ) {
+        return false;
+      }
+    }
     if (filters.q) {
       const q = filters.q.toLowerCase();
       const hay =
@@ -120,18 +151,33 @@ export function demoExpenseSummary(
   now = new Date(),
 ) {
   const filtered = filterDemoExpenses(filters, now);
-  const byCurrency = new Map<string, number>();
+  const payerUserId = filters.paidByUserId ?? DEMO_OWNER_SPLITWISE_ID;
+  const byCurrency = new Map<
+    string,
+    { myShareTotal: number; myPaidShareTotal: number; payerTotal: number }
+  >();
   for (const row of filtered) {
-    byCurrency.set(
-      row.currencyCode,
-      (byCurrency.get(row.currencyCode) ?? 0) + Number(row.myShare ?? 0),
+    const entry = byCurrency.get(row.currencyCode) ?? {
+      myShareTotal: 0,
+      myPaidShareTotal: 0,
+      payerTotal: 0,
+    };
+    entry.myShareTotal += Number(row.myShare ?? 0);
+    entry.myPaidShareTotal += Number(row.myPaidShare ?? 0);
+    const detail = getDemoExpenseDetail(row.id, now);
+    const payerShare = detail?.shares.find(
+      (s) => s.splitwiseUserId === payerUserId,
     );
+    entry.payerTotal += Number(payerShare?.paidShare ?? 0);
+    byCurrency.set(row.currencyCode, entry);
   }
   return {
     count: filtered.length,
-    byCurrency: [...byCurrency.entries()].map(([currency, total]) => ({
+    byCurrency: [...byCurrency.entries()].map(([currency, totals]) => ({
       currency,
-      myShareTotal: String(total),
+      myShareTotal: String(totals.myShareTotal),
+      myPaidShareTotal: String(totals.myPaidShareTotal),
+      payerTotal: String(totals.payerTotal),
     })),
   };
 }
@@ -180,6 +226,8 @@ export const demoCurrentUserId = DEMO_OWNER_SPLITWISE_ID;
 
 export function demoFilterOptions() {
   return {
+    ownerUserId: DEMO_OWNER_SPLITWISE_ID,
+    ownerName: `${DEMO_USER.first_name} ${DEMO_USER.last_name}`.trim(),
     groups: DEMO_GROUPS.map((g) => ({ id: g.id, name: g.name })),
     friends: DEMO_FRIENDS.map((f) => ({ id: f.id, name: f.name })),
     categories: DEMO_CATEGORIES.map((c) => ({ id: c.id, name: c.name })),

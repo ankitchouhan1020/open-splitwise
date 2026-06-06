@@ -38,4 +38,10 @@ export const queryKeys = {
     members: (groupId: number) =>
       [...queryKeys.all, "groups", groupId, "members"] as const,
   },
+  ai: {
+    status: () => [...queryKeys.all, "ai", "status"] as const,
+    settings: () => [...queryKeys.all, "ai", "settings"] as const,
+    models: (provider: string, keyScope: string) =>
+      [...queryKeys.all, "ai", "models", provider, keyScope] as const,
+  },
 };

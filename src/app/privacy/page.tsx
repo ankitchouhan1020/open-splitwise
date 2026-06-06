@@ -47,6 +47,25 @@ export default function PrivacyPage() {
           </section>
 
           <section>
+            <h2 className="text-foreground text-base font-medium">
+              Optional AI features (BYOK)
+            </h2>
+            <p className="mt-2">
+              If you enable AI in{" "}
+              <Link href="/settings?tab=ai" className="text-accent underline">
+                Settings
+              </Link>
+              , you can store an API key encrypted in the local database.
+              Supported providers include OpenAI, OpenRouter, Google Gemini, and
+              Anthropic Claude (or a custom OpenAI-compatible endpoint). The key
+              is used only on this server when you use smart filters or
+              narrative insights. Only filter catalogs (group, friend, and
+              category names) and spending aggregates are sent — not individual
+              expense rows or your Splitwise OAuth token.
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-foreground text-base font-medium">Retention</h2>
             <p className="mt-2">
               Your session token is kept until you disconnect. Synced Postgres

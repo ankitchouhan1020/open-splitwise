@@ -188,6 +188,21 @@ export const savedFilterViews = pgTable(
   ],
 );
 
+/** Per-user BYOK AI settings (API key stored encrypted). */
+export const userAiSettings = pgTable("user_ai_settings", {
+  accountUserId: integer("account_user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(false),
+  provider: text("provider").notNull().default("openai"),
+  baseUrl: text("base_url"),
+  model: text("model"),
+  encryptedApiKey: text("encrypted_api_key"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const syncState = pgTable("sync_state", {
   accountUserId: integer("account_user_id")
     .primaryKey()

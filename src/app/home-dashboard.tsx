@@ -2,6 +2,7 @@
 
 import { filtersToSearchParams } from "@/lib/expenses/filters";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
+import { HomeInsightsSection } from "@/components/home-insights-section";
 import { AddExpenseButton } from "@/components/add-expense-drawer";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
 import { ExpenseListItemRow } from "@/components/expense-list-item";
@@ -11,8 +12,13 @@ import { DataList } from "@/components/ui/data-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SegmentTabs } from "@/components/ui/segment-tabs";
 import { ui } from "@/lib/ui-classes";
+import {
+  useDashboard,
+  useExpenseDetail,
+  useAiStatus,
+  useGenerateAiNarrative,
+} from "@/lib/query/hooks";
 import { FetchJsonError } from "@/lib/query/fetch-json";
-import { useDashboard, useExpenseDetail } from "@/lib/query/hooks";
 import { balanceClasses, balanceNetLabel } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
 import { useSearchParams } from "next/navigation";
@@ -94,6 +100,8 @@ export function HomeDashboard({ userName }: { userName: string }) {
     isError,
     error: queryError,
   } = useDashboard();
+  const { data: aiAvailable = false } = useAiStatus();
+  const generateNarrative = useGenerateAiNarrative();
   const [feedTab, setFeedTab] = useState<FeedTab>("activity");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const feedPanelId = useId();
@@ -150,6 +158,23 @@ export function HomeDashboard({ userName }: { userName: string }) {
       {!loading && data && (
         <div className="space-y-6">
           <HomeHero userName={userName} data={data} currency={currency} />
+
+          {(data.insights.length > 0 || aiAvailable) && (
+            <HomeInsightsSection
+              insights={data.insights}
+              aiAvailable={aiAvailable}
+              narrative={generateNarrative.data?.narrative ?? null}
+              narrativeLoading={generateNarrative.isPending}
+              narrativeError={
+                generateNarrative.isError
+                  ? generateNarrative.error instanceof FetchJsonError
+                    ? generateNarrative.error.message
+                    : "Could not generate summary"
+                  : null
+              }
+              onGenerateNarrative={() => void generateNarrative.mutate()}
+            />
+          )}
 
           <section>
             <SegmentTabs

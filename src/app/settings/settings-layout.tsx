@@ -1,5 +1,6 @@
 "use client";
 
+import { AiSection } from "@/app/settings/ai-section";
 import { ConnectionPanel } from "@/app/settings/connection-panel";
 import { SettingsNav } from "@/app/settings/settings-nav";
 import type { SettingsTab } from "@/app/settings/settings-copy";
@@ -36,6 +37,7 @@ type Props = {
   guestDemo: boolean;
   oauthConnected: boolean;
   showSync: boolean;
+  showAi: boolean;
   canDeleteSyncedData: boolean;
   oauthError?: string | null;
   justConnected?: boolean;
@@ -50,6 +52,7 @@ export function SettingsLayout({
   guestDemo,
   oauthConnected,
   showSync,
+  showAi,
   canDeleteSyncedData,
   oauthError,
   justConnected,
@@ -60,6 +63,7 @@ export function SettingsLayout({
 
   const tabs = useMemo(() => {
     const items: SettingsTab[] = ["account", "appearance"];
+    if (showAi) items.push("ai");
     if (showSync) items.push("sync");
     items.push("data");
     if (
@@ -69,7 +73,7 @@ export function SettingsLayout({
       items.push("setup");
     }
     return items;
-  }, [showSync, showSetupDetails, setup, connected]);
+  }, [showAi, showSync, showSetupDetails, setup, connected]);
 
   const activeTab = parseTab(searchParams.get("tab"), tabs);
 
@@ -108,6 +112,14 @@ export function SettingsLayout({
         )}
 
         {activeTab === "appearance" && <ThemeSection bare />}
+
+        {activeTab === "ai" && showAi && (
+          <AiSection
+            bare
+            dbConfigured={setup.dbConfigured}
+            connected={connected}
+          />
+        )}
 
         {activeTab === "sync" && showSync && (
           <SyncPanel dbConfigured={setup.dbConfigured} bare />

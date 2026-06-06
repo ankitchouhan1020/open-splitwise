@@ -1,0 +1,40 @@
+{
+  "defaultProvider": "openai",
+  "providers": {
+    "openai": {
+      "label": "OpenAI",
+      "defaultBaseUrl": "https://api.openai.com/v1",
+      "defaultModel": "gpt-4o-mini",
+      "api": "openai-chat",
+      "keyHint": "sk-…"
+    },
+    "openrouter": {
+      "label": "OpenRouter",
+      "defaultBaseUrl": "https://openrouter.ai/api/v1",
+      "defaultModel": "google/gemini-2.5-flash",
+      "api": "openai-chat",
+      "keyHint": "sk-or-…"
+    },
+    "gemini": {
+      "label": "Google Gemini",
+      "defaultBaseUrl": "https://generativelanguage.googleapis.com/v1beta",
+      "defaultModel": "gemini-2.5-flash",
+      "api": "gemini",
+      "keyHint": "AI…"
+    },
+    "claude": {
+      "label": "Anthropic Claude",
+      "defaultBaseUrl": "https://api.anthropic.com/v1",
+      "defaultModel": "claude-3-5-haiku-latest",
+      "api": "claude",
+      "keyHint": "sk-ant-…"
+    },
+    "custom": {
+      "label": "Custom (OpenAI-compatible)",
+      "defaultBaseUrl": null,
+      "defaultModel": "gpt-4o-mini",
+      "api": "openai-chat",
+      "keyHint": "API key"
+    }
+  }
+}

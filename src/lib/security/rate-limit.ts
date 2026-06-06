@@ -17,6 +17,10 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
   { pathname: "/api/expenses/export", limit: 6, windowMs: 60_000 },
   { pathname: "/api/demo/start", limit: 12, windowMs: 60 * 60_000 },
   { pathname: "/api/account/delete-synced-data", limit: 3, windowMs: 60_000 },
+  { pathname: "/api/ai/parse-filters", limit: 20, windowMs: 60_000 },
+  { pathname: "/api/ai/narrative", limit: 10, windowMs: 60_000 },
+  { pathname: "/api/ai/settings", limit: 30, windowMs: 60_000 },
+  { pathname: "/api/ai/models", limit: 30, windowMs: 60_000 },
 ];
 
 /** Per-session cap on authenticated GET /api/* traffic. */

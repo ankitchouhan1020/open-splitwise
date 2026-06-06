@@ -5,6 +5,8 @@ import type { ExpenseFilters } from "@/lib/expenses/filters";
 import { ui } from "@/lib/ui-classes";
 
 type FilterOptions = {
+  ownerUserId: number;
+  ownerName: string;
   groups: Array<{ id: number; name: string }>;
   friends: Array<{ id: number; name: string }>;
   categories: Array<{ id: number; name: string }>;
@@ -71,6 +73,54 @@ export function ExpenseFiltersPanel({
       ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2">
+        <Field label="Paid by">
+          <select
+            value={filters.paidByUserId ?? ""}
+            onChange={(e) =>
+              onChange({
+                paidByUserId: e.target.value
+                  ? Number(e.target.value)
+                  : undefined,
+                page: 1,
+              })
+            }
+            className={fieldClass}
+          >
+            <option value="">Any</option>
+            <option value={options.ownerUserId}>
+              {options.ownerName} (you)
+            </option>
+            {options.friends.map((f) => (
+              <option key={`paid-by-${f.id}`} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Paid to">
+          <select
+            value={filters.paidToUserId ?? ""}
+            onChange={(e) =>
+              onChange({
+                paidToUserId: e.target.value
+                  ? Number(e.target.value)
+                  : undefined,
+                page: 1,
+              })
+            }
+            className={fieldClass}
+          >
+            <option value="">Any</option>
+            <option value={options.ownerUserId}>
+              {options.ownerName} (you)
+            </option>
+            {options.friends.map((f) => (
+              <option key={`paid-to-${f.id}`} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Friend">
           <select
             value={filters.friendId ?? ""}

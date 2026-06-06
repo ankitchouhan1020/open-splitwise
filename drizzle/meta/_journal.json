@@ -29,6 +29,41 @@
       "when": 1780594138989,
       "tag": "0003_secret_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780600000000,
+      "tag": "0004_user_ai_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780601000000,
+      "tag": "0005_drop_user_ai_settings_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780602000000,
+      "tag": "0006_user_ai_settings_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780603000000,
+      "tag": "0007_drop_user_ai_settings_model_again",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780604000000,
+      "tag": "0008_user_ai_settings_model",
+      "breakpoints": true
     }
   ]
 }

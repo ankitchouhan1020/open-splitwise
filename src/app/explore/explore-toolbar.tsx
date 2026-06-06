@@ -82,6 +82,8 @@ export function countRefineFilters(
 ): number {
   let n = 0;
   if (filters.friendId !== undefined) n++;
+  if (filters.paidByUserId !== undefined) n++;
+  if (filters.paidToUserId !== undefined) n++;
   if (filters.categoryId !== undefined) n++;
   if (filters.currency) n++;
   if (filters.costMin != null || filters.costMax != null) n++;

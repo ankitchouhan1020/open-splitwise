@@ -9,7 +9,10 @@ import {
 } from "@/components/expense-list-item";
 import { formatMoney } from "@/lib/format";
 import type { ExpenseListItem } from "@/lib/expenses/types";
-import { filtersToSearchParams } from "@/lib/expenses/filters";
+import {
+  filtersToSearchParams,
+  type ExpenseFilters,
+} from "@/lib/expenses/filters";
 import {
   buildExpenseListSections,
   sectionHeight,
@@ -21,6 +24,8 @@ import {
   useExploreContext,
   useExpenseDetail,
   useFilterOptions,
+  useAiStatus,
+  useParseFilters,
 } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { ui } from "@/lib/ui-classes";
@@ -41,24 +46,40 @@ type ListResponse = {
 
 type SummaryResponse = {
   count: number;
-  byCurrency: Array<{ currency: string; myShareTotal: string }>;
+  byCurrency: Array<{
+    currency: string;
+    myShareTotal: string;
+    myPaidShareTotal: string;
+    payerTotal: string;
+  }>;
 };
 
 type FilterOptions = {
+  ownerUserId: number;
+  ownerName: string;
   groups: Array<{ id: number; name: string }>;
   friends: Array<{ id: number; name: string }>;
   categories: Array<{ id: number; name: string }>;
   currencies: string[];
 };
 
-function shareSummary(
+function isAggregateQuery(query: string): boolean {
+  return /\b(how much|how many|total|sum|amount)\b/i.test(query);
+}
+
+function currencySummary(
   totals: SummaryResponse["byCurrency"],
+  field: "myShareTotal" | "myPaidShareTotal" | "payerTotal",
   formatMoney: (amount: number, currency: string) => string,
 ): string {
   if (totals.length === 0) return "—";
   return totals
-    .map((t) => formatMoney(Number(t.myShareTotal), t.currency))
+    .map((t) => formatMoney(Number(t[field]), t.currency))
     .join(" · ");
+}
+
+function hasDirectionalFilters(filters: ExpenseFilters): boolean {
+  return filters.paidByUserId != null || filters.paidToUserId != null;
 }
 
 export function ExpenseExplorer() {
@@ -80,12 +101,19 @@ export function ExpenseExplorer() {
   const [searchDraft, setSearchDraft] = useState("");
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiShowTotal, setAiShowTotal] = useState(false);
   const searchQ = debouncedSearch.trim() || undefined;
+
+  const { data: aiAvailable = false } = useAiStatus();
+  const parseFilters = useParseFilters();
 
   const { data: filterOptions } = useFilterOptions();
   const options = useMemo<FilterOptions>(
     () =>
       filterOptions ?? {
+        ownerUserId: 0,
+        ownerName: "You",
         groups: [],
         friends: [],
         categories: [],
@@ -109,6 +137,8 @@ export function ExpenseExplorer() {
 
   const handleClearAll = useCallback(() => {
     setSearchDraft("");
+    setAiExplanation(null);
+    setAiShowTotal(false);
     clearAll();
   }, [clearAll]);
 
@@ -132,7 +162,27 @@ export function ExpenseExplorer() {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchDraft(value);
+    setAiExplanation(null);
+    setAiShowTotal(false);
   }, []);
+
+  const handleSmartFilter = useCallback(async () => {
+    const query = searchDraft.trim();
+    if (!query || !aiAvailable) return;
+    try {
+      const result = await parseFilters.mutateAsync(query);
+      const notice = [result.explanation, ...result.warnings].join(" · ");
+      setAiExplanation(notice);
+      setAiShowTotal(isAggregateQuery(query));
+      setSearchDraft(result.filters.q ?? "");
+      const urlFilters = { ...result.filters };
+      delete urlFilters.q;
+      setFilters({ ...urlFilters, page: 1 });
+    } catch {
+      setAiExplanation(null);
+      setAiShowTotal(false);
+    }
+  }, [aiAvailable, parseFilters, searchDraft, setFilters]);
 
   const loadedPages = Math.ceil(rows.length / PAGE_SIZE);
   const hasMore = rows.length < total;
@@ -289,7 +339,12 @@ export function ExpenseExplorer() {
   const labelMaps = useMemo(
     () => ({
       groups: new Map(options.groups.map((g) => [g.id, g.name])),
-      friends: new Map(options.friends.map((f) => [f.id, f.name])),
+      friends: new Map([
+        ...(options.ownerUserId
+          ? [[options.ownerUserId, options.ownerName] as const]
+          : []),
+        ...options.friends.map((f) => [f.id, f.name] as const),
+      ]),
       categories: new Map(options.categories.map((c) => [c.id, c.name])),
     }),
     [options],
@@ -313,6 +368,46 @@ export function ExpenseExplorer() {
 
   const count = summary?.count ?? total;
 
+  const aiChipText = useMemo(() => {
+    if (!aiExplanation) return null;
+    if (!aiShowTotal || !summary || summaryFetching) return aiExplanation;
+
+    const directional = hasDirectionalFilters(filters);
+    const field =
+      directional || filters.payment === true ? "payerTotal" : "myShareTotal";
+    const amountLabel = directional
+      ? filters.paidByUserId === options.ownerUserId
+        ? "you paid"
+        : "paid"
+      : filters.payment === true
+        ? "you paid"
+        : "my share";
+    const amounts = currencySummary(summary.byCurrency, field, formatMoney);
+    return `${aiExplanation} · ${summary.count} expenses · ${amountLabel} ${amounts}`;
+  }, [
+    aiExplanation,
+    aiShowTotal,
+    summary,
+    summaryFetching,
+    filters,
+    options.ownerUserId,
+  ]);
+
+  const summaryAmountLabel = useMemo(() => {
+    if (hasDirectionalFilters(filters)) {
+      return filters.paidByUserId === options.ownerUserId ? "you paid" : "paid";
+    }
+    if (filters.payment === true) return "you paid";
+    return "my share";
+  }, [filters, options.ownerUserId]);
+
+  const summaryAmountField = useMemo((): "payerTotal" | "myShareTotal" => {
+    if (hasDirectionalFilters(filters) || filters.payment === true) {
+      return "payerTotal";
+    }
+    return "myShareTotal";
+  }, [filters]);
+
   const listColumn = (
     <>
       <div className="shrink-0 space-y-2">
@@ -330,6 +425,9 @@ export function ExpenseExplorer() {
           onClearAll={handleClearAll}
           groupStats={groupStats}
           options={options}
+          aiAvailable={aiAvailable}
+          onSmartFilter={() => void handleSmartFilter()}
+          smartFilterPending={parseFilters.isPending}
         />
 
         {(chips.length > 0 || !showInitialSkeleton) && (
@@ -340,8 +438,12 @@ export function ExpenseExplorer() {
                   {count.toLocaleString()} expenses
                 </span>
                 <span className="text-muted font-normal">
-                  · my share{" "}
-                  {shareSummary(summary?.byCurrency ?? [], formatMoney)}
+                  · {summaryAmountLabel}{" "}
+                  {currencySummary(
+                    summary?.byCurrency ?? [],
+                    summaryAmountField,
+                    formatMoney,
+                  )}
                 </span>
                 {(searchPending || listRefreshing) && (
                   <span className="text-muted font-normal">· searching…</span>
@@ -372,6 +474,11 @@ export function ExpenseExplorer() {
               </label>
             )}
             <div className="flex flex-wrap items-center gap-1.5">
+              {aiChipText && (
+                <span className={`${ui.chip} text-xs`} title="Ask AI">
+                  AI: {aiChipText}
+                </span>
+              )}
               {chips.map((chip) => (
                 <button
                   key={chip.key}

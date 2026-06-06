@@ -50,6 +50,12 @@ export function useExpenseFilters() {
         case "friend":
           patch.friendId = undefined;
           break;
+        case "paidBy":
+          patch.paidByUserId = undefined;
+          break;
+        case "paidTo":
+          patch.paidToUserId = undefined;
+          break;
         case "category":
           patch.categoryId = undefined;
           break;

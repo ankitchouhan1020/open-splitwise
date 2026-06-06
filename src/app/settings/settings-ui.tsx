@@ -2,6 +2,11 @@ import type { ReactNode } from "react";
 
 const card = "border-border bg-card overflow-hidden rounded-lg border";
 
+/** Full width on mobile; fixed column on sm+ for aligned settings controls. */
+export const settingsControlClass = "w-full sm:w-72 max-w-full";
+
+export const settingsFieldClass = `${settingsControlClass} border-border text-foreground bg-card rounded-md border px-2.5 py-1.5 text-sm`;
+
 export function SettingsSection({
   title,
   description,
@@ -40,28 +45,33 @@ export function SettingsSection({
 export function SettingsBlock({
   title,
   description,
+  action,
   children,
   embedded = false,
 }: {
   title?: string;
   description?: string;
+  action?: ReactNode;
   children: ReactNode;
   embedded?: boolean;
 }) {
-  const showHeader = !embedded && (title || description);
+  const showHeader = !embedded && (title || description || action);
 
   return (
     <section className={card}>
       {showHeader ? (
-        <div className="border-border border-b px-4 py-3 md:px-5">
-          {title ? (
-            <h3 className="text-foreground text-sm font-semibold">{title}</h3>
-          ) : null}
-          {description ? (
-            <p className="text-muted mt-0.5 text-xs leading-relaxed">
-              {description}
-            </p>
-          ) : null}
+        <div className="border-border flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3 md:px-5">
+          <div className="min-w-0">
+            {title ? (
+              <h3 className="text-foreground text-sm font-semibold">{title}</h3>
+            ) : null}
+            {description ? (
+              <p className="text-muted mt-0.5 text-xs leading-relaxed">
+                {description}
+              </p>
+            ) : null}
+          </div>
+          {action}
         </div>
       ) : null}
       <div className="divide-border divide-y">{children}</div>
@@ -117,6 +127,43 @@ export function SettingsProfileStrip({
       </div>
       {badge}
     </div>
+  );
+}
+
+export function SettingsSwitch({
+  checked,
+  disabled,
+  onCheckedChange,
+  "aria-label": ariaLabel,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  "aria-label": string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onCheckedChange(!checked)}
+      className={
+        checked
+          ? "bg-accent focus-visible:ring-accent/40 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          : "bg-muted-surface focus-visible:ring-accent/40 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      }
+    >
+      <span
+        aria-hidden
+        className={
+          checked
+            ? "bg-accent-foreground absolute top-0.5 left-0.5 h-5 w-5 translate-x-5 rounded-full shadow-sm transition-transform"
+            : "bg-card border-border absolute top-0.5 left-0.5 h-5 w-5 translate-x-0 rounded-full border shadow-sm transition-transform"
+        }
+      />
+    </button>
   );
 }
 
