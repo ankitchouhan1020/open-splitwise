@@ -2,7 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { requireAccessToken } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { getAuthenticatedAccountOwner } from "@/lib/db/account";
-import { applyGroupSplitToBody } from "@/lib/expenses/split-request";
+import type { ExpenseWriteInput } from "@/lib/expenses/request-body";
+import { applySplitToBody } from "@/lib/expenses/split-request";
+import { parseExpenseSplitState } from "@/lib/expenses/splits";
 import { createSplitwiseClient } from "@/lib/splitwise/client";
 import type {
   SplitwiseCreateExpenseResponse,
@@ -10,28 +12,30 @@ import type {
 } from "@/lib/splitwise/types";
 import { upsertExpense } from "@/lib/sync/expenses";
 
-export type UpdateExpenseInput = {
-  description: string;
-  cost: string;
-  currencyCode: string;
-  categoryId?: number;
-  date?: string;
-  details?: string;
-  participantIds?: number[];
-  paidByUserId?: number;
-};
+export type UpdateExpenseInput = Omit<
+  ExpenseWriteInput,
+  "groupId" | "friendUserId"
+>;
 
 type ExpenseRow = {
   id: number;
   splitwiseId: number;
   groupId: number | null;
+  friendshipId: number | null;
   payment: boolean;
 };
 
-async function resolveGroupExpenseForMutation(
-  expenseId: number,
-): Promise<
-  | { ok: true; owner: { id: number; splitwiseId: number }; row: ExpenseRow }
+async function resolveMutableExpense(expenseId: number): Promise<
+  | {
+      ok: true;
+      owner: { id: number; splitwiseId: number };
+      row: ExpenseRow;
+      shares: Array<{
+        splitwiseUserId: number;
+        paidShare: string;
+        owedShare: string;
+      }>;
+    }
   | { error: string }
 > {
   const owner = await getAuthenticatedAccountOwner();
@@ -43,6 +47,7 @@ async function resolveGroupExpenseForMutation(
       id: schema.expenses.id,
       splitwiseId: schema.expenses.splitwiseId,
       groupId: schema.expenses.groupId,
+      friendshipId: schema.expenses.friendshipId,
       payment: schema.expenses.payment,
     })
     .from(schema.expenses)
@@ -56,21 +61,35 @@ async function resolveGroupExpenseForMutation(
 
   if (!row) return { error: "not_found" };
   if (row.payment) return { error: "payment_not_editable" };
-  if (!row.groupId || row.groupId <= 0) {
-    return { error: "group_expense_only" };
-  }
 
-  return { ok: true, owner, row };
+  const shares = await db
+    .select({
+      splitwiseUserId: schema.expenseShares.splitwiseUserId,
+      paidShare: schema.expenseShares.paidShare,
+      owedShare: schema.expenseShares.owedShare,
+    })
+    .from(schema.expenseShares)
+    .where(eq(schema.expenseShares.expenseId, row.id));
+
+  return { ok: true, owner, row, shares };
 }
 
-export async function updateGroupExpense(
+function friendUserIdFromShares(
+  ownerSplitwiseId: number,
+  shares: Array<{ splitwiseUserId: number }>,
+): number | undefined {
+  const other = shares.find((s) => s.splitwiseUserId !== ownerSplitwiseId);
+  return other?.splitwiseUserId;
+}
+
+export async function updateExpense(
   expenseId: number,
   input: UpdateExpenseInput,
 ): Promise<
   | { ok: true; expenseId: number; splitwiseId: number }
   | { error: string; details?: Record<string, string[]> }
 > {
-  const resolved = await resolveGroupExpenseForMutation(expenseId);
+  const resolved = await resolveMutableExpense(expenseId);
   if ("error" in resolved) return resolved;
 
   const token = await requireAccessToken();
@@ -85,12 +104,30 @@ export async function updateGroupExpense(
   if (input.date) body.date = input.date;
   body.details = input.details?.trim() ?? "";
 
-  const splitResult = await applyGroupSplitToBody(body, {
-    groupId: resolved.row.groupId!,
+  const groupId =
+    resolved.row.groupId && resolved.row.groupId > 0
+      ? resolved.row.groupId
+      : undefined;
+  const friendUserId = groupId
+    ? undefined
+    : friendUserIdFromShares(resolved.owner.splitwiseId, resolved.shares);
+
+  const splitState = parseExpenseSplitState(resolved.shares);
+  const participantIds =
+    input.participantIds ??
+    (splitState.participantIds.length > 0
+      ? splitState.participantIds
+      : undefined);
+
+  const splitResult = await applySplitToBody(body, {
+    groupId,
+    friendUserId,
     cost: input.cost,
     ownerSplitwiseId: resolved.owner.splitwiseId,
-    participantIds: input.participantIds,
-    paidByUserId: input.paidByUserId,
+    participantIds,
+    paidByUserId: input.paidByUserId ?? splitState.paidByUserId ?? undefined,
+    splitMode: input.splitMode,
+    memberSplits: input.memberSplits,
   });
   if ("error" in splitResult) {
     return { error: splitResult.error };
@@ -119,12 +156,23 @@ export async function updateGroupExpense(
   };
 }
 
-export async function deleteGroupExpense(
+/** @deprecated Use updateExpense */
+export async function updateGroupExpense(
+  expenseId: number,
+  input: UpdateExpenseInput,
+): Promise<
+  | { ok: true; expenseId: number; splitwiseId: number }
+  | { error: string; details?: Record<string, string[]> }
+> {
+  return updateExpense(expenseId, input);
+}
+
+export async function deleteExpense(
   expenseId: number,
 ): Promise<
   { ok: true } | { error: string; details?: Record<string, string[]> }
 > {
-  const resolved = await resolveGroupExpenseForMutation(expenseId);
+  const resolved = await resolveMutableExpense(expenseId);
   if ("error" in resolved) return resolved;
 
   const token = await requireAccessToken();
@@ -155,4 +203,13 @@ export async function deleteGroupExpense(
     );
 
   return { ok: true };
+}
+
+/** @deprecated Use deleteExpense */
+export async function deleteGroupExpense(
+  expenseId: number,
+): Promise<
+  { ok: true } | { error: string; details?: Record<string, string[]> }
+> {
+  return deleteExpense(expenseId);
 }

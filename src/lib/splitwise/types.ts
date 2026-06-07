@@ -82,10 +82,26 @@ export type SplitwiseGroupMember = {
   first_name: string;
   last_name: string;
   email: string;
+  balance?: SplitwiseBalanceEntry[];
+};
+
+export type SplitwiseBalanceEntry = {
+  currency_code: string;
+  amount: string;
+};
+
+export type SplitwiseDebt = {
+  from: number;
+  to: number;
+  amount: string;
+  currency_code: string;
 };
 
 export type SplitwiseGroupDetail = SplitwiseGroup & {
+  simplify_by_default?: boolean;
   members: SplitwiseGroupMember[];
+  original_debts?: SplitwiseDebt[];
+  simplified_debts?: SplitwiseDebt[];
 };
 
 export type SplitwiseGroupDetailResponse = {

@@ -17,6 +17,7 @@ import {
   type SyncProgress,
 } from "@/lib/sync/progress";
 import { reconcileStaleSyncState } from "@/lib/sync/reconcile";
+import { syncAllGroupBalancesForAccount } from "@/lib/groups/sync-balances";
 
 const PAGE_LIMIT = 50;
 
@@ -238,6 +239,12 @@ export async function syncExpenses(
       syncProgressSynced: 0,
       syncProgressLabel: null,
     });
+
+    if (synced > 0) {
+      await syncAllGroupBalancesForAccount(ctx).catch((err) => {
+        console.error("[sync] group balance refresh failed:", err);
+      });
+    }
 
     return { synced, total };
   } catch (err) {

@@ -1,11 +1,14 @@
-import type { ExpenseDetail, ExpenseListItem } from "@/lib/expenses/types";
+import type { ExpenseDetail } from "@/lib/expenses/types";
 
 type MutableExpense = Pick<
-  ExpenseListItem | ExpenseDetail,
-  "payment" | "groupId"
+  ExpenseDetail,
+  "payment" | "groupId" | "friendshipId"
 >;
 
-/** Group expenses (not payments) can be edited/deleted via Splitwise API. */
+/** Non-payment expenses can be edited/deleted via Splitwise API. */
 export function isExpenseMutable(expense: MutableExpense): boolean {
-  return !expense.payment && Boolean(expense.groupId && expense.groupId > 0);
+  if (expense.payment) return false;
+  const inGroup = Boolean(expense.groupId && expense.groupId > 0);
+  const withFriend = Boolean(expense.friendshipId && expense.friendshipId > 0);
+  return inGroup || withFriend;
 }

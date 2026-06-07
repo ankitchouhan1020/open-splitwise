@@ -14,6 +14,7 @@ export type RateLimitRule = {
 export const RATE_LIMIT_RULES: RateLimitRule[] = [
   { pathname: "/api/sync", limit: 6, windowMs: 60_000 },
   { pathname: "/api/expenses/bulk", limit: 10, windowMs: 60_000 },
+  { pathname: "/api/settlements", limit: 20, windowMs: 60_000 },
   { pathname: "/api/expenses/export", limit: 6, windowMs: 60_000 },
   { pathname: "/api/demo/start", limit: 12, windowMs: 60 * 60_000 },
   { pathname: "/api/account/delete-synced-data", limit: 3, windowMs: 60_000 },

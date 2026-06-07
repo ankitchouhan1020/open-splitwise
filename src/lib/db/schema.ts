@@ -46,11 +46,19 @@ export const groups = pgTable(
     splitwiseId: splitwiseId("splitwise_id").notNull(),
     name: text("name").notNull(),
     groupType: text("group_type"),
+    simplifyByDefault: boolean("simplify_by_default").notNull().default(false),
+    /** Owner net in group from Splitwise member balance (positive = owed to you). */
+    ownerNetBalance: numeric("owner_net_balance", {
+      precision: 14,
+      scale: 2,
+    }),
+    ownerNetBalanceCurrency: text("owner_net_balance_currency"),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
     raw: jsonb("raw").notNull().default({}),
     syncedAt: timestamp("synced_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    balancesSyncedAt: timestamp("balances_synced_at", { withTimezone: true }),
   },
   (table) => [
     unique("groups_account_splitwise_unique").on(
@@ -58,6 +66,66 @@ export const groups = pgTable(
       table.splitwiseId,
     ),
     index("groups_account_user_id_idx").on(table.accountUserId),
+  ],
+);
+
+/** Active group debts from Splitwise (simplified or original per group setting). */
+export const groupDebts = pgTable(
+  "group_debts",
+  {
+    id: serial("id").primaryKey(),
+    accountUserId: integer("account_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupSplitwiseId: splitwiseId("group_splitwise_id").notNull(),
+    fromUserId: splitwiseId("from_user_id").notNull(),
+    toUserId: splitwiseId("to_user_id").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    currencyCode: text("currency_code").notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("group_debts_unique").on(
+      table.accountUserId,
+      table.groupSplitwiseId,
+      table.fromUserId,
+      table.toUserId,
+      table.currencyCode,
+    ),
+    index("group_debts_account_group_idx").on(
+      table.accountUserId,
+      table.groupSplitwiseId,
+    ),
+  ],
+);
+
+/** Group members cached from Splitwise get_group for names and balances. */
+export const groupMembers = pgTable(
+  "group_members",
+  {
+    id: serial("id").primaryKey(),
+    accountUserId: integer("account_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupSplitwiseId: splitwiseId("group_splitwise_id").notNull(),
+    splitwiseUserId: splitwiseId("splitwise_user_id").notNull(),
+    name: text("name").notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("group_members_unique").on(
+      table.accountUserId,
+      table.groupSplitwiseId,
+      table.splitwiseUserId,
+    ),
+    index("group_members_account_group_idx").on(
+      table.accountUserId,
+      table.groupSplitwiseId,
+    ),
   ],
 );
 
@@ -202,6 +270,9 @@ export const syncState = pgTable("sync_state", {
 });
 
 export type User = typeof users.$inferSelect;
+export type Group = typeof groups.$inferSelect;
+export type GroupDebt = typeof groupDebts.$inferSelect;
+export type GroupMember = typeof groupMembers.$inferSelect;
 export type Expense = typeof expenses.$inferSelect;
 export type ExpenseShare = typeof expenseShares.$inferSelect;
 export type SyncState = typeof syncState.$inferSelect;

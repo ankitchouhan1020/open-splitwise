@@ -36,11 +36,19 @@ describe("isExpenseMutable", () => {
     expect(isExpenseMutable(expense())).toBe(true);
   });
 
+  it("allows friend expenses", () => {
+    expect(
+      isExpenseMutable(
+        expense({ groupId: null, friendshipId: 3001, groupName: "No group" }),
+      ),
+    ).toBe(true);
+  });
+
   it("blocks payments", () => {
     expect(isExpenseMutable(expense({ payment: true }))).toBe(false);
   });
 
-  it("blocks non-group expenses", () => {
+  it("blocks expenses without group or friendship", () => {
     expect(isExpenseMutable(expense({ groupId: 0 }))).toBe(false);
     expect(isExpenseMutable(expense({ groupId: null }))).toBe(false);
   });

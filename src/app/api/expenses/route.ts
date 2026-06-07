@@ -1,8 +1,9 @@
 import { demoListExpenses } from "@/lib/demo/handlers";
 import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
-import { createGroupExpense } from "@/lib/expenses/create";
+import { createExpense } from "@/lib/expenses/create";
 import { parseExpenseFilters } from "@/lib/expenses/filters";
+import { parseExpenseWriteBody } from "@/lib/expenses/request-body";
 import { listExpenses } from "@/lib/expenses/queries";
 import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -39,42 +40,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const data = body as Record<string, unknown>;
-  const groupId = Number(data.groupId);
-  const description = String(data.description ?? "");
-  const cost = String(data.cost ?? "");
-  const currencyCode = String(data.currencyCode ?? "");
-
-  if (!Number.isFinite(groupId) || groupId <= 0) {
-    return NextResponse.json({ error: "group_required" }, { status: 400 });
+  const parsed = parseExpenseWriteBody(body as Record<string, unknown>);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  if (!description.trim() || !cost.trim() || !currencyCode.trim()) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
-  }
-
-  const participantIds = Array.isArray(data.participantIds)
-    ? data.participantIds
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    : undefined;
-  const paidByUserId =
-    data.paidByUserId != null ? Number(data.paidByUserId) : undefined;
 
   try {
-    const result = await createGroupExpense({
-      groupId,
-      description,
-      cost,
-      currencyCode,
-      categoryId: data.categoryId ? Number(data.categoryId) : undefined,
-      date: data.date ? String(data.date) : undefined,
-      details: data.details ? String(data.details) : undefined,
-      participantIds,
-      paidByUserId:
-        paidByUserId != null && Number.isFinite(paidByUserId)
-          ? paidByUserId
-          : undefined,
-    });
+    const result = await createExpense(parsed.input);
 
     if ("error" in result && !("ok" in result)) {
       return domainErrorResponse(result);

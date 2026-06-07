@@ -1,5 +1,6 @@
 "use client";
 
+import { friendExpenseMembers } from "@/components/expense-form-target-section";
 import { ExpenseCurrencySelect } from "@/components/expense-group-picker";
 import { ExpenseParticipantPicker } from "@/components/expense-participant-picker";
 import { IconCheck } from "@/components/expense-icons";
@@ -11,7 +12,9 @@ import { AddExpenseFormSkeleton } from "@/components/expense-detail-skeleton";
 import { useExpenseFormOptions } from "@/components/use-expense-form-options";
 import { friendlyExpenseError } from "@/lib/api-errors";
 import { parseExpenseSplitState } from "@/lib/expenses/splits";
+import type { SplitMode } from "@/lib/expenses/split-types";
 import type { ExpenseDetail } from "@/lib/expenses/types";
+import { useFilterOptions } from "@/lib/query/hooks";
 import { invalidateExpenseCaches } from "@/lib/query/invalidate";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -32,11 +35,32 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
   const queryClient = useQueryClient();
   const { loading, categories, currencies, suggestions } =
     useExpenseFormOptions();
+  const optionsQuery = useFilterOptions();
 
   const initialSplit = useMemo(
     () => parseExpenseSplitState(expense.shares),
     [expense.shares],
   );
+
+  const isFriendExpense =
+    (!expense.groupId || expense.groupId <= 0) &&
+    Boolean(expense.friendshipId && expense.friendshipId > 0);
+  const ownerUserId = optionsQuery.data?.ownerUserId ?? 0;
+  const ownerName = optionsQuery.data?.ownerName ?? "You";
+  const friendShare = expense.shares.find(
+    (s) => s.splitwiseUserId !== ownerUserId,
+  );
+  const friendMembers =
+    isFriendExpense && friendShare
+      ? friendExpenseMembers(
+          ownerUserId,
+          ownerName,
+          friendShare.splitwiseUserId,
+          expense.groupName !== "No group"
+            ? expense.groupName
+            : `User ${friendShare.splitwiseUserId}`,
+        )
+      : undefined;
 
   const [description, setDescription] = useState(expense.description);
   const [cost, setCost] = useState(expense.cost);
@@ -47,23 +71,44 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
   const [date, setDate] = useState(toDateTimeLocal(expense.date));
   const [details, setDetails] = useState(expense.details ?? "");
   const [participantIds, setParticipantIds] = useState(
-    initialSplit.participantIds,
+    initialSplit.participantIds.length > 0
+      ? initialSplit.participantIds
+      : expense.shares.map((s) => s.splitwiseUserId),
   );
   const [paidByUserId, setPaidByUserId] = useState<number | null>(
     initialSplit.paidByUserId,
   );
+  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
+  const [memberSplitValues, setMemberSplitValues] = useState<
+    Record<number, string>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasPrefilledSplit =
     initialSplit.participantIds.length > 0 || initialSplit.paidByUserId != null;
 
+  const memberSplits =
+    splitMode === "equal"
+      ? undefined
+      : participantIds
+          .map((userId) => ({
+            userId,
+            value: memberSplitValues[userId] ?? "",
+          }))
+          .filter((entry) => entry.value.trim());
+
   const splitPayload =
-    participantIds.length > 0 || paidByUserId != null
+    participantIds.length > 0 ||
+    paidByUserId != null ||
+    splitMode !== "equal" ||
+    (memberSplits?.length ?? 0) > 0
       ? {
           participantIds:
             participantIds.length > 0 ? participantIds : undefined,
           paidByUserId: paidByUserId ?? undefined,
+          splitMode,
+          memberSplits,
         }
       : {};
 
@@ -121,29 +166,58 @@ export function EditExpenseForm({ expense, onCancel, onSuccess }: Props) {
     }
   }
 
-  if (loading) {
+  if (loading || optionsQuery.isLoading) {
     return <AddExpenseFormSkeleton />;
   }
 
   const groupId = expense.groupId ? String(expense.groupId) : "";
+  const contextLabel = isFriendExpense ? "Friend" : "Group";
+  const contextName = isFriendExpense
+    ? (friendMembers?.[1]?.name ?? expense.groupName)
+    : expense.groupName;
 
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-4">
       <div>
         <p className="text-muted text-xs font-medium tracking-wide uppercase">
-          Group
+          {contextLabel}
         </p>
-        <p className="mt-1 text-sm font-medium">{expense.groupName}</p>
+        <p className="mt-1 text-sm font-medium">{contextName}</p>
       </div>
 
-      {groupId && (
+      {(groupId || friendMembers) && (
         <ExpenseParticipantPicker
-          groupId={groupId}
+          groupId={groupId || undefined}
+          members={friendMembers}
+          currentUserId={ownerUserId}
           selectedIds={participantIds}
           onSelectedChange={setParticipantIds}
           paidByUserId={paidByUserId}
           onPaidByChange={setPaidByUserId}
+          splitMode={splitMode}
+          onSplitModeChange={(mode) => {
+            setSplitMode(mode);
+            if (mode === "percent") {
+              const each = (100 / Math.max(participantIds.length, 1)).toFixed(
+                2,
+              );
+              setMemberSplitValues(
+                Object.fromEntries(participantIds.map((id) => [id, each])),
+              );
+            } else if (mode === "shares") {
+              setMemberSplitValues(
+                Object.fromEntries(participantIds.map((id) => [id, "1"])),
+              );
+            } else {
+              setMemberSplitValues({});
+            }
+          }}
+          memberSplitValues={memberSplitValues}
+          onMemberSplitChange={(userId, value) =>
+            setMemberSplitValues((prev) => ({ ...prev, [userId]: value }))
+          }
           skipEmptyDefaults={hasPrefilledSplit}
+          hideMemberPicker={Boolean(friendMembers)}
           idPrefix="edit-"
         />
       )}

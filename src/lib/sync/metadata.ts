@@ -8,6 +8,7 @@ import type {
   SplitwiseFriendsResponse,
   SplitwiseGroupsResponse,
 } from "@/lib/splitwise/types";
+import { syncAllGroupBalancesForAccount } from "@/lib/groups/sync-balances";
 import { releaseMetadataSync, tryAcquireMetadataSync } from "@/lib/sync/lock";
 import { clearSyncProgress, setSyncProgress } from "@/lib/sync/progress";
 import { reconcileStaleSyncState } from "@/lib/sync/reconcile";
@@ -147,6 +148,11 @@ export async function syncMetadata(ctx: SyncRunContext): Promise<{
       categoryCount += 1;
       categoryCount += cat.subcategories?.length ?? 0;
     }
+
+    await setSyncProgress(accountUserId, {
+      syncProgressLabel: "group balances",
+    });
+    await syncAllGroupBalancesForAccount(ctx);
 
     await db
       .update(schema.syncState)

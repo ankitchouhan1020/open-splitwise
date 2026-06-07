@@ -1,7 +1,13 @@
 "use client";
 
-import type { ExpenseFilters } from "@/lib/expenses/filters";
+import {
+  filtersToSearchParams,
+  GROUP_EXPLORE_DEFAULTS,
+  type ExpenseFilters,
+} from "@/lib/expenses/filters";
+import type { ExpenseListItem } from "@/lib/expenses/types";
 import type { GroupListItem } from "@/lib/groups/list";
+import type { GroupSettlePage } from "@/lib/groups/settle-balances";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseDetail } from "@/lib/expenses/types";
 import type { ExploreGroupStat } from "@/lib/expenses/explore-context";
@@ -95,11 +101,57 @@ export function useGroupsList() {
   });
 }
 
+export function useGroupSettlePage(groupId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.groups.settlements(groupId ?? 0),
+    queryFn: () =>
+      fetchJson<GroupSettlePage>(`/api/groups/${groupId}/settlements`),
+    enabled: enabled && groupId != null && groupId > 0,
+    staleTime: 60_000,
+  });
+}
+
 export function useExpenseDetail(id: number | null) {
   return useQuery({
     queryKey: queryKeys.expenses.detail(id ?? 0),
     queryFn: () => fetchJson<ExpenseDetail>(`/api/expenses/${id}`),
     enabled: id != null,
+  });
+}
+
+export type ScopedActivityTarget =
+  | { kind: "group"; groupId: number; name: string; currency?: string }
+  | { kind: "friend"; friendId: number; name: string; currency?: string };
+
+type ExpenseListResponse = {
+  items: ExpenseListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+function scopedActivityParams(target: ScopedActivityTarget): string {
+  const filters: ExpenseFilters = {
+    ...GROUP_EXPLORE_DEFAULTS,
+    sort: "date",
+    order: "desc",
+    page: 1,
+    pageSize: 50,
+    ...(target.currency ? { currency: target.currency } : {}),
+    ...(target.kind === "group"
+      ? { groupId: target.groupId }
+      : { friendId: target.friendId }),
+  };
+  return filtersToSearchParams(filters).toString();
+}
+
+export function useScopedActivityExpenses(target: ScopedActivityTarget | null) {
+  const params = target ? scopedActivityParams(target) : "";
+  return useQuery({
+    queryKey: queryKeys.expenses.list(params),
+    queryFn: () => fetchJson<ExpenseListResponse>(`/api/expenses?${params}`),
+    enabled: target != null,
+    staleTime: 60_000,
   });
 }
 

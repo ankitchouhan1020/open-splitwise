@@ -8,6 +8,7 @@ import { useDemoMode } from "@/components/demo-mode-provider";
 import { ExpenseDetailDrawer } from "@/components/expense-detail-drawer";
 import { ExpenseListItemRow } from "@/components/expense-list-item";
 import { HomePeopleFeed } from "@/components/home-people-feed";
+import { HomeScopedActivityDrawer } from "@/components/home-scoped-activity-drawer";
 import { HomeDashboardSkeleton } from "@/components/home-dashboard-skeleton";
 import { DataList } from "@/components/ui/data-list";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,12 +20,15 @@ import {
   useAiStatus,
   useAiNarrative,
   useGenerateAiNarrative,
+  type ScopedActivityTarget,
 } from "@/lib/query/hooks";
 import { DEMO_MODE_COPY } from "@/lib/demo/copy";
 import { friendlyApiError, friendlyFetchError } from "@/lib/api-errors";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { balanceClasses, balanceNetLabel } from "@/lib/balance-style";
 import { formatMoney } from "@/lib/format";
+import type { GroupListItem } from "@/lib/groups/list";
+import type { FriendBalanceEntry } from "@/lib/splitwise/balances";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
 
@@ -33,7 +37,7 @@ type FeedTab = "activity" | "groups" | "people";
 const FEED_TABS: { id: FeedTab; label: string }[] = [
   { id: "activity", label: "Activity" },
   { id: "groups", label: "Groups" },
-  { id: "people", label: "People" },
+  { id: "people", label: "Friends" },
 ];
 
 function parseFeedTab(value: string | null): FeedTab | null {
@@ -117,6 +121,8 @@ export function HomeDashboard({ userName }: { userName: string }) {
   const generateNarrative = useGenerateAiNarrative();
   const [feedTab, setFeedTab] = useState<FeedTab>("activity");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [scopedActivity, setScopedActivity] =
+    useState<ScopedActivityTarget | null>(null);
   const feedPanelId = useId();
   const { data: detail, isLoading: detailLoading } =
     useExpenseDetail(selectedId);
@@ -166,10 +172,33 @@ export function HomeDashboard({ userName }: { userName: string }) {
 
   function handleFeedTabChange(tab: FeedTab) {
     setFeedTab(tab);
+    setScopedActivity(null);
     const url = new URL(window.location.href);
     if (tab === "activity") url.searchParams.delete("tab");
     else url.searchParams.set("tab", tab);
     window.history.replaceState(null, "", url);
+  }
+
+  function openGroupActivity(group: GroupListItem) {
+    setScopedActivity({
+      kind: "group",
+      groupId: group.id,
+      name: group.name,
+      currency,
+    });
+  }
+
+  function openFriendActivity(friend: FriendBalanceEntry) {
+    setScopedActivity({
+      kind: "friend",
+      friendId: friend.id,
+      name: friend.name,
+      currency,
+    });
+  }
+
+  function handleScopedExpenseSelect(id: number) {
+    setSelectedId(id);
   }
 
   return (
@@ -216,9 +245,17 @@ export function HomeDashboard({ userName }: { userName: string }) {
               className="pt-3"
             >
               {feedTab === "people" ? (
-                <HomePeopleFeed scope="people" idPrefix="home-people-" />
+                <HomePeopleFeed
+                  scope="people"
+                  idPrefix="home-people-"
+                  onOpenFriend={openFriendActivity}
+                />
               ) : feedTab === "groups" ? (
-                <HomePeopleFeed scope="groups" idPrefix="home-groups-" />
+                <HomePeopleFeed
+                  scope="groups"
+                  idPrefix="home-groups-"
+                  onOpenGroup={openGroupActivity}
+                />
               ) : data.recentExpenses.length > 0 ? (
                 <DataList variant="flush">
                   {data.recentExpenses.map((expense) => (
@@ -250,6 +287,12 @@ export function HomeDashboard({ userName }: { userName: string }) {
           </section>
         </div>
       )}
+
+      <HomeScopedActivityDrawer
+        target={scopedActivity}
+        onClose={() => setScopedActivity(null)}
+        onSelectExpense={handleScopedExpenseSelect}
+      />
 
       <ExpenseDetailDrawer
         expense={detail ?? null}

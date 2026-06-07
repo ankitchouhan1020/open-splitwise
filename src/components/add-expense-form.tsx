@@ -1,7 +1,10 @@
 "use client";
 
 import { ExpenseCurrencySelect } from "@/components/expense-group-picker";
-import { ExpenseFormGroupSection } from "@/components/expense-form-group-section";
+import {
+  ExpenseFormTargetSection,
+  friendExpenseMembers,
+} from "@/components/expense-form-target-section";
 import { ExpenseParticipantPicker } from "@/components/expense-participant-picker";
 import { IconChevronDown } from "@/components/expense-icons";
 import {
@@ -163,8 +166,10 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.groupId) {
-      setError("Select a group.");
+    if (!form.hasTarget) {
+      setError(
+        form.target === "group" ? "Select a group." : "Select a friend.",
+      );
       return;
     }
     const finalDescription = description.trim();
@@ -180,7 +185,9 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          groupId: Number(form.groupId),
+          ...(form.target === "group"
+            ? { groupId: Number(form.groupId) }
+            : { friendUserId: Number(form.friendUserId) }),
           description: finalDescription,
           cost,
           currencyCode: form.currencyCode,
@@ -208,11 +215,14 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
       }
       if (data.splitwiseId) {
         await invalidateExpenseCaches(queryClient);
-        const groupLabel = form.groupName || "group";
+        const targetLabel =
+          form.target === "group"
+            ? form.groupName || "group"
+            : form.friendName || "friend";
         showToast(
           preview
-            ? `Added ${preview} to ${groupLabel}`
-            : `Added to ${groupLabel}`,
+            ? `Added ${preview} with ${targetLabel}`
+            : `Added with ${targetLabel}`,
         );
         resetFields();
       }
@@ -233,6 +243,19 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
       ? `Add ${preview}`
       : "Add expense";
 
+  const friendMembers =
+    form.target === "friend" && form.friendUserId && form.ownerUserId
+      ? friendExpenseMembers(
+          form.ownerUserId,
+          form.ownerName,
+          Number(form.friendUserId),
+          form.friendName,
+        )
+      : undefined;
+
+  const splitParticipantCount =
+    form.target === "friend" ? 2 : form.participantIds.length;
+
   return (
     <form
       ref={formRef}
@@ -241,16 +264,20 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
     >
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
         <div className="space-y-4">
-          <ExpenseFormGroupSection
+          <ExpenseFormTargetSection
+            target={form.target}
+            onTargetChange={form.setTarget}
             groups={form.groups}
             topGroups={form.suggestions?.groups.slice(0, 6) ?? []}
             groupId={form.groupId}
             onGroupChange={handleGroupChange}
+            friends={form.friends}
+            friendUserId={form.friendUserId}
+            onFriendChange={form.onFriendChange}
             participantIds={form.participantIds}
             onParticipantChange={form.setParticipantIds}
             paidByUserId={form.paidByUserId}
             onPaidByChange={form.setPaidByUserId}
-            showSplit={false}
           />
 
           <FormField label="Description" htmlFor="expense-desc">
@@ -323,9 +350,11 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
                   aria-label="Amount"
                 />
               </div>
-              {shareEach && form.participantIds.length > 1 ? (
+              {shareEach &&
+              splitParticipantCount > 1 &&
+              form.splitMode === "equal" ? (
                 <p className="text-muted mt-2 text-sm tabular-nums">
-                  ≈ {shareEach} each · {form.participantIds.length} people
+                  ≈ {shareEach} each · {splitParticipantCount} people
                 </p>
               ) : preview ? (
                 <p className="text-muted mt-2 text-sm tabular-nums">
@@ -334,19 +363,32 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
               ) : null}
             </div>
 
-            {form.groupId ? (
+            {form.hasTarget ? (
               <ExpenseParticipantPicker
-                key={form.groupId}
-                groupId={form.groupId}
+                key={
+                  form.target === "group"
+                    ? form.groupId
+                    : `friend-${form.friendUserId}`
+                }
+                groupId={form.target === "group" ? form.groupId : undefined}
+                members={friendMembers}
+                currentUserId={form.ownerUserId}
                 selectedIds={form.participantIds}
                 onSelectedChange={form.setParticipantIds}
                 paidByUserId={form.paidByUserId}
                 onPaidByChange={form.setPaidByUserId}
+                splitMode={form.splitMode}
+                onSplitModeChange={form.onSplitModeChange}
+                memberSplitValues={form.memberSplitValues}
+                onMemberSplitChange={form.onMemberSplitChange}
+                hideMemberPicker={form.target === "friend"}
                 embedded
               />
             ) : (
               <p className="text-muted border-border border-t px-4 py-3.5 text-sm sm:px-5">
-                Select a group to configure the split.
+                {form.target === "group"
+                  ? "Select a group to configure the split."
+                  : "Select a friend to configure the split."}
               </p>
             )}
           </section>
@@ -421,7 +463,7 @@ export function AddExpenseForm({ autoFocus = false }: Props) {
         )}
         <button
           type="submit"
-          disabled={submitting || !form.groupId}
+          disabled={submitting || !form.hasTarget}
           className="bg-accent text-accent-foreground flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {submitting && (

@@ -2,7 +2,6 @@
 
 import { AddExpenseButton } from "@/components/add-expense-drawer";
 import { useDemoMode } from "@/components/demo-mode-provider";
-import { FakeDataToggle } from "@/components/fake-data-toggle";
 import { NavIconAdd, NavIconSync } from "@/components/nav-icons";
 import { useSyncStatus } from "@/components/sync-status-provider";
 import { DEMO_MODE_COPY } from "@/lib/demo/copy";
@@ -45,8 +44,6 @@ export function AppNavActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      {oauthConnected && <FakeDataToggle enabled={fakeDataOn} compact />}
-
       {canSync && (
         <button
           type="button"

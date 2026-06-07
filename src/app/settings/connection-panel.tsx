@@ -232,8 +232,8 @@ export function ConnectionPanel({
               </p>
               <p className="text-muted mt-2 text-sm leading-relaxed">
                 We&apos;ll copy your expenses to this server so you can search,
-                filter, and chart your share. You still add and settle up in the
-                Splitwise app.
+                filter, chart, add expenses, and settle up here — synced with
+                Splitwise.
               </p>
             </div>
             <div className="flex justify-center">

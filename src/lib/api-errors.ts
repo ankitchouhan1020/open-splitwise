@@ -46,6 +46,8 @@ const API_ERROR_MESSAGES: Record<string, string> = {
 
   // Expenses
   group_required: "Select a group.",
+  group_or_friend_required: "Select a group or a friend.",
+  friend_required: "Select a friend.",
   missing_fields: "Fill in all required fields.",
   not_found: "That expense wasn't found. Try syncing.",
   invalid_id: "That expense wasn't found.",
@@ -53,7 +55,11 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   delete_failed: "Couldn't delete the expense. Try again.",
   update_failed: "Couldn't update the expense. Try again.",
   payment_not_editable: "Settlements can't be edited here.",
-  group_expense_only: "Only group expenses can be edited.",
+  group_expense_only: "Only group and friend expenses can be edited.",
+  invalid_split: "Check the split amounts and try again.",
+  split_total_mismatch: "Split amounts must add up to the total.",
+  participants_required: "Select at least one person for the split.",
+  settlement_failed: "Couldn't record the payment. Try again.",
   batch_too_large: "Too many expenses in one batch. Add fewer at a time.",
   empty_batch: "Add at least one expense.",
   currency_required: "Select a currency.",

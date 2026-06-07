@@ -37,6 +37,8 @@ export const queryKeys = {
       [...queryKeys.all, "groups", groupId, "detail"] as const,
     members: (groupId: number) =>
       [...queryKeys.all, "groups", groupId, "members"] as const,
+    settlements: (groupId: number) =>
+      [...queryKeys.all, "groups", groupId, "settlements"] as const,
   },
   ai: {
     status: () => [...queryKeys.all, "ai", "status"] as const,

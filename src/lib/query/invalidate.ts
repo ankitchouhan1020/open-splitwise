@@ -11,6 +11,12 @@ export async function invalidateExpenseCaches(qc: QueryClient) {
     qc.invalidateQueries({ queryKey: queryKeys.filters.options() }),
     qc.invalidateQueries({ queryKey: queryKeys.friends.balances() }),
     qc.invalidateQueries({ queryKey: queryKeys.groups.list() }),
+    qc.invalidateQueries({
+      predicate: (query) =>
+        Array.isArray(query.queryKey) &&
+        query.queryKey.includes("groups") &&
+        query.queryKey.includes("settlements"),
+    }),
     qc.invalidateQueries({ queryKey: queryKeys.sync.status() }),
     qc.invalidateQueries({ queryKey: queryKeys.ai.narrative() }),
   ]);

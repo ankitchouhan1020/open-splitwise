@@ -1,8 +1,9 @@
 import { demoExpenseDetail } from "@/lib/demo/handlers";
 import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
-import { deleteGroupExpense, updateGroupExpense } from "@/lib/expenses/update";
+import { parseExpenseUpdateBody } from "@/lib/expenses/request-body";
 import { getExpenseDetail } from "@/lib/expenses/queries";
+import { deleteExpense, updateExpense } from "@/lib/expenses/update";
 import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -64,37 +65,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const data = body as Record<string, unknown>;
-  const description = String(data.description ?? "");
-  const cost = String(data.cost ?? "");
-  const currencyCode = String(data.currencyCode ?? "");
-
-  if (!description.trim() || !cost.trim() || !currencyCode.trim()) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  const parsed = parseExpenseUpdateBody(body as Record<string, unknown>);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const participantIds = Array.isArray(data.participantIds)
-    ? data.participantIds
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    : undefined;
-  const paidByUserId =
-    data.paidByUserId != null ? Number(data.paidByUserId) : undefined;
-
   try {
-    const result = await updateGroupExpense(expenseId, {
-      description,
-      cost,
-      currencyCode,
-      categoryId: data.categoryId ? Number(data.categoryId) : undefined,
-      date: data.date ? String(data.date) : undefined,
-      details: data.details ? String(data.details) : undefined,
-      participantIds,
-      paidByUserId:
-        paidByUserId != null && Number.isFinite(paidByUserId)
-          ? paidByUserId
-          : undefined,
-    });
+    const result = await updateExpense(expenseId, parsed.input);
 
     if ("error" in result && !("ok" in result)) {
       return domainErrorResponse(result);
@@ -121,7 +98,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   }
 
   try {
-    const result = await deleteGroupExpense(expenseId);
+    const result = await deleteExpense(expenseId);
     if ("error" in result && !("ok" in result)) {
       return domainErrorResponse(result);
     }

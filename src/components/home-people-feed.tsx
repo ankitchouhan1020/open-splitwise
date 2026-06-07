@@ -1,18 +1,29 @@
 "use client";
 
-import { HomeFeedRowLink } from "@/components/home-feed-row";
-import { balanceClasses, type BalanceTag } from "@/lib/balance-style";
-import type { FriendBalanceEntry } from "@/lib/splitwise/balances";
 import {
-  peopleFriendExploreHref,
-  peopleGroupExploreHref,
-} from "@/lib/expenses/filters";
+  HomeFeedRowActionsClick,
+  HomeFeedRowButton,
+} from "@/components/home-feed-row";
+import { HomeFeedSectionHeader } from "@/components/home-feed-section-header";
+import { useDemoMode } from "@/components/demo-mode-provider";
+import { useSettleUpDialogOptional } from "@/components/settle-up-provider";
+import {
+  balanceClasses,
+  type BalanceTag,
+  type RowStripe,
+} from "@/lib/balance-style";
+import {
+  balanceRowSubline,
+  groupSettledSectionHeading,
+  groupUnsettledSectionHeading,
+} from "@/lib/balance-row-copy";
+import type { FriendBalanceEntry } from "@/lib/splitwise/balances";
 import { formatMoney, formatRelativeSync } from "@/lib/format";
 import type { GroupListItem } from "@/lib/groups/list";
 import { useFriendsBalances, useGroupsList } from "@/lib/query/hooks";
+import { ui } from "@/lib/ui-classes";
 import { DataList } from "@/components/ui/data-list";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ui } from "@/lib/ui-classes";
 
 type Scope = "people" | "groups";
 
@@ -23,7 +34,7 @@ function netBalanceTag(net: number): BalanceTag | null {
   return net > 0 ? "you_are_owed" : "you_owe";
 }
 
-function friendSubline(
+function peopleRowSubline(
   friend: FriendBalanceEntry,
   direction: "to_get" | "to_pay",
   currency: string,
@@ -43,7 +54,6 @@ function friendSubline(
       `${formatMoney(Number(friend.myShareTotal), currency)} your share`,
     );
   }
-
   if (parts.length > 0) return parts.join(" · ");
 
   return direction === "to_get"
@@ -51,50 +61,153 @@ function friendSubline(
     : "You owe · live Splitwise balance";
 }
 
-function groupRowMeta(
-  group: GroupListItem,
-  currency: string,
-): {
-  subline: string;
-  amount: string;
-  amountClassName: string;
-  hint: string;
-  hintClassName: string;
-} {
+function groupActivitySubline(group: GroupListItem): string {
   const expenseLabel = `${group.expenseCount} expense${group.expenseCount === 1 ? "" : "s"}`;
   const activityLabel = group.lastActivityAt
     ? formatRelativeSync(group.lastActivityAt)
     : "No recent activity";
-  const share = formatMoney(Number(group.myShareTotal), currency);
+  return balanceRowSubline(expenseLabel, activityLabel);
+}
+
+type GroupRowDisplay = {
+  title: string;
+  titleClassName: string;
+  subline: string;
+  amount?: string;
+  amountClassName: string;
+  hint: string;
+  hintClassName: string;
+  stripe: RowStripe;
+  tag: BalanceTag | null;
+};
+
+function groupRowDisplay(
+  group: GroupListItem,
+  currency: string,
+): GroupRowDisplay {
   const net = Number(group.netBalance);
   const tag = netBalanceTag(net);
+  const share = formatMoney(Number(group.myShareTotal), currency);
+  const activitySubline = groupActivitySubline(group);
+  const expenseLabel = `${group.expenseCount} expense${group.expenseCount === 1 ? "" : "s"}`;
 
   if (tag) {
     const styles = balanceClasses(tag);
     return {
-      subline: `${expenseLabel} · ${activityLabel} · ${share} your share`,
+      title: group.name,
+      titleClassName: "text-foreground",
+      subline: balanceRowSubline(
+        expenseLabel,
+        activitySubline,
+        `${share} your share`,
+      ),
       amount: formatMoney(Math.abs(net), currency),
       amountClassName: styles.amount,
       hint: tag === "you_are_owed" ? "Owed to you" : "You owe",
       hintClassName: styles.label,
+      stripe: tag,
+      tag,
     };
   }
 
   return {
-    subline: `${expenseLabel} · ${activityLabel}`,
+    title: group.name,
+    titleClassName: "text-foreground",
+    subline: activitySubline,
     amount: share,
     amountClassName: "text-foreground",
     hint: "Settled up",
     hintClassName: "text-muted",
+    stripe: "settled",
+    tag: null,
   };
 }
 
 type HomePeopleFeedProps = {
   scope: Scope;
   idPrefix?: string;
+  onOpenGroup?: (group: GroupListItem) => void;
+  onOpenFriend?: (friend: FriendBalanceEntry) => void;
 };
 
-export function HomePeopleFeed({ scope, idPrefix = "" }: HomePeopleFeedProps) {
+function SettleUpButton({
+  friend,
+  disabled,
+  onClick,
+}: {
+  friend: FriendBalanceEntry;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className={`${ui.btnSecondary} inline-flex h-9 shrink-0 items-center justify-center px-3 text-xs`}
+      aria-label={`Settle up with ${friend.name}`}
+    >
+      Settle
+    </button>
+  );
+}
+
+function GroupSettleButton({
+  groupName,
+  disabled,
+  onClick,
+}: {
+  groupName: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className={`${ui.btnSecondary} inline-flex h-9 shrink-0 items-center justify-center px-3 text-xs`}
+      aria-label={`Settle up in ${groupName}`}
+    >
+      Settle
+    </button>
+  );
+}
+
+function groupIsSettled(group: GroupListItem): boolean {
+  return netBalanceTag(Number(group.netBalance)) == null;
+}
+
+function sortUnsettledGroups(groups: GroupListItem[]): GroupListItem[] {
+  return [...groups].sort(
+    (a, b) =>
+      Math.abs(Number(b.netBalance)) - Math.abs(Number(a.netBalance)) ||
+      (b.lastActivityAt ?? "").localeCompare(a.lastActivityAt ?? ""),
+  );
+}
+
+function sortSettledGroups(groups: GroupListItem[]): GroupListItem[] {
+  return [...groups].sort(
+    (a, b) =>
+      (b.lastActivityAt ?? "").localeCompare(a.lastActivityAt ?? "") ||
+      a.name.localeCompare(b.name),
+  );
+}
+
+export function HomePeopleFeed({
+  scope,
+  idPrefix = "",
+  onOpenGroup,
+  onOpenFriend,
+}: HomePeopleFeedProps) {
+  const demoMode = useDemoMode();
+  const settleUp = useSettleUpDialogOptional();
   const friendsQuery = useFriendsBalances();
   const groupsQuery = useGroupsList();
   const groupsOnly = scope === "groups";
@@ -104,14 +217,13 @@ export function HomePeopleFeed({ scope, idPrefix = "" }: HomePeopleFeedProps) {
 
   if (loading) {
     return (
-      <div className={ui.listFlush} aria-busy="true">
+      <ul className={ui.listFlush} aria-busy="true">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-muted-surface/40 min-h-[60px] animate-pulse"
-          />
+          <li key={i} aria-hidden>
+            <div className="bg-muted-surface/40 min-h-[60px] animate-pulse" />
+          </li>
         ))}
-      </div>
+      </ul>
     );
   }
 
@@ -159,80 +271,183 @@ export function HomePeopleFeed({ scope, idPrefix = "" }: HomePeopleFeedProps) {
     );
   }
 
+  function openSettleUp(
+    friend: FriendBalanceEntry,
+    direction: "to_get" | "to_pay",
+  ) {
+    settleUp?.openSettleUp({
+      friendUserId: friend.id,
+      friendName: friend.name,
+      direction: direction === "to_pay" ? "you_pay" : "they_pay_you",
+      amount: friend.amount,
+      currency,
+    });
+  }
+
+  function openGroupSettleUp(group: GroupListItem) {
+    settleUp?.openGroupSettleUp({
+      groupId: group.id,
+      groupName: group.name,
+      currency,
+    });
+  }
+
+  function renderUnsettledGroupRow(g: GroupListItem) {
+    const row = groupRowDisplay(g, currency);
+    const balanceNote =
+      row.tag === "you_are_owed"
+        ? `you are owed ${formatMoney(Math.abs(Number(g.netBalance)), currency)}`
+        : `you owe ${formatMoney(Math.abs(Number(g.netBalance)), currency)}`;
+
+    return (
+      <HomeFeedRowActionsClick
+        flushX
+        stripe={row.stripe}
+        onRowClick={() => onOpenGroup?.(g)}
+        ariaLabel={`View activity in ${g.name}, ${balanceNote}`}
+        title={row.title}
+        titleClassName={row.titleClassName}
+        subline={row.subline}
+        amount={row.amount}
+        amountClassName={row.amountClassName}
+        action={
+          settleUp ? (
+            <GroupSettleButton
+              groupName={g.name}
+              disabled={demoMode}
+              onClick={() => openGroupSettleUp(g)}
+            />
+          ) : null
+        }
+      />
+    );
+  }
+
+  function renderSettledGroupRow(g: GroupListItem) {
+    const row = groupRowDisplay(g, currency);
+
+    return (
+      <HomeFeedRowButton
+        flushX
+        stripe={row.stripe}
+        onClick={() => onOpenGroup?.(g)}
+        ariaLabel={`View activity in ${g.name}, settled up`}
+        title={row.title}
+        titleClassName={row.titleClassName}
+        subline={row.subline}
+        amount={row.amount}
+        amountClassName={row.amountClassName}
+        hint={row.hint}
+        hintClassName={row.hintClassName}
+      />
+    );
+  }
+
+  const unsettledGroups = sortUnsettledGroups(
+    groupList.filter((g) => !groupIsSettled(g)),
+  );
+  const settledGroups = sortSettledGroups(
+    groupList.filter((g) => groupIsSettled(g)),
+  );
+  const unsettledSectionHeading = groupUnsettledSectionHeading(
+    unsettledGroups,
+    currency,
+  );
+  const settledSectionHeading = groupSettledSectionHeading(
+    settledGroups.length,
+  );
+
   return (
     <div id={resultsId} aria-live="polite">
-      <DataList variant="flush">
-        {!groupsOnly && owedList.length > 0
-          ? owedList.map((f) => {
-              const amount = formatMoney(f.amount, currency);
-              return (
-                <li key={`owed-${f.id}`}>
-                  <HomeFeedRowLink
-                    flushX
-                    stripe="you_are_owed"
-                    href={peopleFriendExploreHref(f.id, currency)}
-                    ariaLabel={`View expenses with ${f.name}, owes you ${amount}`}
-                    title={f.name}
-                    subline={friendSubline(f, "to_get", currency)}
-                    amount={amount}
-                    amountClassName={balanceClasses("you_are_owed").amount}
-                    hint="Owed to you"
-                    hintClassName={balanceClasses("you_are_owed").label}
-                  />
-                </li>
-              );
-            })
-          : null}
-        {!groupsOnly && oweList.length > 0
-          ? oweList.map((f) => {
-              const amount = formatMoney(f.amount, currency);
-              return (
-                <li key={`owe-${f.id}`}>
-                  <HomeFeedRowLink
-                    flushX
-                    stripe="you_owe"
-                    href={peopleFriendExploreHref(f.id, currency)}
-                    ariaLabel={`View expenses with ${f.name}, you owe ${amount}`}
-                    title={f.name}
-                    subline={friendSubline(f, "to_pay", currency)}
-                    amount={amount}
-                    amountClassName={balanceClasses("you_owe").amount}
-                    hint="You owe"
-                    hintClassName={balanceClasses("you_owe").label}
-                  />
-                </li>
-              );
-            })
-          : null}
-        {groupsOnly && hasGroups
-          ? groupList.map((g) => {
-              const meta = groupRowMeta(g, currency);
-              const net = Number(g.netBalance);
-              const tag = netBalanceTag(net);
-              const balanceNote = tag
-                ? tag === "you_are_owed"
-                  ? `owed to you ${meta.amount}`
-                  : `you owe ${meta.amount}`
-                : "settled up";
-              return (
-                <li key={`group-${g.id}`}>
-                  <HomeFeedRowLink
-                    flushX
-                    stripe={tag ?? "settled"}
-                    href={peopleGroupExploreHref(g.id, currency)}
-                    ariaLabel={`View expenses in ${g.name}, ${balanceNote}`}
-                    title={g.name}
-                    subline={meta.subline}
-                    amount={meta.amount}
-                    amountClassName={meta.amountClassName}
-                    hint={meta.hint}
-                    hintClassName={meta.hintClassName}
-                  />
-                </li>
-              );
-            })
-          : null}
-      </DataList>
+      {!groupsOnly ? (
+        <DataList variant="flush">
+          {owedList.length > 0
+            ? owedList.map((f) => {
+                const amount = formatMoney(f.amount, currency);
+                return (
+                  <li key={`owed-${f.id}`}>
+                    <HomeFeedRowActionsClick
+                      flushX
+                      stripe="you_are_owed"
+                      onRowClick={() => onOpenFriend?.(f)}
+                      ariaLabel={`View activity with ${f.name}, owes you ${amount}`}
+                      title={f.name}
+                      subline={peopleRowSubline(f, "to_get", currency)}
+                      amount={amount}
+                      amountClassName={balanceClasses("you_are_owed").amount}
+                      action={
+                        settleUp ? (
+                          <SettleUpButton
+                            friend={f}
+                            disabled={demoMode}
+                            onClick={() => openSettleUp(f, "to_get")}
+                          />
+                        ) : null
+                      }
+                    />
+                  </li>
+                );
+              })
+            : null}
+          {oweList.length > 0
+            ? oweList.map((f) => {
+                const amount = formatMoney(f.amount, currency);
+                return (
+                  <li key={`owe-${f.id}`}>
+                    <HomeFeedRowActionsClick
+                      flushX
+                      stripe="you_owe"
+                      onRowClick={() => onOpenFriend?.(f)}
+                      ariaLabel={`View activity with ${f.name}, you owe ${amount}`}
+                      title={f.name}
+                      subline={peopleRowSubline(f, "to_pay", currency)}
+                      amount={amount}
+                      amountClassName={balanceClasses("you_owe").amount}
+                      action={
+                        settleUp ? (
+                          <SettleUpButton
+                            friend={f}
+                            disabled={demoMode}
+                            onClick={() => openSettleUp(f, "to_pay")}
+                          />
+                        ) : null
+                      }
+                    />
+                  </li>
+                );
+              })
+            : null}
+        </DataList>
+      ) : (
+        <div className="space-y-4">
+          {unsettledGroups.length > 0 ? (
+            <section aria-label={unsettledSectionHeading}>
+              <HomeFeedSectionHeader
+                label={unsettledSectionHeading}
+                variant="summary"
+              />
+              <DataList variant="flush">
+                {unsettledGroups.map((g) => (
+                  <li key={`group-${g.id}`}>{renderUnsettledGroupRow(g)}</li>
+                ))}
+              </DataList>
+            </section>
+          ) : null}
+          {settledGroups.length > 0 ? (
+            <section aria-label={settledSectionHeading}>
+              <HomeFeedSectionHeader
+                label={settledSectionHeading}
+                variant="summary"
+              />
+              <DataList variant="flush">
+                {settledGroups.map((g) => (
+                  <li key={`group-${g.id}`}>{renderSettledGroupRow(g)}</li>
+                ))}
+              </DataList>
+            </section>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

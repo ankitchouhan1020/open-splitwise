@@ -1,5 +1,9 @@
 import type { GroupDetail } from "@/lib/groups/detail";
 import type { GroupListItem } from "@/lib/groups/list";
+import {
+  computeGroupSettleBalances,
+  type GroupSettlePage,
+} from "@/lib/groups/settle-balances";
 import type { DashboardSummary } from "@/lib/expenses/dashboard";
 import type { ExpenseFilters } from "@/lib/expenses/filters";
 import {
@@ -646,6 +650,50 @@ export function demoFriendsBalancePage(): FriendsBalancePage {
   };
 }
 
+export function demoGroupSettlePage(
+  groupId: number,
+  now = new Date(),
+): GroupSettlePage | null {
+  const group = DEMO_GROUPS.find((g) => g.id === groupId);
+  if (!group) return null;
+
+  const members = demoGroupMembers(groupId);
+  if (!members) return null;
+
+  const memberNames = new Map<number, string>();
+  for (const member of members) {
+    if (member.id !== DEMO_OWNER_SPLITWISE_ID) {
+      memberNames.set(member.id, member.name);
+    }
+  }
+
+  const rows = filterDemoExpenses({ groupId }, now);
+  const expenses = rows.flatMap((row) => {
+    const detail = getDemoExpenseDetail(row.id, now);
+    if (!detail) return [];
+    return [
+      {
+        activityAt: detail.updatedAt ?? detail.date,
+        shares: detail.shares,
+      },
+    ];
+  });
+
+  const { toGet, toPay } = computeGroupSettleBalances(
+    DEMO_OWNER_SPLITWISE_ID,
+    expenses,
+    memberNames,
+  );
+
+  return {
+    groupId: group.id,
+    groupName: group.name,
+    currency: "USD",
+    toGet,
+    toPay,
+  };
+}
+
 export function demoGroupsList(now = new Date()) {
   const groups: GroupListItem[] = DEMO_GROUPS.map((g) => {
     const rows = filterDemoExpenses({ groupId: g.id }, now);
@@ -666,6 +714,8 @@ export function demoGroupsList(now = new Date()) {
       myPaidTotal: String(myPaid),
       netBalance: String(myPaid - myShare),
       lastActivityAt: last,
+      balancesSyncedAt: null,
+      simplifyByDefault: false,
     };
   });
   return { currency: "USD", groups };
