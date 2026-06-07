@@ -137,6 +137,26 @@ export function parseSettlementWriteBody(
   };
 }
 
+export function isCategoryOnlyPatch(data: Record<string, unknown>): boolean {
+  const keys = Object.keys(data);
+  return (
+    keys.length === 1 &&
+    keys[0] === "categoryId" &&
+    data.categoryId != null &&
+    data.categoryId !== ""
+  );
+}
+
+export function parseExpenseCategoryPatchBody(
+  data: Record<string, unknown>,
+): { ok: true; categoryId: number } | { error: string } {
+  const categoryId = Number(data.categoryId);
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    return { error: "invalid_category" };
+  }
+  return { ok: true, categoryId };
+}
+
 export function parseExpenseUpdateBody(
   data: Record<string, unknown>,
 ):

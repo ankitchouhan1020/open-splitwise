@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
+import { IconCheck } from "@/components/expense-icons";
 import { HighlightText } from "@/components/highlight-text";
 import { expenseBalanceTag } from "@/components/expense-row-meta";
 import {
@@ -12,12 +13,20 @@ import { formatMoney } from "@/lib/format";
 import { isUserInvolvedInExpense } from "@/lib/expenses/involvement";
 import type { ExpenseListItem } from "@/lib/expenses/types";
 
+export type ExpenseCategorySuggestion = {
+  categoryId: number;
+  categoryName: string;
+};
+
 type Props = {
   expense: ExpenseListItem;
   searchQuery?: string;
   onSelect?: () => void;
   compact?: boolean;
   selected?: boolean;
+  categorySuggestion?: ExpenseCategorySuggestion;
+  onApplyCategory?: () => void;
+  applyingCategory?: boolean;
 };
 
 /** Grid: mobile drops date column; desktop keeps Splitwise-style date block. */
@@ -108,12 +117,74 @@ function BalanceLine({ expense }: { expense: ExpenseListItem }) {
   );
 }
 
+function CategorySuggestionChip({
+  suggestion,
+  applying,
+  onApply,
+}: {
+  suggestion: ExpenseCategorySuggestion;
+  applying: boolean;
+  onApply: () => void;
+}) {
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <span className="text-muted text-[11px]">Suggest</span>
+      <span className="bg-pill-active text-pill-active-fg rounded-md px-2 py-0.5 text-[11px] font-medium">
+        {suggestion.categoryName}
+      </span>
+      <button
+        type="button"
+        disabled={applying}
+        onClick={(event) => {
+          event.stopPropagation();
+          onApply();
+        }}
+        className="border-border bg-card hover:bg-hover inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium disabled:opacity-60"
+        aria-label={`Apply category ${suggestion.categoryName}`}
+      >
+        {applying ? (
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <IconCheck className="h-3 w-3" />
+        )}
+        Apply
+      </button>
+    </div>
+  );
+}
+
+function ExpenseRowAmountColumn({
+  expense,
+  balance,
+  displayAmount,
+}: {
+  expense: ExpenseListItem;
+  balance: ReturnType<typeof expenseBalanceTag>;
+  displayAmount: string;
+}) {
+  return (
+    <div className="flex shrink-0 flex-col gap-0.5 text-right leading-snug">
+      <span
+        className={`text-sm font-semibold tabular-nums ${
+          balance ? balanceClasses(balance.tag).amount : "text-foreground"
+        }`}
+      >
+        {displayAmount}
+      </span>
+      <BalanceLine expense={expense} />
+    </div>
+  );
+}
+
 export function ExpenseListItemRow({
   expense,
   searchQuery = "",
   onSelect,
   compact = false,
   selected = false,
+  categorySuggestion,
+  onApplyCategory,
+  applyingCategory = false,
 }: Props) {
   const involved = isUserInvolvedInExpense(expense);
   const balance = expenseBalanceTag(expense);
@@ -125,16 +196,17 @@ export function ExpenseListItemRow({
         ? rowStripeClass("settled")
         : "";
 
-  const rowInteractive = `border-border ${EXPENSE_ROW_GRID} border-b text-left transition-colors hover:bg-hover active:bg-active`;
+  const rowBase = `border-border border-b text-left transition-colors ${rowTint}`;
   const rowSelected = "bg-balance-get-bg/40 ring-accent/25 ring-1 ring-inset";
+  const minHeight = compact ? 60 : categorySuggestion ? 88 : 72;
 
   if (expense.payment) {
     return (
       <button
         type="button"
         onClick={onSelect}
-        className={`${rowInteractive} ${rowTint} ${selected ? rowSelected : ""}`}
-        style={{ minHeight: compact ? 60 : 72 }}
+        className={`${rowBase} ${EXPENSE_ROW_GRID} hover:bg-hover active:bg-active ${selected ? rowSelected : ""}`}
+        style={{ minHeight }}
       >
         <ExpenseDateBlock date={expense.date} />
         <ExpenseCategoryIcon categoryName={null} payment />
@@ -169,11 +241,18 @@ export function ExpenseListItemRow({
       );
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`${rowInteractive} ${rowTint} ${selected ? rowSelected : ""}`}
-      style={{ minHeight: compact ? 60 : 72 }}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect?.()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect?.();
+        }
+      }}
+      className={`${rowBase} ${EXPENSE_ROW_GRID} hover:bg-hover active:bg-active cursor-pointer ${selected ? rowSelected : ""}`}
+      style={{ minHeight }}
     >
       <ExpenseDateBlock date={expense.date} />
       <ExpenseCategoryIcon
@@ -194,18 +273,25 @@ export function ExpenseListItemRow({
           />
           <span className="md:hidden"> · {formatShortDate(expense.date)}</span>
         </p>
+        {categorySuggestion && onApplyCategory ? (
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <CategorySuggestionChip
+              suggestion={categorySuggestion}
+              applying={applyingCategory}
+              onApply={onApplyCategory}
+            />
+          </div>
+        ) : null}
       </div>
-      <div className="flex shrink-0 flex-col gap-0.5 text-right leading-snug">
-        <span
-          className={`text-sm font-semibold tabular-nums ${
-            balance ? balanceClasses(balance.tag).amount : "text-foreground"
-          }`}
-        >
-          {displayAmount}
-        </span>
-        <BalanceLine expense={expense} />
-      </div>
-    </button>
+      <ExpenseRowAmountColumn
+        expense={expense}
+        balance={balance}
+        displayAmount={displayAmount}
+      />
+    </div>
   );
 }
 

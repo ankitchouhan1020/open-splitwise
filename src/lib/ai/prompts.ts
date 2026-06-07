@@ -68,4 +68,37 @@ Return JSON with a single "narrative" field.`;
   return { system, user };
 }
 
+export type SuggestCategoriesExpenseInput = {
+  description: string;
+  details?: string | null;
+  categoryName?: string | null;
+};
+
+export function buildSuggestCategoriesPrompt(input: {
+  expenses: SuggestCategoriesExpenseInput[];
+  categoryNames: string[];
+}): { system: string; user: string } {
+  const system = `Suggest Splitwise expense categories from descriptions and notes.
+
+Rules:
+- Pick categoryName ONLY from the provided category list — exact spelling from the list
+- Return one suggestion per expense index when confident; omit uncertain expenses
+- Prefer specific categories over generic ones when the description clearly fits
+- If currentCategory is set, suggest a different category only when the description clearly fits another category better
+
+Return JSON: { "suggestions": [{ "expenseIndex": 0, "categoryName": "..." }] }`;
+
+  const user = JSON.stringify({
+    categories: input.categoryNames,
+    expenses: input.expenses.map((expense, expenseIndex) => ({
+      expenseIndex,
+      description: expense.description,
+      details: expense.details?.trim() || null,
+      currentCategory: expense.categoryName?.trim() || null,
+    })),
+  });
+
+  return { system, user };
+}
+
 export type { ParsedFilterDraft };

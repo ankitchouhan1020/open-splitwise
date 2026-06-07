@@ -28,6 +28,8 @@ type FilterOptions = {
   currencies: string[];
 };
 
+type Chip = { key: string; label: string };
+
 type Props = {
   filters: ExpenseFilters;
   searchInput: string;
@@ -40,6 +42,18 @@ type Props = {
   onExport: () => void;
   groupStats: ExploreGroupStat[];
   options: FilterOptions;
+  count: number;
+  amountLabel: string;
+  amounts: string;
+  summaryPending?: boolean;
+  sort: string;
+  order: string;
+  onSortChange: (sort: string, order: string) => void;
+  chips: Chip[];
+  onClearFilter: (key: string) => void;
+  onClearAll: () => void;
+  loadingMore?: boolean;
+  summaryHidden?: boolean;
 };
 
 export function ExploreFiltersCard({
@@ -54,6 +68,18 @@ export function ExploreFiltersCard({
   onExport,
   groupStats,
   options,
+  count,
+  amountLabel,
+  amounts,
+  summaryPending = false,
+  sort,
+  order,
+  onSortChange,
+  chips,
+  onClearFilter,
+  onClearAll,
+  loadingMore = false,
+  summaryHidden = false,
 }: Props) {
   const activeDatePreset = detectDatePreset(filters);
   const activeActivity = detectActivityPreset(filters);
@@ -127,6 +153,46 @@ export function ExploreFiltersCard({
         </div>
       </div>
 
+      {!summaryHidden ? (
+        <div className="border-border flex flex-col gap-2 border-b px-2.5 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:px-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span className="text-foreground font-medium tabular-nums">
+              {count.toLocaleString()} expenses
+            </span>
+            <span className="text-muted font-normal">
+              · {amountLabel} {amounts}
+            </span>
+            {summaryPending ? (
+              <span className="text-muted font-normal">· updating…</span>
+            ) : null}
+            {loadingMore ? (
+              <span className="text-muted font-normal">· loading more…</span>
+            ) : null}
+          </div>
+
+          <label className="text-muted flex shrink-0 items-center gap-1.5 text-xs font-normal">
+            Sort
+            <select
+              value={`${sort}:${order}`}
+              onChange={(e) => {
+                const [s, o] = e.target.value.split(":");
+                onSortChange(s, o);
+              }}
+              className={ui.select}
+            >
+              <option value="date:desc">Recent</option>
+              <option value="date:asc">Recent (oldest)</option>
+              <option value="expenseDate:desc">Expense date (newest)</option>
+              <option value="expenseDate:asc">Expense date (oldest)</option>
+              <option value="cost:desc">Highest share</option>
+              <option value="cost:asc">Lowest share</option>
+              <option value="description:asc">A → Z</option>
+              <option value="description:desc">Z → A</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 p-2.5 sm:p-3">
         <ExploreFilterRow label="Type">
           <FilterPills
@@ -178,6 +244,28 @@ export function ExploreFiltersCard({
             options={options}
             onChange={onChange}
           />
+        </div>
+      ) : null}
+
+      {chips.length > 0 ? (
+        <div className="border-border flex flex-wrap items-center gap-1.5 border-t px-2.5 py-2 sm:px-3">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => onClearFilter(chip.key)}
+              className={`${ui.chip} text-xs`}
+            >
+              {chip.label} ×
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="text-accent text-xs font-medium hover:underline"
+          >
+            Clear all
+          </button>
         </div>
       ) : null}
     </div>

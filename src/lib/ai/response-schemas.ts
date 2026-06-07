@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   narrativeResponseJsonSchema,
   parseFiltersResponseJsonSchema,
+  suggestCategoriesResponseJsonSchema,
 } from "@/lib/ai/json-schema";
 
 /** Raw LLM output before name→id resolution. */
@@ -32,6 +33,19 @@ export const narrativeResponseSchema = z.object({
 
 export type NarrativeResponse = z.infer<typeof narrativeResponseSchema>;
 
+const suggestCategoryItemSchema = z.object({
+  expenseIndex: z.number().int().min(0),
+  categoryName: z.string().min(1),
+});
+
+export const suggestCategoriesResponseSchema = z.object({
+  suggestions: z.array(suggestCategoryItemSchema),
+});
+
+export type SuggestCategoriesResponse = z.infer<
+  typeof suggestCategoriesResponseSchema
+>;
+
 export type AiResponseSchema<T extends z.ZodType = z.ZodType> = {
   /** Stable name sent to providers (OpenAI json_schema.name, etc.). */
   name: string;
@@ -53,3 +67,9 @@ export const narrativeAiResponseSchema = {
   zod: narrativeResponseSchema,
   jsonSchema: narrativeResponseJsonSchema,
 } satisfies AiResponseSchema<typeof narrativeResponseSchema>;
+
+export const suggestCategoriesAiResponseSchema = {
+  name: "suggest_categories_response",
+  zod: suggestCategoriesResponseSchema,
+  jsonSchema: suggestCategoriesResponseJsonSchema,
+} satisfies AiResponseSchema<typeof suggestCategoriesResponseSchema>;

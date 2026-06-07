@@ -174,12 +174,13 @@ export function friendlyExpenseError(
 /** Context-specific AI error copy. */
 export function friendlyAiError(
   code: string | undefined,
-  context: "filter" | "narrative" | "settings" = "filter",
+  context: "filter" | "narrative" | "settings" | "category" = "filter",
 ): string {
   const fallbacks: Record<typeof context, string> = {
     filter: "Couldn't apply that filter. Try rephrasing.",
     narrative: "Couldn't generate a summary. Try again.",
     settings: "Couldn't update AI settings. Try again.",
+    category: "Couldn't suggest categories. Try again.",
   };
   return friendlyApiError(code, fallbacks[context]);
 }

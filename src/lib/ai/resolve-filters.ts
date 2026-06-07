@@ -5,6 +5,7 @@ import type {
 } from "@/lib/expenses/filters";
 import type { ParsedFilterDraft } from "@/lib/ai/schema";
 import type { FilterCatalog } from "@/lib/ai/prompts";
+import { matchByName } from "@/lib/ai/match-catalog";
 
 const SORT_KEYS: ExpenseListSort[] = [
   "date",
@@ -13,63 +14,6 @@ const SORT_KEYS: ExpenseListSort[] = [
   "description",
 ];
 const SELF_NAME = /^(me|i|myself|my|you)$/i;
-
-function normalize(s: string): string {
-  return s.trim().toLowerCase();
-}
-
-type NameMatch =
-  | { status: "matched"; id: number }
-  | { status: "not_found" }
-  | { status: "ambiguous"; names: string[] };
-
-function matchByName(
-  name: string | undefined,
-  items: Array<{ id: number; name: string }>,
-): NameMatch {
-  if (!name?.trim()) return { status: "not_found" };
-  const needle = normalize(name);
-
-  const exact = items.find((item) => normalize(item.name) === needle);
-  if (exact) return { status: "matched", id: exact.id };
-
-  const contains = items.filter((item) =>
-    normalize(item.name).includes(needle),
-  );
-  if (contains.length === 1) return { status: "matched", id: contains[0]!.id };
-  if (contains.length > 1) {
-    return {
-      status: "ambiguous",
-      names: contains.map((item) => item.name),
-    };
-  }
-
-  const reverse = items.filter((item) => needle.includes(normalize(item.name)));
-  if (reverse.length === 1) return { status: "matched", id: reverse[0]!.id };
-  if (reverse.length > 1) {
-    return {
-      status: "ambiguous",
-      names: reverse.map((item) => item.name),
-    };
-  }
-
-  const wordMatch = items.filter((item) =>
-    normalize(item.name)
-      .split(/\s+/)
-      .filter(Boolean)
-      .some((part) => part === needle || part.startsWith(needle)),
-  );
-  if (wordMatch.length === 1)
-    return { status: "matched", id: wordMatch[0]!.id };
-  if (wordMatch.length > 1) {
-    return {
-      status: "ambiguous",
-      names: wordMatch.map((item) => item.name),
-    };
-  }
-
-  return { status: "not_found" };
-}
 
 function participantItems(
   catalog: FilterCatalog,

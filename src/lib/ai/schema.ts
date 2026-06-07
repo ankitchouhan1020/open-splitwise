@@ -6,13 +6,31 @@ export {
   narrativeResponseSchema,
   parseFiltersResponseSchema,
   parsedFilterDraftSchema,
+  suggestCategoriesAiResponseSchema,
+  suggestCategoriesResponseSchema,
   type AiResponseSchema,
   type NarrativeResponse,
   type ParsedFilterDraft,
+  type SuggestCategoriesResponse,
 } from "@/lib/ai/response-schemas";
 
 export const parseFiltersRequestSchema = z.object({
   query: z.string().trim().min(1).max(500),
+});
+
+export const suggestCategoriesRequestSchema = z.object({
+  expenses: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        description: z.string().trim().min(1).max(500),
+        details: z.string().max(2000).nullable().optional(),
+        categoryId: z.number().int().positive().nullable().optional(),
+        categoryName: z.string().max(200).nullable().optional(),
+      }),
+    )
+    .min(1)
+    .max(30),
 });
 
 export const upsertAiSettingsBodySchema = z.object({

@@ -4,7 +4,6 @@ import { AiSparkleIcon } from "@/components/ai-sparkle-icon";
 import { DemoModeNotice } from "@/components/demo-mode-notice";
 import { Shimmer } from "@/components/shimmer";
 import { ui } from "@/lib/ui-classes";
-import Link from "next/link";
 
 type Props = {
   aiAvailable: boolean;
@@ -48,12 +47,8 @@ export function HomeAiSummaryCard({
 
   const showBody =
     demoMode ||
-    aiStatusPending ||
-    !aiAvailable ||
-    busy ||
-    Boolean(error) ||
-    hasNarrative ||
-    interactive;
+    (aiAvailable &&
+      (cacheLoading || generating || Boolean(error) || hasNarrative));
 
   return (
     <div className="border-border bg-card overflow-hidden rounded-lg border">
@@ -98,20 +93,7 @@ export function HomeAiSummaryCard({
         >
           {demoMode ? (
             <DemoModeNotice feature="ai" />
-          ) : aiStatusPending || cacheLoading ? (
-            <NarrativeSkeleton />
-          ) : !aiAvailable ? (
-            <p className="text-muted text-sm leading-relaxed">
-              Turn on AI in{" "}
-              <Link
-                href="/settings?tab=ai"
-                className="text-accent font-medium hover:underline"
-              >
-                Settings → AI
-              </Link>{" "}
-              to get a short spending summary here.
-            </p>
-          ) : generating ? (
+          ) : cacheLoading || generating ? (
             <NarrativeSkeleton />
           ) : error ? (
             <p className={ui.errorBox}>{error}</p>
@@ -119,12 +101,7 @@ export function HomeAiSummaryCard({
             <p className="border-accent/25 text-foreground border-l-2 pl-3 text-sm leading-relaxed">
               {narrative}
             </p>
-          ) : (
-            <p className="text-muted text-sm leading-relaxed">
-              Get a short overview of what stood out this month—how spending
-              shifted, who you spent with, and what&apos;s worth a second look.
-            </p>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -82,6 +82,111 @@ function friendUserIdFromShares(
   return other?.splitwiseUserId;
 }
 
+type ResolvedMutableExpense = {
+  ok: true;
+  owner: { id: number; splitwiseId: number };
+  row: ExpenseRow;
+  shares: Array<{
+    splitwiseUserId: number;
+    paidShare: string;
+    owedShare: string;
+  }>;
+};
+
+async function postExpenseUpdate(
+  resolved: ResolvedMutableExpense,
+  body: Record<string, unknown>,
+): Promise<
+  | { ok: true; expenseId: number; splitwiseId: number }
+  | { error: string; details?: Record<string, string[]> }
+> {
+  const token = await requireAccessToken();
+  const client = createSplitwiseClient(token);
+
+  const result = await client.post<SplitwiseCreateExpenseResponse>(
+    `update_expense/${resolved.row.splitwiseId}`,
+    body,
+  );
+
+  if (result.errors && Object.keys(result.errors).length > 0) {
+    return { error: "splitwise_validation", details: result.errors };
+  }
+
+  const expense = result.expenses?.[0];
+  if (!expense) {
+    return { error: "no_expense_returned" };
+  }
+
+  await upsertExpense(resolved.owner.id, expense);
+
+  return {
+    ok: true,
+    expenseId: resolved.row.id,
+    splitwiseId: expense.id,
+  };
+}
+
+export async function updateExpenseCategory(
+  expenseId: number,
+  categoryId: number,
+): Promise<
+  | { ok: true; expenseId: number; splitwiseId: number }
+  | { error: string; details?: Record<string, string[]> }
+> {
+  const resolved = await resolveMutableExpense(expenseId);
+  if ("error" in resolved) return resolved;
+
+  const db = getDb();
+  const [expenseRow] = await db
+    .select({
+      description: schema.expenses.description,
+      cost: schema.expenses.cost,
+      currencyCode: schema.expenses.currencyCode,
+      date: schema.expenses.date,
+      details: schema.expenses.details,
+    })
+    .from(schema.expenses)
+    .where(eq(schema.expenses.id, resolved.row.id))
+    .limit(1);
+
+  if (!expenseRow) return { error: "not_found" };
+
+  const body: Record<string, unknown> = {
+    description: expenseRow.description.trim(),
+    cost: expenseRow.cost,
+    currency_code: expenseRow.currencyCode,
+    category_id: categoryId,
+    date: expenseRow.date.toISOString(),
+    details: expenseRow.details?.trim() ?? "",
+  };
+
+  const groupId =
+    resolved.row.groupId && resolved.row.groupId > 0
+      ? resolved.row.groupId
+      : undefined;
+  const friendUserId = groupId
+    ? undefined
+    : friendUserIdFromShares(resolved.owner.splitwiseId, resolved.shares);
+
+  const splitState = parseExpenseSplitState(resolved.shares);
+  const splitResult = await applySplitToBody(body, {
+    groupId,
+    friendUserId,
+    cost: expenseRow.cost,
+    ownerSplitwiseId: resolved.owner.splitwiseId,
+    participantIds:
+      splitState.participantIds.length > 0
+        ? splitState.participantIds
+        : undefined,
+    paidByUserId: splitState.paidByUserId ?? undefined,
+  });
+  if ("error" in splitResult) {
+    return { error: splitResult.error };
+  }
+
+  return postExpenseUpdate(resolved, body);
+}
+
 export async function updateExpense(
   expenseId: number,
   input: UpdateExpenseInput,
@@ -91,9 +196,6 @@ export async function updateExpense(
 > {
   const resolved = await resolveMutableExpense(expenseId);
   if ("error" in resolved) return resolved;
-
-  const token = await requireAccessToken();
-  const client = createSplitwiseClient(token);
 
   const body: Record<string, unknown> = {
     description: input.description.trim(),
@@ -133,27 +235,7 @@ export async function updateExpense(
     return { error: splitResult.error };
   }
 
-  const result = await client.post<SplitwiseCreateExpenseResponse>(
-    `update_expense/${resolved.row.splitwiseId}`,
-    body,
-  );
-
-  if (result.errors && Object.keys(result.errors).length > 0) {
-    return { error: "splitwise_validation", details: result.errors };
-  }
-
-  const expense = result.expenses?.[0];
-  if (!expense) {
-    return { error: "no_expense_returned" };
-  }
-
-  await upsertExpense(resolved.owner.id, expense);
-
-  return {
-    ok: true,
-    expenseId: resolved.row.id,
-    splitwiseId: expense.id,
-  };
+  return postExpenseUpdate(resolved, body);
 }
 
 /** @deprecated Use updateExpense */

@@ -20,9 +20,12 @@ import {
 } from "@/lib/expenses/list-sections";
 import { ExploreAiCard } from "@/app/explore/explore-ai-card";
 import { ExploreFiltersCard } from "@/app/explore/explore-filters-card";
-import { ExploreSummaryBar } from "@/app/explore/explore-summary-bar";
 import { detectDatePreset } from "@/app/explore/explore-toolbar";
-import { friendlyAiError, friendlyApiError } from "@/lib/api-errors";
+import {
+  friendlyAiError,
+  friendlyApiError,
+  friendlyExpenseError,
+} from "@/lib/api-errors";
 import { FetchJsonError } from "@/lib/query/fetch-json";
 import { useExpenseFilters } from "@/app/explore/use-expense-filters";
 import {
@@ -31,7 +34,13 @@ import {
   useFilterOptions,
   useAiStatus,
   useParseFilters,
+  useCategoryIconMap,
 } from "@/lib/query/hooks";
+import {
+  categoryFieldsFromSuggestion,
+  useApplyExpenseCategory,
+  useCategorySuggestions,
+} from "@/components/use-category-suggestions";
 import { queryKeys } from "@/lib/query/keys";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -110,12 +119,16 @@ export function ExpenseExplorer() {
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
   const [aiShowTotal, setAiShowTotal] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [categoryReviewEnabled, setCategoryReviewEnabled] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const searchQ = debouncedSearch.trim() || undefined;
 
   const demoMode = useDemoMode();
   const { data: aiAvailable = false } = useAiStatus();
   const aiInteractive = aiAvailable && !demoMode;
   const parseFilters = useParseFilters();
+  const { data: categoryIconMap } = useCategoryIconMap();
+  const { applyCategory, applyingId } = useApplyExpenseCategory();
 
   const { data: filterOptions } = useFilterOptions();
   const options = useMemo<FilterOptions>(
@@ -294,6 +307,14 @@ export function ExpenseExplorer() {
   const summaryQueryKey = filtersToSearchParams(effectiveFilters).toString();
 
   const {
+    suggestions: categorySuggestions,
+    pending: categorySuggestionsPending,
+    error: categorySuggestionsError,
+    dismissSuggestion,
+    suggestionCount,
+  } = useCategorySuggestions(rows, categoryReviewEnabled, listQueryKey);
+
+  const {
     data: page1,
     isLoading: loading,
     isFetching: listFetching,
@@ -408,6 +429,39 @@ export function ExpenseExplorer() {
     window.location.href = `/api/expenses/export?${filtersToSearchParams({ ...effectiveFilters, sort, order })}`;
   }
 
+  const handleApplyCategory = useCallback(
+    async (expenseId: number) => {
+      const suggestion = categorySuggestions.get(expenseId);
+      if (!suggestion) return;
+
+      setApplyError(null);
+      const result = await applyCategory(expenseId, suggestion.categoryId);
+      if ("error" in result) {
+        setApplyError(
+          friendlyExpenseError(
+            result.error,
+            undefined,
+            "Couldn't update the category. Try again.",
+          ),
+        );
+        return;
+      }
+
+      dismissSuggestion(expenseId);
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === expenseId
+            ? {
+                ...row,
+                ...categoryFieldsFromSuggestion(suggestion, categoryIconMap),
+              }
+            : row,
+        ),
+      );
+    },
+    [applyCategory, categoryIconMap, categorySuggestions, dismissSuggestion],
+  );
+
   const count = summary?.count ?? total;
 
   const aiTotalLine = useMemo(() => {
@@ -461,6 +515,14 @@ export function ExpenseExplorer() {
           onDismissResult={dismissAiResult}
           disabled={!aiInteractive}
           demoMode={demoMode}
+          categoryReviewEnabled={categoryReviewEnabled}
+          onCategoryReviewToggle={() => {
+            setCategoryReviewEnabled((value) => !value);
+            setApplyError(null);
+          }}
+          categoryReviewPending={categorySuggestionsPending}
+          categoryReviewSuggestionCount={suggestionCount}
+          categoryReviewError={categorySuggestionsError ?? applyError}
         />
 
         <ExploreFiltersCard
@@ -475,10 +537,6 @@ export function ExpenseExplorer() {
           onExport={exportCsv}
           groupStats={groupStats}
           options={options}
-        />
-
-        <ExploreSummaryBar
-          hidden={showInitialSkeleton}
           count={count}
           amountLabel={summaryAmountLabel}
           amounts={currencySummary(
@@ -486,7 +544,7 @@ export function ExpenseExplorer() {
             summaryAmountField,
             formatMoney,
           )}
-          pending={searchPending || listRefreshing || summaryFetching}
+          summaryPending={searchPending || listRefreshing || summaryFetching}
           sort={sort}
           order={order}
           onSortChange={(s, o) =>
@@ -499,6 +557,7 @@ export function ExpenseExplorer() {
           onClearFilter={handleClearFilter}
           onClearAll={handleClearAll}
           loadingMore={loadingMore}
+          summaryHidden={showInitialSkeleton}
         />
 
         {error && (
@@ -552,6 +611,18 @@ export function ExpenseExplorer() {
                           searchQuery={searchQ ?? ""}
                           selected={selectedId === section.expense.id}
                           onSelect={() => setSelectedId(section.expense.id)}
+                          categorySuggestion={
+                            categoryReviewEnabled
+                              ? categorySuggestions.get(section.expense.id)
+                              : undefined
+                          }
+                          onApplyCategory={
+                            categoryReviewEnabled
+                              ? () =>
+                                  void handleApplyCategory(section.expense.id)
+                              : undefined
+                          }
+                          applyingCategory={applyingId === section.expense.id}
                         />
                       ) : null}
                     </div>

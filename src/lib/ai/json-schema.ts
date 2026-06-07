@@ -55,6 +55,22 @@ export const narrativeResponseJsonSchema = strictObjectSchema(
   ["narrative"],
 );
 
+export const suggestCategoriesResponseJsonSchema = strictObjectSchema(
+  {
+    suggestions: {
+      type: "array",
+      items: strictObjectSchema(
+        {
+          expenseIndex: { type: "integer" },
+          categoryName: { type: "string" },
+        },
+        ["expenseIndex", "categoryName"],
+      ),
+    },
+  },
+  ["suggestions"],
+);
+
 /** Drop null/undefined entries from provider payloads before Zod validation. */
 export function normalizeStructuredJson(value: unknown): unknown {
   if (value === null || value === undefined) return value;

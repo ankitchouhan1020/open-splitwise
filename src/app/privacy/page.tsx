@@ -58,10 +58,12 @@ export default function PrivacyPage() {
               , you can store an API key encrypted in the local database.
               Supported providers include OpenAI, OpenRouter, Google Gemini, and
               Anthropic Claude (or a custom OpenAI-compatible endpoint). The key
-              is used only on this server when you use smart filters or
-              narrative insights. Only filter catalogs (group, friend, and
-              category names) and spending aggregates are sent — not individual
-              expense rows or your Splitwise OAuth token.
+              is used only on this server when you use smart filters, category
+              review, or narrative insights. Smart filters send filter catalogs
+              (group, friend, and category names) and your query. Category
+              review sends expense descriptions and notes for loaded rows when
+              you turn it on. Narrative insights send spending aggregates — not
+              individual expense rows or your Splitwise OAuth token.
             </p>
           </section>
 

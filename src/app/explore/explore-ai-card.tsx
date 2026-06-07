@@ -24,6 +24,11 @@ type Props = {
   onDismissResult: () => void;
   disabled?: boolean;
   demoMode?: boolean;
+  categoryReviewEnabled?: boolean;
+  onCategoryReviewToggle?: () => void;
+  categoryReviewPending?: boolean;
+  categoryReviewSuggestionCount?: number;
+  categoryReviewError?: string | null;
 };
 
 export function ExploreAiCard({
@@ -42,6 +47,11 @@ export function ExploreAiCard({
   onDismissResult,
   disabled = false,
   demoMode = false,
+  categoryReviewEnabled = false,
+  onCategoryReviewToggle,
+  categoryReviewPending = false,
+  categoryReviewSuggestionCount = 0,
+  categoryReviewError = null,
 }: Props) {
   const exampleQueries = useMemo(
     () =>
@@ -56,6 +66,7 @@ export function ExploreAiCard({
   const hasResult =
     pending || Boolean(error) || Boolean(explanation) || warnings.length > 0;
   const canSubmit = prompt.trim().length > 0 && !pending && !disabled;
+  const showCategoryReview = !disabled && onCategoryReviewToggle;
 
   return (
     <div className="border-border bg-card overflow-hidden rounded-lg border">
@@ -66,7 +77,7 @@ export function ExploreAiCard({
           ) : (
             <p className="text-muted text-xs leading-relaxed">
               Turn on AI in Settings → AI to filter expenses with natural
-              language.
+              language and review categories.
             </p>
           )
         ) : null}
@@ -142,6 +153,52 @@ export function ExploreAiCard({
             onDismiss={onDismissResult}
             embedded
           />
+        </div>
+      ) : null}
+
+      {showCategoryReview ? (
+        <div className="border-border border-t px-2.5 py-2.5 sm:px-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Category review</p>
+              <p className="text-muted text-xs leading-relaxed">
+                Suggest categories for uncategorized or mismatched expenses in
+                the list below.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {categoryReviewEnabled && categoryReviewPending ? (
+                <span className="text-muted text-xs">
+                  Fetching suggestions…
+                </span>
+              ) : null}
+              {categoryReviewEnabled &&
+              !categoryReviewPending &&
+              categoryReviewSuggestionCount > 0 ? (
+                <span className="bg-accent/10 text-accent rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+                  {categoryReviewSuggestionCount} suggestion
+                  {categoryReviewSuggestionCount === 1 ? "" : "s"}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={onCategoryReviewToggle}
+                className={
+                  categoryReviewEnabled
+                    ? "bg-pill-active text-pill-active-fg rounded-md px-3 py-1.5 text-xs font-medium"
+                    : `${ui.btnSecondary} px-3 py-1.5 text-xs`
+                }
+                aria-pressed={categoryReviewEnabled}
+              >
+                {categoryReviewEnabled ? "On" : "Review categories"}
+              </button>
+            </div>
+          </div>
+          {categoryReviewError ? (
+            <p className="bg-error-bg text-error-text mt-2 rounded-md px-2 py-1 text-xs">
+              {categoryReviewError}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -1,9 +1,17 @@
 import { demoExpenseDetail } from "@/lib/demo/handlers";
 import { isFakeDataRequest } from "@/lib/demo/session";
 import { isDatabaseConfigured } from "@/lib/db";
-import { parseExpenseUpdateBody } from "@/lib/expenses/request-body";
+import {
+  isCategoryOnlyPatch,
+  parseExpenseCategoryPatchBody,
+  parseExpenseUpdateBody,
+} from "@/lib/expenses/request-body";
 import { getExpenseDetail } from "@/lib/expenses/queries";
-import { deleteExpense, updateExpense } from "@/lib/expenses/update";
+import {
+  deleteExpense,
+  updateExpense,
+  updateExpenseCategory,
+} from "@/lib/expenses/update";
 import { domainErrorResponse, routeErrorResponse } from "@/lib/http-errors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -65,12 +73,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const parsed = parseExpenseUpdateBody(body as Record<string, unknown>);
-  if ("error" in parsed) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
+  const record = body as Record<string, unknown>;
 
   try {
+    if (isCategoryOnlyPatch(record)) {
+      const parsed = parseExpenseCategoryPatchBody(record);
+      if ("error" in parsed) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
+      }
+      const result = await updateExpenseCategory(expenseId, parsed.categoryId);
+      if ("error" in result && !("ok" in result)) {
+        return domainErrorResponse(result);
+      }
+      return NextResponse.json(result);
+    }
+
+    const parsed = parseExpenseUpdateBody(record);
+    if ("error" in parsed) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
     const result = await updateExpense(expenseId, parsed.input);
 
     if ("error" in result && !("ok" in result)) {
